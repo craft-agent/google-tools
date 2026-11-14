@@ -38,6 +38,16 @@ tagged `v<version>`; consumers pin a tag or the same npm version.
   annotations are hints, never the boundary.
 - **Every program a tool runs goes through one runner**, which fixes a
   non-interactive environment and maps failures to error codes.
+- **Every Google call goes through the one client**, which checks the route
+  allowlist, follows no redirect and masks credentials; a tool never calls
+  `fetch` itself and never runs a Google command line.
+- **A credential comes from a label's variable or file only and never leaves
+  the client.** No argument or setting carries one, nothing shaped like a
+  credential reaches a result, an error or a log, and no tool starts a
+  consent: only the person-run `login` does. Tests use made-up tokens only.
+- **One label is one account, holding only the scopes it was logged in
+  for.** A tool checks the label's scopes before it calls Google.
+- **No test reaches Google.** The client is tested against a fake Google.
 - **Every commit stays small.** The pre-commit hook rejects a commit over 500
   reviewable changed lines; split the change instead of raising the limit.
 
