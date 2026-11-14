@@ -573,3 +573,197 @@ and every entry point checks them the same way.
   against a fake of that program on `PATH`.
 - A test file stays within about 300 lines, split by topic
   (`<name>.<topic>.test.ts`), so one commit can carry a change and its test.
+
+## The OAuth client
+
+- **The user brings the OAuth client; the package ships none.** It is a
+  Desktop app client of a Google Cloud project of the user's own, given to
+  `login` as the JSON file the console downloads. A client shipped in a
+  package would be shared by every user, its quota and its consent screen
+  with them, and its secret would be public.
+- **Its publishing status is In production.** A client left in Testing gets
+  refresh tokens that end 7 days after consent; In production they do not,
+  verified or not. Personal use (the user, or fewer than 100 people they
+  know) needs no verification, restricted scopes such as `gmail.readonly` and
+  `drive.readonly` included; the person clicks through Google's
+  unverified-app screen once per login
+  ([expiration](https://developers.google.com/identity/protocols/oauth2#expiration),
+  [personal use](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification#personal-use)).
+  The README says how to set it.
+- **Consent runs only in `login`, a command a person runs.** It opens the
+  browser on the loopback redirect (`http://127.0.0.1:<port>`) with PKCE
+  (`S256`), the flow Google keeps for Desktop clients now that the
+  out-of-band one is gone
+  ([desktop apps](https://developers.google.com/identity/protocols/oauth2/native-app)).
+  No tool starts a consent: a tool can run where nobody can answer, and a
+  consent started by a model is one a person may accept without reading.
+- **`remove` revokes the label's token at Google** and deletes the label's
+  state, after the label is typed back unless `--yes` is given. Deleting the
+  file alone would leave the token valid wherever it was copied.
+
+## Accounts and scopes
+
+- **One label is one Google account.** A label is 1 to 24 lowercase letters,
+  digits and `_`, starting and ending with a letter or a digit; `login` names
+  it `default` when no label is given. A label is also a directory name and
+  part of a variable's name, so the set is kept to what both take as it is.
+- **`account` picks the label.** Left out, it picks the only label; with
+  several, the call fails as `invalid_argument` and lists them. One account
+  is the common case and needs no argument, while several never depend on
+  which one a tool guesses.
+- **A label holds only the scopes of the toolsets it was logged in for.**
+  `login --toolsets <list>` asks for the scopes those toolsets' tools need and
+  nothing more, and `login --read-only` only for their read scopes. A label
+  for Sheets then holds no mail scope, and a leaked token reaches no further
+  than the toolsets it was meant for. One label may hold Workspace and Cloud
+  scopes together; the README recommends a label per use.
+- **Adding a toolset to a label is a new login with the whole list.**
+  Desktop clients have no incremental authorization, so every consent grants
+  exactly the scopes it asks for, and the new token replaces the old.
+- **A tool checks the label's scopes before calling Google.** A tool whose
+  scope the label lacks fails as `unauthenticated`, naming the `login`
+  command that adds it. Asking Google first would spend a call to learn what
+  the label's own record says, and Google's answer would not name the fix.
+- **Each toolset names its scopes**, read and write apart, with the narrowest
+  one each operation accepts; which scope a domain takes is settled with its
+  tools.
+
+## Credentials and state
+
+- **Each label keeps all of its state in one directory**,
+  `<state root>/<label>/`, created with mode 700: the credential file when
+  there is one, the granted scopes and the lock that serializes refreshes.
+  The state root is the `state_dir` path option, by default
+  `$XDG_STATE_HOME/google-tools` when `XDG_STATE_HOME` is absolute, else
+  `~/.local/state/google-tools`. One directory per label means a label is
+  moved, backed up or removed as a whole.
+- **A label's credential comes from the environment first**, a variable per
+  label, and the package then stores nothing; otherwise from the label's
+  credential file (mode 600), which `login` writes. How the variable is
+  filled (a keychain, a password manager, a service manager's credentials) is
+  the user's choice; the file works where nothing injects it, Codex included,
+  which forwards no variable whose name depends on a label. The credential is
+  the refresh token, the client id and secret, and the scopes granted; the
+  variables' names are settled with the API client.
+- **A credential is never an argument, a setting or a tool's input.** A
+  harness shows and logs a call's arguments, and settings land in
+  configuration files.
+- **Access tokens live only in memory** and are refreshed when they expire.
+  Refreshes of one label are serialized across processes by a lock in its
+  directory, so two harnesses on one machine do not race, and a refresh
+  token Google rotates is written back only over the one it replaces, never
+  over a newer login.
+- **Nothing shaped like a Google credential is ever shown.** Refresh tokens,
+  access tokens, client secrets and API keys are masked in every result,
+  error message and log, not only the ones in use: an error body can echo
+  another one. The account read names where a credential comes from, never
+  its value.
+
+## The Google client
+
+- **Every Google call goes through one client**, as every program goes
+  through one runner: fixed hosts, a route allowlist per API that each tool's
+  calls are checked against, no redirect followed (a redirect would carry the
+  token elsewhere), a time limit with cancellation, and Google's failures
+  mapped to the error codes. A tool never calls `fetch` itself, and no Google
+  command line is run.
+- **A route left off the allowlist cannot be reached by any argument.** An
+  operation a domain never offers is kept out by the allowlist, not only by
+  the tool's schema, so a bug or a crafted id cannot turn a read into it.
+- **Google's errors map to the codes above:**
+
+  | Google answers                                                             | Code              |
+  | -------------------------------------------------------------------------- | ----------------- |
+  | 401, `invalid_grant` on refresh                                            | `unauthenticated` |
+  | 403 `PERMISSION_DENIED`, `insufficientPermissions`                         | `forbidden`       |
+  | 404 `NOT_FOUND`                                                            | `not_found`       |
+  | 412, `FAILED_PRECONDITION` from a changed revision or etag                 | `stale`           |
+  | 429, `RESOURCE_EXHAUSTED`, 403 `rateLimitExceeded`/`userRateLimitExceeded` | `rate_limited`    |
+  | anything else                                                              | `upstream_error`  |
+
+  The message carries Google's own text, masked, since it often names the
+  API to enable or the permission to grant.
+
+## What the tools never return
+
+- **Credentials, by any tool.** A token or a secret cannot be taken back once
+  it is in a transcript. An operation whose result would have to carry one is
+  not offered.
+- **The user's content only from the read tools of its domain.** Mail, cell
+  values, documents, file contents and comments come from the read tool of
+  the domain they belong to; every other read returns names and metadata.
+  Unlike a package whose content is a side matter, the Workspace toolsets
+  that return it may be on by default: reading that content is what they are
+  for.
+
+## Writes
+
+- **A write's arguments are the whole change.** They name what changes by id
+  and give the new values; nothing is chosen at run time from the current
+  state ("the last row", "every matching message"). The harness shows the
+  arguments when it asks, so what it shows is what runs.
+- **A write returns what it changed**, before and after where Google gives
+  it, so the result can be checked and undone without another read.
+- **A write that could land on the wrong place checks first.** Where content
+  can shift under a call (rows inserted above, a document edited since it was
+  read), the tool takes what it expects there (cells, a revision id, an etag)
+  and refuses as `stale` when Google's differs. Which operations do is settled
+  per domain.
+- **A write that deletes, moves or overwrites content, or changes who can
+  reach it, is a tool of its own** with the destructive annotation, never an
+  operation of a tool that also does harmless edits: a harness that remembers
+  an approval for a tool would otherwise carry it over to the harmful call.
+- **What a domain never offers is settled with its tools**, from the risks
+  its research names (a mail filter that forwards everything, a permission
+  that makes a file public, IAM, a payload that is a secret), and this file
+  records each with its reason. Nothing is ruled out before its domain is
+  reviewed.
+- **There is no preview step and no plan digest.** The harness's approval of
+  the arguments, with `targets` naming the account and the object, is the
+  confirmation.
+
+## Approval prompts
+
+- **Every write tool states its intent and describes every call it can tell
+  before it runs.** Targets name ids, which say where a call writes but not
+  what is there: the person needs the spreadsheet's title and the range, the
+  mail's recipients and subject, the service and the image.
+- **`describe` reads what `execute` reads, with the same code.** The
+  description is planned by the function the call runs on, so it cannot
+  promise a write the call would not make. Where `execute` would refuse,
+  `describe` throws, and the call then fails with its own message.
+- **Values are what Google reports**: a file's name, a tab's title, a
+  service's current image. An argument stands in only for what does not
+  exist yet.
+- **Each domain keeps its words, and their translations, in its `words.ts`**;
+  `src/words.ts` gathers them, and the facts a domain's prompts show are
+  listed here with the domain's tools.
+
+## Files
+
+- **Downloads and exports are written only under a directory a setting
+  names**, judged by real path, never over an existing file, never through a
+  link, and never inside the state root or the tools' own install directory.
+- **An upload reads only under directories a setting names**, opened without
+  following links and refused for a hard-linked file, so a link placed in an
+  allowed directory cannot carry a file from elsewhere to Google.
+- The settings and their defaults are settled with the first tool that
+  writes or reads a file.
+
+## Text a tool reads
+
+- **Mail, cells, documents, comments and file names are written by other
+  people.** Every read tool's description, its result and the skills say they
+  are data, never instructions, and nothing in them is followed. Long text is
+  clipped, and the result says where.
+
+## Toolsets
+
+- **One per domain**, named with its tools: the account, each Workspace API
+  (Sheets, Gmail, Drive, comments on files, Calendar and the others) and each
+  Cloud API (Cloud Run, Logging and the others), beside the starter's
+  `grants`.
+- **The Workspace toolsets are on by default; the Cloud toolsets are off.**
+  Workspace is what most users set the package up for, and a write there asks
+  every time. A Cloud write reaches running services and other people's
+  traffic, so turning a Cloud toolset on is a choice of its own.
