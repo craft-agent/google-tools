@@ -182,6 +182,47 @@ A tool adds what a grant can also limit by declaring `bounds` and giving
 `measure(args, context)` in its spec; see the
 [conventions](docs/conventions.md#writes-no-one-is-there-to-approve).
 
+## Google accounts
+
+The tools call Google's APIs as you, through an OAuth client you create in a
+Google Cloud project of your own; the package ships none.
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), create a
+   project or pick one, and enable the API of each toolset you will use
+   (APIs & Services → Library: Google Sheets API, Gmail API, Google Drive
+   API, Cloud Run Admin API and so on).
+2. Open Google Auth Platform. Under **Branding**, give the app a name and your
+   address. Under **Audience**, choose **External** for a personal account
+   (**Internal** for a Workspace organization's own users) and, for External,
+   press **Publish app** so its status is **In production**. A client left in
+   **Testing** gets refresh tokens that stop working 7 days after you log in.
+3. Under **Clients**, create a client of type **Desktop app** and download
+   its JSON file.
+
+Your own use, or that of fewer than 100 people you know, needs no
+verification by Google, even for the restricted scopes of Gmail and Drive.
+Logging in then shows a "Google hasn't verified this app" screen; choose
+**Advanced** and continue to your app.
+
+A label names one Google account, `default` unless you name another; a call
+picks one with its `account` argument, which may be left out while there is
+only one. The package's `login` command takes the client's JSON file, the
+label and the toolsets the label is for, opens your browser, and asks Google
+only for the scopes of those toolsets (`--read-only`: only their read
+scopes). To add a toolset to a label later, log in again with the whole list;
+Desktop clients cannot add scopes to a consent. One label may hold Workspace
+and Cloud scopes together, but a label per use (one for mail and files, one
+for Cloud) keeps a leaked token from reaching both. `remove` revokes a
+label's token at Google and deletes its state.
+
+Each label keeps its state in its own directory, `<state root>/<label>/`
+(mode 700), under the `state_dir` [setting](#settings): by default
+`$XDG_STATE_HOME/google-tools`, else `~/.local/state/google-tools`. A label's
+credential comes from its environment variable when it is set, else from the
+credential file (mode 600) that `login` writes there. Never pass a token as
+an argument. Codex forwards no variable whose name depends on a label, so use
+the file there.
+
 ## Adding a tool
 
 1. Write the spec in `src/core/<domain>/<verb>.ts` with `defineTool`: an ID
