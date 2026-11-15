@@ -7,6 +7,7 @@ import type { Keeps } from "./before"
 import { readCharts, type ChartState } from "./charts"
 import { readGroups } from "./groups"
 import type { DimensionRange, ResolvedRange } from "./grid"
+import { metadataIdsOf, readMetadataByIds, type DeveloperMetadata } from "./metadata"
 import { noObjects, readObjects, type SheetObjects } from "./objects"
 import { readCells, type CellsRead, type CellsWanted } from "./operation-reads"
 import { readProtections, type ProtectionState } from "./protections"
@@ -18,8 +19,8 @@ const MAX_SHOWN_OP_LENGTH = 40
 /** One request of a `spreadsheets.batchUpdate`: the single-key object Google takes. */
 export type SheetsRequest = Record<string, unknown>
 
-/** What an operation reads beyond the tabs: the groups of rows and columns, the tables, conditional rules, filters and filter views, the charts, or the protected ranges, the spreadsheet has now. */
-export type OperationNeed = "groups" | "objects" | "charts" | "protections"
+/** What an operation reads beyond the tabs: the groups of rows and columns, the tables, conditional rules, filters and filter views, the charts, the protected ranges, or the developer metadata its operations name by id, the spreadsheet has now. */
+export type OperationNeed = "groups" | "objects" | "charts" | "protections" | "metadata"
 
 /**
  * What the operations of a call are built from: the tabs as Google reports
@@ -38,6 +39,8 @@ export type OperationContext = {
   charts: ChartState[]
   /** The protected ranges, filled only when an operation `needs` them. */
   protections: ProtectionState[]
+  /** The developer metadata the operations name by `metadata_id`, filled only when an operation `needs` it. */
+  metadata: DeveloperMetadata[]
   /** The titles of the tabs earlier operations create, which Google has not reported yet. */
   created: string[]
   /** The ids of the tabs earlier operations create under an id of their own, which Google has not reported yet. */
@@ -63,6 +66,8 @@ export type OperationSpec<S extends z.ZodObject<any> = z.ZodObject<any>> = {
   shifts?: true
   /** The operation changes the spreadsheet itself (its title, its settings, a new tab) rather than the cells or properties of a tab. */
   onSpreadsheet?: true
+  /** Whether this operation changes the spreadsheet itself, for an operation that does so only for some of its arguments (developer metadata on the spreadsheet). */
+  changesSpreadsheet?(op: z.output<S>, context: OperationContext): boolean
   /** What the operation has read from the cells before it is planned; the result is in `context.read` for the operation. */
   reads?(op: z.output<S>, context: OperationContext): CellsWanted
   /** The Google requests that carry the operation out, in the order they must run. They move `context`. */
@@ -82,7 +87,7 @@ export type OperationSpec<S extends z.ZodObject<any> = z.ZodObject<any>> = {
 /** A vocabulary of operations, by the `op` that names each. */
 export type OperationTable = Readonly<Record<string, OperationSpec>>
 
-/** One operation planned: its name, requests, the tabs it changes and its line, the cells it loses, the tabs it renames or deletes, the objects it changes or deletes, and whether it shifts cells. */
+/** One operation planned: its name, requests, the tabs it changes and its line, the cells it loses, the tabs it renames or deletes, the objects it changes or deletes, whether it shifts cells, and whether it changes the spreadsheet itself. */
 export type PlannedOperation = {
   name: string
   requests: SheetsRequest[]
@@ -92,6 +97,7 @@ export type PlannedOperation = {
   retitled: SheetTab[]
   pinned: unknown[]
   shifts: boolean
+  onSpreadsheet: boolean
 }
 
 /** What a call of operations works with: the open spreadsheet, each operation planned, and the whole call's requests, lines and changed tabs. */
@@ -162,6 +168,7 @@ export async function planOperations(
     objects: needs("objects") ? await readObjects(open.client, open.id) : noObjects(),
     charts: needs("charts") ? await readCharts(open.client, open.id) : [],
     protections: needs("protections") ? await readProtections(open.client, open.id) : [],
+    metadata: needs("metadata") ? await readMetadataByIds(open.client, open.id, metadataIdsOf(args.operations)) : [],
     created: [],
     newIds: [],
     read: new WeakMap(),
@@ -181,6 +188,7 @@ export async function planOperations(
       retitled: spec.retitles?.(op, context) ?? [],
       pinned: spec.pins?.(op, context) ?? [],
       shifts: spec.shifts === true,
+      onSpreadsheet: spec.onSpreadsheet === true || (spec.changesSpreadsheet?.(op, context) ?? false),
       requests: spec.requests(op, context),
     })
   }
@@ -191,7 +199,7 @@ export async function planOperations(
     requests: steps.flatMap((step) => step.requests),
     lines: steps.map((step) => step.line),
     written: open.tabs.filter((tab) => changed.has(tab.sheetId)),
-    onSpreadsheet: specs.some((spec) => spec.onSpreadsheet === true),
+    onSpreadsheet: steps.some((step) => step.onSpreadsheet),
     context,
   }
 }

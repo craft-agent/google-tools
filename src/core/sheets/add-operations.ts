@@ -5,6 +5,7 @@ import { filterViewOperation } from "./operations.filter-views"
 import { filterOperation } from "./operations.filters"
 import { conditionalOperation } from "./operations.rules"
 import { pivotOperation } from "./operations.pivots"
+import { metadataOperation } from "./operations.metadata"
 import { insertOperation } from "./operations.shifting"
 import { tabDuplicateOperation } from "./operations.tab-lifecycle"
 import { tableOperation } from "./operations.tables"
@@ -21,6 +22,7 @@ export const ADD_OPERATIONS = {
   filter_view: filterViewOperation,
   chart: chartOperation,
   pivot: pivotOperation,
+  metadata: metadataOperation,
 } as const satisfies OperationTable
 
 /** The names of the operations, as a sentence part. */
@@ -39,6 +41,7 @@ export const addOperationSchema = z.discriminatedUnion(
     ADD_OPERATIONS.filter_view.schema,
     ADD_OPERATIONS.chart.schema,
     ADD_OPERATIONS.pivot.schema,
+    ADD_OPERATIONS.metadata.schema,
   ],
   { error: unknownOperationError(ADD_OPERATION_NAMES) },
 )

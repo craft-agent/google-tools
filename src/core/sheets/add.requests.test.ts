@@ -102,6 +102,7 @@ describe("google_sheets_add: insert", () => {
       tables: [],
       filter_views: [],
       charts: [],
+      metadata: [],
     })
   })
 })
@@ -124,6 +125,7 @@ describe("google_sheets_add: tab_duplicate", () => {
       tables: [],
       filter_views: [],
       charts: [],
+      metadata: [],
     })
   })
 
@@ -230,7 +232,7 @@ describe("google_sheets_add: the call", () => {
 
     expect(error.code).toBe("invalid_argument")
     expect(error.message).toContain(
-      'Unknown operation "delete"; the operations are: insert, tab_duplicate, table, conditional, validate, filter, filter_view, chart, pivot.',
+      'Unknown operation "delete"; the operations are: insert, tab_duplicate, table, conditional, validate, filter, filter_view, chart, pivot, metadata.',
     )
     expect(h.requests).toEqual([])
   })
