@@ -3,14 +3,14 @@ import { colorArg, normalizedColor, toColorStyle } from "./colors"
 import { defineOperation } from "./operations"
 import { ONE_RANGE_MESSAGE, areasOf, hasOneRange, rangeFields, rangesLabel, tabsOfAreas } from "./operation-ranges"
 
-const MAX_FONT_LENGTH = 100
+export const MAX_FONT_LENGTH = 100
 const MAX_PATTERN_LENGTH = 200
-const MAX_FONT_SIZE = 400
+export const MAX_FONT_SIZE = 400
 const MAX_ROTATION = 90
 const MAX_PADDING = 100
 
 /** The boolean text properties of the `format` operation, in the order they are written. */
-const TEXT_FLAGS = ["bold", "italic", "underline", "strikethrough"] as const
+export const TEXT_FLAGS = ["bold", "italic", "underline", "strikethrough"] as const
 
 /** Every property of the `format` operation besides its ranges and `reset`. */
 const FORMAT_PROPERTIES = [

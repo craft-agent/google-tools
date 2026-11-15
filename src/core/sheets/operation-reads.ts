@@ -10,32 +10,35 @@ import type { SheetTab } from "./tabs"
 import { MAX_CELLS, fetchValueRanges } from "./values"
 
 const VALIDATION_FIELDS = "sheets.data.rowData.values.dataValidation"
+const NOTE_FIELDS = "sheets.data.rowData.values.note"
 
-/** What an operation needs read from the cells before it is planned: the ranges whose data validation it plans on, and the range whose first row names the columns of a table. */
-export type CellsWanted = { validation?: readonly ResolvedRange[]; header?: ResolvedRange }
+/** What an operation needs read from the cells before it is planned: the ranges whose data validation or notes it plans on, the range whose first row names the columns of a table, and the cell whose text it restyles. */
+export type CellsWanted = {
+  validation?: readonly ResolvedRange[]
+  notes?: readonly ResolvedRange[]
+  header?: ResolvedRange
+  text?: ResolvedRange
+}
 
-/** The data validation of some ranges: each rule Google reports, with where it is, so a change of rule or of place shows. */
-export type RangeValidation = { definitions: unknown[] }
+/** What some ranges hold of one cell property (their data validation, their notes): each value Google reports, with where it is, so a change of value or of place shows. */
+export type CellDefinitions = { definitions: unknown[] }
 
-/** What `readCells` found, for the parts that were wanted. */
-export type CellsRead = { validation?: RangeValidation; header?: string[] }
+/** What `readCells` found, for the parts that were wanted; `text` is the cell's content as written when it is text, else `null`. */
+export type CellsRead = {
+  validation?: CellDefinitions
+  notes?: CellDefinitions
+  header?: string[]
+  text?: string | null
+}
 
-const validationReply = z.object({
+const cellsReply = z.object({
   sheets: z
     .array(
       z.object({
         data: z
           .array(
             z.object({
-              rowData: z
-                .array(
-                  z.object({
-                    values: z
-                      .array(z.object({ dataValidation: z.record(z.string(), z.unknown()).optional() }))
-                      .optional(),
-                  }),
-                )
-                .optional(),
+              rowData: z.array(z.object({ values: z.array(z.record(z.string(), z.unknown())).optional() })).optional(),
             }),
           )
           .optional(),
@@ -56,38 +59,42 @@ function currentA1(tabs: readonly SheetTab[], { tab, grid }: ResolvedRange): str
   return gridRangeA1(tabs.find((candidate) => candidate.sheetId === tab.sheetId)?.title ?? tab.title, grid)
 }
 
+/** A property of a cell to read: its `field`, the field mask that asks for it, the `key` it is listed under and what the errors call it. */
+type CellProperty = { field: string; fields: string; key: string; what: string }
+
 /**
- * Reads the data validation of the ranges, at most `MAX_CELLS` cells in all:
- * a range that holds more, or that is open where the tab's size is unknown, is
- * `invalid_argument` asking for a narrower one.
+ * Reads one property of the cells of the ranges, at most `MAX_CELLS` cells in
+ * all: a range that holds more, or that is open where the tab's size is
+ * unknown, is `invalid_argument` asking for a narrower one.
  */
-async function readValidation(
+async function readCellProperty(
   client: GoogleClient,
   id: string,
   areas: readonly ResolvedRange[],
   tabs: readonly SheetTab[],
   objects: SheetObjects,
-): Promise<RangeValidation> {
+  property: CellProperty,
+): Promise<CellDefinitions> {
   const cells = areas.reduce((total, area) => total + cellsIn(area, objects.sizes.get(area.tab.sheetId) ?? {}), 0)
   if (cells > MAX_CELLS) {
     throw new ToolError(
       "invalid_argument",
-      `The ranges span more than ${MAX_CELLS} cells, which is the most whose data validation can be read at once; narrow them.`,
+      `The ranges span more than ${MAX_CELLS} cells, which is the most whose ${property.what} can be read at once; narrow them.`,
     )
   }
   const reply = parseReply(
-    validationReply,
+    cellsReply,
     await client.request(SHEETS_ROUTES.spreadsheet, {
       params: { spreadsheet_id: id },
-      query: { ranges: areas.map((area) => currentA1(tabs, area)), includeGridData: true, fields: VALIDATION_FIELDS },
+      query: { ranges: areas.map((area) => currentA1(tabs, area)), includeGridData: true, fields: property.fields },
     }),
-    "the data validation",
+    `the ${property.what}`,
   )
   const definitions = (reply.sheets ?? []).flatMap((sheet, sheetPosition) =>
     (sheet.data ?? []).flatMap((data, rangePosition) =>
       (data.rowData ?? []).flatMap((row, rowPosition) =>
         (row.values ?? []).flatMap((cell, columnPosition) =>
-          cell.dataValidation === undefined
+          cell[property.field] === undefined
             ? []
             : [
                 {
@@ -95,7 +102,7 @@ async function readValidation(
                   range: rangePosition,
                   row: rowPosition,
                   column: columnPosition,
-                  rule: cell.dataValidation,
+                  [property.key]: cell[property.field],
                 },
               ],
         ),
@@ -104,6 +111,14 @@ async function readValidation(
   )
   return { definitions }
 }
+
+const VALIDATION_PROPERTY: CellProperty = {
+  field: "dataValidation",
+  fields: VALIDATION_FIELDS,
+  key: "rule",
+  what: "data validation",
+}
+const NOTE_PROPERTY: CellProperty = { field: "note", fields: NOTE_FIELDS, key: "note", what: "notes" }
 
 /** The texts of the first row of the range, as the sheet shows them. */
 async function readHeader(
@@ -114,6 +129,18 @@ async function readHeader(
 ): Promise<string[]> {
   const [range] = await fetchValueRanges(client, id, [currentA1(tabs, area)], "formatted")
   return (range?.values[0] ?? []).map(String)
+}
+
+/** The content of the cell as written (a formula as its formula) when it is text; `null` for a cell that is empty or holds a number or a boolean. */
+async function readText(
+  client: GoogleClient,
+  id: string,
+  tabs: readonly SheetTab[],
+  area: ResolvedRange,
+): Promise<string | null> {
+  const [range] = await fetchValueRanges(client, id, [currentA1(tabs, area)], "formula")
+  const cell = range?.values[0]?.[0]
+  return typeof cell === "string" ? cell : null
 }
 
 /**
@@ -130,8 +157,12 @@ export async function readCells(
 ): Promise<CellsRead> {
   return {
     ...(wanted.validation !== undefined && {
-      validation: await readValidation(client, id, wanted.validation, tabs, objects),
+      validation: await readCellProperty(client, id, wanted.validation, tabs, objects, VALIDATION_PROPERTY),
+    }),
+    ...(wanted.notes !== undefined && {
+      notes: await readCellProperty(client, id, wanted.notes, tabs, objects, NOTE_PROPERTY),
     }),
     ...(wanted.header !== undefined && { header: await readHeader(client, id, tabs, wanted.header) }),
+    ...(wanted.text !== undefined && { text: await readText(client, id, tabs, wanted.text) }),
   }
 }

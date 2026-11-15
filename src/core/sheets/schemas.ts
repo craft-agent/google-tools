@@ -30,6 +30,9 @@ export const MAX_FORMAT_RANGES = 20
 export const MAX_TAB_TITLE_LENGTH = 100
 export const MAX_SPREADSHEET_TITLE_LENGTH = 200
 
+/** The most characters a cell's text, a note or a replacement may have: Google's limit for one cell. */
+export const MAX_CELL_TEXT_LENGTH = 50_000
+
 /** The `account` argument of every Sheets tool. */
 export const accountArg = z
   .string()

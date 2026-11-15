@@ -1,10 +1,10 @@
 import { z } from "zod"
 import { ToolError } from "../errors"
 import { defineTool, type CallDescription, type ToolContext } from "../tool"
-import { gridRangeA1 } from "./a1"
-import { beforeOutput, readBefore, type Before } from "./before"
+import { beforeOutput } from "./before"
 import { checkExpect, expectArg, MAX_EXPECT } from "./expect"
 import { definitionsDigest } from "./objects"
+import { readLoses } from "./operation-before"
 import { MAX_OPERATION_RANGES, rangesIn } from "./operation-ranges"
 import { planOperations, type OperationsPlan } from "./operations"
 import {
@@ -85,18 +85,6 @@ async function planRestructure(args: RestructureArgs, ctx: ToolContext): Promise
   const plan = await planOperations(RESTRUCTURE_OPERATIONS, args, ctx, SHEETS_ROUTES.batchUpdate)
   refuseShiftedOperations(plan)
   return plan
-}
-
-/** The cells the operations remove or replace, as read right before the write, formulas as written. */
-function readLoses(plan: OperationsPlan): Promise<Before> {
-  const titles = new Map(plan.tabs.map((tab) => [tab.sheetId, tab.title]))
-  const lost = plan.steps.flatMap((step) => step.lost)
-  return readBefore(
-    plan.client,
-    plan.id,
-    lost.map(({ area }) => gridRangeA1(titles.get(area.tab.sheetId) ?? area.tab.title, area.grid)),
-    lost.map(({ keeps }) => keeps),
-  )
 }
 
 /** The titles, as Google reports them now, of the tabs the operations rename or delete, in the order of the tabs. */
