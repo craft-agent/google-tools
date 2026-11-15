@@ -21,6 +21,8 @@ function failureOf(run: () => unknown): ToolError {
 
 describe("OAUTH_ROUTES", () => {
   test("names the OAuth endpoints and their scopes", () => {
+    expect(routeUrl(OAUTH_ROUTES.authorize).toString()).toBe("https://accounts.google.com/o/oauth2/v2/auth")
+    expect(OAUTH_ROUTES.authorize.scopes).toEqual([])
     expect(routeUrl(OAUTH_ROUTES.token).toString()).toBe("https://oauth2.googleapis.com/token")
     expect(routeUrl(OAUTH_ROUTES.revoke).toString()).toBe("https://oauth2.googleapis.com/revoke")
     expect(routeUrl(OAUTH_ROUTES.userinfo).toString()).toBe("https://openidconnect.googleapis.com/v1/userinfo")

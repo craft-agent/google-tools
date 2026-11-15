@@ -9,6 +9,9 @@ const HTTP_TOO_MANY_REQUESTS = 429
 /** The OAuth error of a refresh token that was revoked or has expired. */
 export const INVALID_GRANT = "invalid_grant"
 
+/** The OAuth error of a revoke for a token that is already revoked or has expired. */
+export const INVALID_TOKEN = "invalid_token"
+
 const PERMISSION_DENIED = "PERMISSION_DENIED"
 const NOT_FOUND = "NOT_FOUND"
 const FAILED_PRECONDITION = "FAILED_PRECONDITION"

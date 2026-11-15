@@ -24,10 +24,11 @@ export const OPENID_SCOPE = "openid"
 export const EMAIL_SCOPE = "https://www.googleapis.com/auth/userinfo.email"
 
 /** The hosts the package may reach; a route on any other host is refused. */
-export const HOSTS: readonly string[] = ["oauth2.googleapis.com", "openidconnect.googleapis.com"]
+export const HOSTS: readonly string[] = ["accounts.google.com", "oauth2.googleapis.com", "openidconnect.googleapis.com"]
 
-/** The OAuth endpoints. The token and revoke calls take no access token; userinfo accepts a token holding `openid` or `email`. */
+/** The OAuth endpoints. The authorize page is opened by the person and the token and revoke calls take no access token; userinfo accepts a token holding `openid` or `email`. */
 export const OAUTH_ROUTES = {
+  authorize: { method: "GET", host: "accounts.google.com", path: "/o/oauth2/v2/auth", scopes: [] },
   token: { method: "POST", host: "oauth2.googleapis.com", path: "/token", scopes: [] },
   revoke: { method: "POST", host: "oauth2.googleapis.com", path: "/revoke", scopes: [] },
   userinfo: {
