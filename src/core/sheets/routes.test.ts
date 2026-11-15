@@ -16,7 +16,12 @@ describe("SHEETS_ROUTES", () => {
       SHEETS_ROUTES.create,
       SHEETS_ROUTES.batchUpdate,
     ]
-    for (const route of [SHEETS_ROUTES.files, SHEETS_ROUTES.spreadsheet, SHEETS_ROUTES.batchGet]) {
+    for (const route of [
+      SHEETS_ROUTES.files,
+      SHEETS_ROUTES.spreadsheet,
+      SHEETS_ROUTES.batchGet,
+      SHEETS_ROUTES.export,
+    ]) {
       expect(route.method).toBe("GET")
     }
     for (const route of writes) {
@@ -33,6 +38,13 @@ describe("SHEETS_ROUTES", () => {
     ])
     expect(SHEETS_ROUTES.spreadsheet.scopes).toEqual([SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE])
     expect(SHEETS_ROUTES.batchGet.scopes).toEqual([SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE])
+  })
+
+  test("the export is a GET on the docs host that either Sheets scope allows", () => {
+    expect(SHEETS_ROUTES.export.scopes).toEqual([SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE])
+    expect(routeUrl(SHEETS_ROUTES.export, { spreadsheet_id: "abc_DEF-123" }).toString()).toBe(
+      "https://docs.google.com/spreadsheets/d/abc_DEF-123/export",
+    )
   })
 
   test("the URLs keep the literal :batchGet and encode the id", () => {

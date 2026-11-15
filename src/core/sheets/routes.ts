@@ -3,6 +3,7 @@ import { DRIVE_METADATA_READ_SCOPE, SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE } from
 
 const DRIVE_HOST = "www.googleapis.com"
 const SHEETS_HOST = "sheets.googleapis.com"
+const DOCS_HOST = "docs.google.com"
 
 /** Drive scopes beyond the metadata one that also list files. */
 const DRIVE_READ_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
@@ -57,5 +58,13 @@ export const SHEETS_ROUTES = {
     host: SHEETS_HOST,
     path: "/v4/spreadsheets/{spreadsheet_id}:batchUpdate",
     scopes: [SHEETS_WRITE_SCOPE],
+  },
+  // The export URL is not a documented API: the scopes it accepts and the redirects it may answer with are
+  // checked at a real install, not here.
+  export: {
+    method: "GET",
+    host: DOCS_HOST,
+    path: "/spreadsheets/d/{spreadsheet_id}/export",
+    scopes: [SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE],
   },
 } as const satisfies Record<string, Route>
