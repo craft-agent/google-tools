@@ -107,7 +107,8 @@ const PLAN = {
       range: range(0, 1, 0, 6),
       description: "Header",
       warningOnly: false,
-      editors: { users: ["ann@example.test"] },
+      editors: { users: ["ann@example.test"], groups: ["team@example.test"], domainUsersCanEdit: true },
+      requestingUserCanEdit: true,
     },
     { protectedRangeId: 8, range: { sheetId: 0 }, warningOnly: true },
     { protectedRangeId: 9, range: range(2, 3, 0, 1), description: "Locked", editors: {} },
@@ -180,10 +181,18 @@ describe("google_sheets_read structure", () => {
           range: "Plan!A1:F1",
           description: "Header",
           warning_only: false,
-          editors: ["ann@example.test"],
+          editors: { users: ["ann@example.test"], groups: ["team@example.test"], domain_users_can_edit: true },
+          can_edit: true,
         },
-        { protection_id: 8, range: "Plan", description: null, warning_only: true, editors: null },
-        { protection_id: 9, range: "Plan!A3", description: "Locked", warning_only: false, editors: [] },
+        { protection_id: 8, range: "Plan", description: null, warning_only: true, editors: null, can_edit: false },
+        {
+          protection_id: 9,
+          range: "Plan!A3",
+          description: "Locked",
+          warning_only: false,
+          editors: { users: [], groups: [], domain_users_can_edit: false },
+          can_edit: false,
+        },
       ],
       more: {
         merges: 0,
@@ -229,7 +238,9 @@ describe("google_sheets_read structure", () => {
     expect(h.calls()).toHaveLength(1)
     const fields = h.calls()[0]!.url.searchParams.get("fields")!
     expect(fields).toStartWith("sheets(properties(sheetId,title,index),merges,")
-    expect(fields).toContain("protectedRanges(protectedRangeId,range,description,warningOnly,editors(users))")
+    expect(fields).toContain(
+      "protectedRanges(protectedRangeId,range,unprotectedRanges,description,warningOnly,editors(users,groups,domainUsersCanEdit),requestingUserCanEdit)",
+    )
     expect(fields).toContain("domains(domain(sourceRange))")
     expect(fields).not.toContain("data(")
     expect(h.calls()[0]!.url.searchParams.has("includeGridData")).toBe(false)

@@ -9,6 +9,7 @@ import { readGroups } from "./groups"
 import type { DimensionRange, ResolvedRange } from "./grid"
 import { noObjects, readObjects, type SheetObjects } from "./objects"
 import { readCells, type CellsRead, type CellsWanted } from "./operation-reads"
+import { readProtections, type ProtectionState } from "./protections"
 import { openSpreadsheet, type OpenSpreadsheet, type SheetTab } from "./tabs"
 
 /** How much of an unknown `op` an error repeats. */
@@ -17,8 +18,8 @@ const MAX_SHOWN_OP_LENGTH = 40
 /** One request of a `spreadsheets.batchUpdate`: the single-key object Google takes. */
 export type SheetsRequest = Record<string, unknown>
 
-/** What an operation reads beyond the tabs: the groups of rows and columns, the tables, conditional rules, filters and filter views, or the charts, the spreadsheet has now. */
-export type OperationNeed = "groups" | "objects" | "charts"
+/** What an operation reads beyond the tabs: the groups of rows and columns, the tables, conditional rules, filters and filter views, the charts, or the protected ranges, the spreadsheet has now. */
+export type OperationNeed = "groups" | "objects" | "charts" | "protections"
 
 /**
  * What the operations of a call are built from: the tabs as Google reports
@@ -35,6 +36,8 @@ export type OperationContext = {
   objects: SheetObjects
   /** The charts, filled only when an operation `needs` them. */
   charts: ChartState[]
+  /** The protected ranges, filled only when an operation `needs` them. */
+  protections: ProtectionState[]
   /** The titles of the tabs earlier operations create, which Google has not reported yet. */
   created: string[]
   /** The ids of the tabs earlier operations create under an id of their own, which Google has not reported yet. */
@@ -100,6 +103,8 @@ export type OperationsPlan = OpenSpreadsheet & {
   written: SheetTab[]
   /** Whether an operation changes the spreadsheet itself. */
   onSpreadsheet: boolean
+  /** What the operations left of the state they moved as they were built. */
+  context: OperationContext
 }
 
 /** Returns the spec as it is, so its schema's type reaches the functions. */
@@ -156,6 +161,7 @@ export async function planOperations(
     groups: needs("groups") ? await readGroups(open.client, open.id) : [],
     objects: needs("objects") ? await readObjects(open.client, open.id) : noObjects(),
     charts: needs("charts") ? await readCharts(open.client, open.id) : [],
+    protections: needs("protections") ? await readProtections(open.client, open.id) : [],
     created: [],
     newIds: [],
     read: new WeakMap(),
@@ -186,5 +192,6 @@ export async function planOperations(
     lines: steps.map((step) => step.line),
     written: open.tabs.filter((tab) => changed.has(tab.sheetId)),
     onSpreadsheet: specs.some((spec) => spec.onSpreadsheet === true),
+    context,
   }
 }

@@ -5,6 +5,7 @@ import { colorReply, colorStyleReply } from "./colors"
 import { conditionText } from "./conditions"
 import { chartReply, chartSources } from "./charts"
 import { areaLabel } from "./operation-ranges"
+import { PROTECTION_FIELDS, editorsView, protectedRangeReply, protectionOf } from "./protections"
 import { parseReply } from "./reply"
 import { SHEETS_ROUTES } from "./routes"
 import type { StructureResult, StructuredTab } from "./schemas"
@@ -23,7 +24,7 @@ const STRUCTURE_FIELDS =
   "filterViews(filterViewId,title,range,filterSpecs)," +
   "charts(chartId,spec(title,basicChart(chartType,domains(domain(sourceRange)),series(series(sourceRange)))," +
   "pieChart(legendPosition,domain(sourceRange),series(sourceRange))),position)," +
-  "protectedRanges(protectedRangeId,range,description,warningOnly,editors(users)))"
+  `protectedRanges(${PROTECTION_FIELDS}))`
 
 /** The type of a table column Google reports no type for. */
 const DEFAULT_COLUMN_TYPE = "TEXT"
@@ -140,17 +141,7 @@ const structureReply = z.object({
           )
           .optional(),
         charts: z.array(chartReply).optional(),
-        protectedRanges: z
-          .array(
-            z.object({
-              protectedRangeId: gridNumber,
-              range: gridReply.optional(),
-              description: z.string().optional(),
-              warningOnly: z.boolean().optional(),
-              editors: z.object({ users: z.array(z.string()).optional() }).optional(),
-            }),
-          )
-          .optional(),
+        protectedRanges: z.array(protectedRangeReply).optional(),
       }),
     )
     .optional(),
@@ -300,13 +291,17 @@ function structuredTab(
       }
     }),
     pivots: pivotData === undefined ? null : pivots.shown,
-    protections: protections.shown.map((protection) => ({
-      protection_id: protection.protectedRangeId ?? 0,
-      range: rangeA1(title, protection.range),
-      description: protection.description ?? null,
-      warning_only: protection.warningOnly ?? false,
-      editors: protection.editors === undefined ? null : (protection.editors.users ?? []),
-    })),
+    protections: protections.shown.map((reply) => {
+      const protection = protectionOf(reply)
+      return {
+        protection_id: protection.protectionId ?? 0,
+        range: rangeA1(title, protection.range),
+        description: protection.description ?? null,
+        warning_only: protection.warningOnly,
+        editors: protection.editors === undefined ? null : editorsView(protection),
+        can_edit: protection.canEdit,
+      }
+    }),
     more: {
       merges: merges.more,
       row_groups: rowGroups.more,

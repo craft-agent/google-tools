@@ -291,13 +291,22 @@ const structuredPivotSchema = z.object({
   values: z.array(z.string()),
 })
 
+/** Who may edit a protection, every address in full. */
+export const protectionEditorsSchema = z.object({
+  users: z.array(z.string()),
+  groups: z.array(z.string()),
+  domain_users_can_edit: z.boolean(),
+})
+
 const structuredProtectionSchema = z.object({
   protection_id: z.number().int(),
   range: z.string(),
   description: z.string().nullable(),
   warning_only: z.boolean(),
-  /** The emails of those who may edit the range; null when Google does not show them to the account. */
-  editors: z.array(z.string()).nullable(),
+  /** The people and groups who may edit the range, every address in full; null when Google does not show them to the account. */
+  editors: protectionEditorsSchema.nullable(),
+  /** Whether the account may change or delete the protection; `protect_update` and `protect_delete` refuse one it may not. */
+  can_edit: z.boolean(),
 })
 
 export const structuredTabSchema = z.object({
@@ -399,6 +408,7 @@ export type CellFormat = z.infer<typeof cellFormatSchema>
 export type FormattedCell = z.infer<typeof formattedCellSchema>
 export type FormattedRange = z.infer<typeof formattedRangeSchema>
 export type FormatResult = z.infer<z.ZodObject<typeof formatOutput>>
+export type ProtectionEditorsView = z.infer<typeof protectionEditorsSchema>
 export type StructuredTab = z.infer<typeof structuredTabSchema>
 export type StructureResult = z.infer<z.ZodObject<typeof structureOutput>>
 export type SnapshotFit = (typeof SNAPSHOT_FITS)[number]
