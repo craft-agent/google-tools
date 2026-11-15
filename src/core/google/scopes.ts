@@ -7,13 +7,44 @@ export type ToolsetScopes = {
   write: readonly string[]
 }
 
+/** The toolset of the account read, which needs the identity scopes alone. */
+export const ACCOUNT_TOOLSET = "account"
+
 /** The scopes of each toolset a label can be logged in for; each domain adds its own with its tools. */
 export const TOOLSET_SCOPES: Readonly<Record<string, ToolsetScopes>> = {
-  account: { read: [], write: [] },
+  [ACCOUNT_TOOLSET]: { read: [], write: [] },
 }
 
 /** What every login asks for besides its toolsets' scopes, so the label records the account's address. */
 export const IDENTITY_SCOPES: readonly string[] = [OPENID_SCOPE, EMAIL_SCOPE]
+
+/** The toolsets a credential's scopes cover, and those among them it holds only for reading. */
+export type GrantedToolsets = {
+  toolsets: string[]
+  readOnly: string[]
+}
+
+/**
+ * The toolsets of `table` (default `TOOLSET_SCOPES`, in its order) whose read
+ * scopes are all among `scopes`; the account toolset needs the identity scopes
+ * too and holds nothing without them. A covered toolset with write scopes that
+ * are not all among `scopes` is also in `readOnly`.
+ */
+export function grantedToolsets(
+  scopes: readonly string[],
+  table: Readonly<Record<string, ToolsetScopes>> = TOOLSET_SCOPES,
+): GrantedToolsets {
+  const granted = new Set(scopes)
+  const holdsAll = (needed: readonly string[]) => needed.every((scope) => granted.has(scope))
+  const covered: GrantedToolsets = { toolsets: [], readOnly: [] }
+  for (const [name, { read, write }] of Object.entries(table)) {
+    const needed = name === ACCOUNT_TOOLSET ? [...IDENTITY_SCOPES, ...read] : read
+    if (needed.length === 0 || !holdsAll(needed)) continue
+    covered.toolsets.push(name)
+    if (write.length > 0 && !holdsAll(write)) covered.readOnly.push(name)
+  }
+  return covered
+}
 
 /**
  * The scopes a login asks for: the identity scopes, the read scopes of each of
