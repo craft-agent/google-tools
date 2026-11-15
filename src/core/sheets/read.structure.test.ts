@@ -22,21 +22,76 @@ const PLAN = {
     { range: { sheetId: 0, dimension: "ROWS", startIndex: 3, endIndex: 4 }, depth: 2 },
   ],
   columnGroups: [{ range: { sheetId: 0, dimension: "COLUMNS", startIndex: 2, endIndex: 4 }, depth: 1 }],
-  tables: [{ tableId: "t-1", name: "Costs", range: { endRowIndex: 10, endColumnIndex: 3 } }],
+  tables: [
+    {
+      tableId: "t-1",
+      name: "Costs",
+      range: { endRowIndex: 10, endColumnIndex: 3 },
+      columnProperties: [
+        { columnName: "Item", columnType: "TEXT" },
+        { columnIndex: 1, columnName: "Cost", columnType: "CURRENCY" },
+        {
+          columnIndex: 2,
+          columnName: "Status",
+          columnType: "DROPDOWN",
+          dataValidationRule: {
+            condition: { type: "ONE_OF_LIST", values: [{ userEnteredValue: "open" }, { userEnteredValue: "done" }] },
+          },
+        },
+      ],
+    },
+  ],
   conditionalFormats: [
     {
       ranges: [range(1, 20, 2, 3), { sheetId: 0, startColumnIndex: 5, endColumnIndex: 6 }],
-      booleanRule: { condition: { type: "NUMBER_GREATER", values: [{ userEnteredValue: "5" }] } },
+      booleanRule: {
+        condition: { type: "NUMBER_GREATER", values: [{ userEnteredValue: "5" }] },
+        format: {
+          textFormat: { bold: true, strikethrough: false, foregroundColorStyle: { rgbColor: { red: 1 } } },
+          backgroundColorStyle: { rgbColor: { green: 1 } },
+        },
+      },
     },
-    { ranges: [range(1, 20, 3, 4)], gradientRule: { minpoint: {}, maxpoint: {} } },
+    {
+      ranges: [range(1, 20, 3, 4)],
+      gradientRule: {
+        minpoint: { colorStyle: { rgbColor: { red: 1, green: 1, blue: 1 } } },
+        midpoint: {},
+        maxpoint: { color: { red: 1 } },
+      },
+    },
     {
       ranges: [range(0, 1, 0, 1)],
       booleanRule: { condition: { type: "DATE_BEFORE", values: [{ relativeDate: "TODAY" }] } },
     },
     { ranges: [range(0, 1, 1, 2)], booleanRule: {} },
   ],
-  basicFilter: { range: { sheetId: 0, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: 6 } },
-  filterViews: [{ filterViewId: 9001, title: "Open only", range: range(0, 30, 0, 6) }],
+  basicFilter: {
+    range: { sheetId: 0, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: 6 },
+    filterSpecs: [
+      { columnIndex: 2, filterCriteria: { hiddenValues: ["a", "b"] } },
+      {
+        columnIndex: 3,
+        filterCriteria: { condition: { type: "NUMBER_GREATER", values: [{ userEnteredValue: "5" }] } },
+      },
+    ],
+  },
+  filterViews: [
+    {
+      filterViewId: 9001,
+      title: "Open only",
+      range: range(0, 30, 0, 6),
+      filterSpecs: [
+        {
+          columnIndex: 0,
+          filterCriteria: {
+            hiddenValues: ["x"],
+            condition: { type: "TEXT_CONTAINS", values: [{ userEnteredValue: "y" }] },
+          },
+        },
+      ],
+    },
+  ],
   charts: [
     {
       chartId: 501,
@@ -84,15 +139,35 @@ describe("google_sheets_read structure", () => {
         { range: "Plan!4:4", depth: 2, collapsed: false },
       ],
       column_groups: [{ range: "Plan!C:D", depth: 1, collapsed: false }],
-      tables: [{ table_id: "t-1", name: "Costs", range: "Plan!A1:C10" }],
+      tables: [
+        {
+          table_id: "t-1",
+          name: "Costs",
+          range: "Plan!A1:C10",
+          columns: [
+            { column: "A", name: "Item", type: "TEXT" },
+            { column: "B", name: "Cost", type: "CURRENCY" },
+            { column: "C", name: "Status", type: "DROPDOWN", options: ["open", "done"] },
+          ],
+          more_columns: 0,
+        },
+      ],
       conditional_rules: [
-        { index: 0, ranges: ["Plan!C2:C20", "Plan!F:F"], kind: "boolean", condition: "NUMBER_GREATER 5" },
-        { index: 1, ranges: ["Plan!D2:D20"], kind: "gradient" },
+        {
+          index: 0,
+          ranges: ["Plan!C2:C20", "Plan!F:F"],
+          kind: "boolean",
+          condition: "NUMBER_GREATER 5",
+          style: "bold, no strikethrough, color #ff0000, background #00ff00",
+        },
+        { index: 1, ranges: ["Plan!D2:D20"], kind: "gradient", style: "#ffffff > #ff0000" },
         { index: 2, ranges: ["Plan!A1"], kind: "boolean", condition: "DATE_BEFORE TODAY" },
         { index: 3, ranges: ["Plan!B1"], kind: "boolean", condition: "" },
       ],
-      basic_filter: { range: "Plan!A1:F" },
-      filter_views: [{ view_id: 9001, title: "Open only", range: "Plan!A1:F30" }],
+      basic_filter: { range: "Plan!A1:F", criteria: ["C hide (a, b)", "D show NUMBER_GREATER 5"] },
+      filter_views: [
+        { view_id: 9001, title: "Open only", range: "Plan!A1:F30", criteria: ["A hide (x), show TEXT_CONTAINS y"] },
+      ],
       charts: [
         { chart_id: 501, title: "Spend", type: "COLUMN", anchor: "Plan!E12" },
         { chart_id: 502, title: null, type: "PIE", anchor: "Plan!A1" },
@@ -240,5 +315,35 @@ describe("google_sheets_read structure: the lists are capped", () => {
       charts: 2,
       protections: 0,
     })
+  })
+
+  test("lists the first 50 columns of a table and counts the rest, and the first 50 criteria of a filter with the count of the rest as the last entry", async () => {
+    const sheet = {
+      properties: { title: "Wide" },
+      tables: [
+        {
+          tableId: "t",
+          name: "T",
+          range: range(0, 5, 1, 60),
+          columnProperties: Array.from({ length: 53 }, (_, index) => ({ columnIndex: index, columnName: `C${index}` })),
+        },
+      ],
+      basicFilter: {
+        range: range(0, 5, 0, 60),
+        filterSpecs: Array.from({ length: 52 }, (_, index) => ({
+          columnIndex: index,
+          filterCriteria: { hiddenValues: ["v"] },
+        })),
+      },
+    }
+    const h = await fixture([answer(SPREADSHEET_URL, { sheets: [sheet] })])
+
+    const [tab] = (await h.read(STRUCTURE)).structure!
+
+    expect(tab!.tables[0]!.columns).toHaveLength(50)
+    expect(tab!.tables[0]!.columns[49]).toEqual({ column: "AY", name: "C49", type: "TEXT" })
+    expect(tab!.tables[0]!.more_columns).toBe(3)
+    expect(tab!.basic_filter!.criteria).toHaveLength(51)
+    expect(tab!.basic_filter!.criteria.at(-1)).toBe("+2 more")
   })
 })

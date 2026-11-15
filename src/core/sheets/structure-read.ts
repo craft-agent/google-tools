@@ -1,22 +1,29 @@
 import { z } from "zod"
 import type { GoogleClient } from "../google/client"
 import { columnLetters, quoteTab, type GridBounds } from "./a1"
+import { colorReply, colorStyleReply } from "./colors"
+import { conditionText } from "./conditions"
 import { areaLabel } from "./operation-ranges"
 import { parseReply } from "./reply"
 import { SHEETS_ROUTES } from "./routes"
 import type { StructureResult, StructuredTab } from "./schemas"
+import { criteriaSummaries, ruleSummary, type FilterSpecReply } from "./structure-summaries"
 import { tabOfRange, type SheetTab } from "./tabs"
 
 /** The most entries of each list a tab's structure returns; the rest are counted in `more`. */
 export const MAX_STRUCTURE_ENTRIES = 50
 
 const STRUCTURE_FIELDS =
-  "sheets(properties(sheetId,title,index),merges,tables(tableId,name,range)," +
-  "conditionalFormats(ranges,booleanRule(condition),gradientRule)," +
-  "rowGroups(range,depth,collapsed),columnGroups(range,depth,collapsed),basicFilter(range)," +
-  "filterViews(filterViewId,title,range)," +
+  "sheets(properties(sheetId,title,index),merges," +
+  "tables(tableId,name,range,columnProperties(columnIndex,columnName,columnType,dataValidationRule(condition)))," +
+  "conditionalFormats(ranges,booleanRule(condition,format),gradientRule)," +
+  "rowGroups(range,depth,collapsed),columnGroups(range,depth,collapsed),basicFilter(range,filterSpecs)," +
+  "filterViews(filterViewId,title,range,filterSpecs)," +
   "charts(chartId,spec(title,basicChart(chartType),pieChart(legendPosition)),position)," +
   "protectedRanges(protectedRangeId,range,description,warningOnly,editors(users)))"
+
+/** The type of a table column Google reports no type for. */
+const DEFAULT_COLUMN_TYPE = "TEXT"
 
 /** The type a pie chart is listed as: Google gives it no basic chart type, only a spec of its own. */
 const PIE_CHART = "PIE"
@@ -37,6 +44,26 @@ const groupReply = z.object({
   collapsed: z.boolean().optional(),
 })
 
+const conditionReply = z.object({
+  type: z.string().optional(),
+  values: z
+    .array(z.object({ userEnteredValue: z.string().optional(), relativeDate: z.string().optional() }))
+    .optional(),
+})
+
+const gradientPointReply = z.object({ color: colorReply.optional(), colorStyle: colorStyleReply.optional() })
+
+const filterSpecsReply = z
+  .array(
+    z.object({
+      columnIndex: gridNumber,
+      filterCriteria: z
+        .object({ hiddenValues: z.array(z.string()).optional(), condition: conditionReply.optional() })
+        .optional(),
+    }),
+  )
+  .optional()
+
 const structureReply = z.object({
   sheets: z
     .array(
@@ -44,7 +71,23 @@ const structureReply = z.object({
         properties: z.object({ sheetId: gridNumber, title: z.string().optional(), index: gridNumber }).optional(),
         merges: z.array(gridReply).optional(),
         tables: z
-          .array(z.object({ tableId: z.string().optional(), name: z.string().optional(), range: gridReply.optional() }))
+          .array(
+            z.object({
+              tableId: z.string().optional(),
+              name: z.string().optional(),
+              range: gridReply.optional(),
+              columnProperties: z
+                .array(
+                  z.object({
+                    columnIndex: gridNumber,
+                    columnName: z.string().optional(),
+                    columnType: z.string().optional(),
+                    dataValidationRule: z.object({ condition: conditionReply.optional() }).optional(),
+                  }),
+                )
+                .optional(),
+            }),
+          )
           .optional(),
         conditionalFormats: z
           .array(
@@ -52,27 +95,46 @@ const structureReply = z.object({
               ranges: z.array(gridReply).optional(),
               booleanRule: z
                 .object({
-                  condition: z
+                  condition: conditionReply.optional(),
+                  format: z
                     .object({
-                      type: z.string().optional(),
-                      values: z
-                        .array(
-                          z.object({ userEnteredValue: z.string().optional(), relativeDate: z.string().optional() }),
-                        )
+                      textFormat: z
+                        .object({
+                          bold: z.boolean().optional(),
+                          italic: z.boolean().optional(),
+                          strikethrough: z.boolean().optional(),
+                          foregroundColor: colorReply.optional(),
+                          foregroundColorStyle: colorStyleReply.optional(),
+                        })
                         .optional(),
+                      backgroundColor: colorReply.optional(),
+                      backgroundColorStyle: colorStyleReply.optional(),
                     })
                     .optional(),
                 })
                 .optional(),
-              gradientRule: z.record(z.string(), z.unknown()).optional(),
+              gradientRule: z
+                .object({
+                  minpoint: gradientPointReply.optional(),
+                  midpoint: gradientPointReply.optional(),
+                  maxpoint: gradientPointReply.optional(),
+                })
+                .optional(),
             }),
           )
           .optional(),
         rowGroups: z.array(groupReply).optional(),
         columnGroups: z.array(groupReply).optional(),
-        basicFilter: z.object({ range: gridReply.optional() }).optional(),
+        basicFilter: z.object({ range: gridReply.optional(), filterSpecs: filterSpecsReply }).optional(),
         filterViews: z
-          .array(z.object({ filterViewId: gridNumber, title: z.string().optional(), range: gridReply.optional() }))
+          .array(
+            z.object({
+              filterViewId: gridNumber,
+              title: z.string().optional(),
+              range: gridReply.optional(),
+              filterSpecs: filterSpecsReply,
+            }),
+          )
           .optional(),
         charts: z
           .array(
@@ -138,11 +200,33 @@ function groupView(
   return { range: rangeA1(title, bounds), depth: group.depth ?? 1, collapsed: group.collapsed ?? false }
 }
 
-/** What a boolean rule tests, as Google's condition type and its values (`NUMBER_GREATER 5`). */
-function conditionOf(rule: NonNullable<NonNullable<SheetReply["conditionalFormats"]>[number]["booleanRule"]>): string {
-  const condition = rule.condition
-  const values = (condition?.values ?? []).map((value) => value.userEnteredValue ?? value.relativeDate ?? "")
-  return `${condition?.type ?? ""} ${values.join(", ")}`.trim()
+/** The criteria of a filter, one entry per column, cut to `MAX_STRUCTURE_ENTRIES` with the rest counted in a last entry. */
+function cappedCriteria(specs: readonly FilterSpecReply[] | undefined): string[] {
+  const { shown, more } = capped(criteriaSummaries(specs))
+  return more > 0 ? [...shown, `+${more} more`] : shown
+}
+
+/** The table's columns, left to right as the tab counts them, cut to `MAX_STRUCTURE_ENTRIES`. */
+function tableColumns(table: NonNullable<SheetReply["tables"]>[number]): {
+  columns: StructuredTab["tables"][number]["columns"]
+  more_columns: number
+} {
+  const first = table.range?.startColumnIndex ?? 0
+  const { shown, more } = capped(table.columnProperties)
+  return {
+    columns: shown.map((column) => {
+      const options = (column.dataValidationRule?.condition?.values ?? []).flatMap((value) =>
+        value.userEnteredValue === undefined ? [] : [value.userEnteredValue],
+      )
+      return {
+        column: columnLetters(first + (column.columnIndex ?? 0)),
+        name: column.columnName ?? "",
+        type: column.columnType ?? DEFAULT_COLUMN_TYPE,
+        ...(options.length > 0 && { options }),
+      }
+    }),
+    more_columns: more,
+  }
 }
 
 /** The tab's merges, groups, tables, rules, filters, charts and protections, each list cut to `MAX_STRUCTURE_ENTRIES`. */
@@ -167,18 +251,30 @@ function structuredTab(sheet: SheetReply): StructuredTab {
       table_id: table.tableId ?? "",
       name: table.name ?? "",
       range: rangeA1(title, table.range),
+      ...tableColumns(table),
     })),
-    conditional_rules: rules.shown.map((rule, index) => ({
-      index,
-      ranges: (rule.ranges ?? []).map((range) => rangeA1(title, range)),
-      kind: rule.booleanRule === undefined ? "gradient" : "boolean",
-      ...(rule.booleanRule !== undefined && { condition: conditionOf(rule.booleanRule) }),
-    })),
-    basic_filter: sheet.basicFilter === undefined ? null : { range: rangeA1(title, sheet.basicFilter.range) },
+    conditional_rules: rules.shown.map((rule, index) => {
+      const style = ruleSummary(rule)
+      return {
+        index,
+        ranges: (rule.ranges ?? []).map((range) => rangeA1(title, range)),
+        kind: rule.booleanRule === undefined ? "gradient" : "boolean",
+        ...(rule.booleanRule !== undefined && { condition: conditionText(rule.booleanRule.condition) }),
+        ...(style !== undefined && { style }),
+      }
+    }),
+    basic_filter:
+      sheet.basicFilter === undefined
+        ? null
+        : {
+            range: rangeA1(title, sheet.basicFilter.range),
+            criteria: cappedCriteria(sheet.basicFilter.filterSpecs),
+          },
     filter_views: views.shown.map((view) => ({
       view_id: view.filterViewId ?? 0,
       title: view.title ?? "",
       range: rangeA1(title, view.range),
+      criteria: cappedCriteria(view.filterSpecs),
     })),
     charts: charts.shown.map((chart) => {
       const anchor = chart.position?.overlayPosition?.anchorCell

@@ -221,6 +221,23 @@ const structuredGroupSchema = z.object({
   collapsed: z.boolean(),
 })
 
+const structuredColumnSchema = z.object({
+  /** The column's letter on the tab, as `table_columns` takes it. */
+  column: z.string(),
+  name: z.string(),
+  /** Google's column type, such as `TEXT` or `DROPDOWN`. */
+  type: z.string(),
+  /** The options of a dropdown column. */
+  options: z.array(z.string()).optional(),
+})
+
+const structuredTableSchema = viewedTableSchema.extend({
+  /** The table's columns, left to right. */
+  columns: z.array(structuredColumnSchema),
+  /** How many columns beyond the ones listed the table has. */
+  more_columns: z.number().int(),
+})
+
 const structuredRuleSchema = z.object({
   /** The rule's position among the tab's conditional formatting rules, from 0. */
   index: z.number().int(),
@@ -228,9 +245,19 @@ const structuredRuleSchema = z.object({
   kind: z.enum(["boolean", "gradient"]),
   /** What a boolean rule tests: Google's condition type and its values, such as `NUMBER_GREATER 5`. */
   condition: z.string().optional(),
+  /** What the rule does to a cell that meets it, such as `bold, background #ff0000`; for a gradient, its colors from the lowest value up (`#ffffff > #ff0000`). */
+  style: z.string().optional(),
 })
 
-const structuredFilterViewSchema = z.object({ view_id: z.number().int(), title: z.string(), range: z.string() })
+/** The criteria of a filter, one entry per column, such as `C hide (a, b), show TEXT_CONTAINS x`; the last entry may count the columns beyond the ones listed (`+3 more`). */
+const structuredCriteriaSchema = z.array(z.string())
+
+const structuredFilterViewSchema = z.object({
+  view_id: z.number().int(),
+  title: z.string(),
+  range: z.string(),
+  criteria: structuredCriteriaSchema,
+})
 
 const structuredChartSchema = z.object({
   chart_id: z.number().int(),
@@ -256,9 +283,9 @@ export const structuredTabSchema = z.object({
   merges: z.array(z.string()),
   row_groups: z.array(structuredGroupSchema),
   column_groups: z.array(structuredGroupSchema),
-  tables: z.array(viewedTableSchema),
+  tables: z.array(structuredTableSchema),
   conditional_rules: z.array(structuredRuleSchema),
-  basic_filter: z.object({ range: z.string() }).nullable(),
+  basic_filter: z.object({ range: z.string(), criteria: structuredCriteriaSchema }).nullable(),
   filter_views: z.array(structuredFilterViewSchema),
   charts: z.array(structuredChartSchema),
   protections: z.array(structuredProtectionSchema),
