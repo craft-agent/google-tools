@@ -2,6 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { PLUGIN_NAME } from "./package-name.mjs"
+import { ACCOUNT_READ } from "./smoke-shared.mjs"
 
 const PLUGIN = fileURLToPath(new URL("../dist/opencode.js", import.meta.url))
 const SERVER = fileURLToPath(new URL("../dist/mcp.js", import.meta.url))
@@ -46,6 +47,8 @@ try {
     `Expected setup to register ${JSON.stringify(expected)}, got ${JSON.stringify(added)}.`,
   )
   console.log(`setup registers ${added.length} tools (as many as the MCP server lists) and ${skills.length} skills.`)
+  expect(added.includes(ACCOUNT_READ), `Expected setup to register ${ACCOUNT_READ}, got ${JSON.stringify(added)}.`)
+  console.log(`setup registers ${ACCOUNT_READ}.`)
 
   const { tool } = await plugin.server({}, {})
   const served = Object.keys(tool).sort()
@@ -54,6 +57,8 @@ try {
     `Expected server to return ${JSON.stringify(expected)}, got ${JSON.stringify(served)}.`,
   )
   console.log(`server returns ${served.length} tools.`)
+  expect(served.includes(ACCOUNT_READ), `Expected server to return ${ACCOUNT_READ}, got ${JSON.stringify(served)}.`)
+  console.log(`server returns ${ACCOUNT_READ}.`)
 } catch (error) {
   console.error(error)
   process.exit(1)

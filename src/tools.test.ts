@@ -19,6 +19,14 @@ describe("the registry", () => {
   })
 })
 
+describe("the account read", () => {
+  test("is a read tool of the account toolset, which is on by default", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_account_read")
+    expect(spec).toMatchObject({ toolset: "account", class: "read" })
+    expect(PROJECT.defaultToolsets).toContain("account")
+  })
+})
+
 describe("the package's toolsets", () => {
   test("none is listed twice", () => {
     expect(new Set(PROJECT.toolsets).size).toBe(PROJECT.toolsets.length)

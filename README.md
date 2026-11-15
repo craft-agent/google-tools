@@ -167,6 +167,18 @@ settings only to the MCP server, so they list every skill whatever the
 settings select. OpenCode V1 registers no skills, and its copied skills are
 all listed too.
 
+### Account (`account`)
+
+On by default. Shows which Google accounts are set up and what each can reach.
+
+| Tool                  | What it does                                                                                                                                                                 | Class |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| `google_account_read` | `list`: each account's credential source, address, scopes, toolsets and problem. `check`: refresh the token and ask Google whose account it is, against the address recorded | read  |
+
+`list` reads local state and never contacts Google. Neither method returns a
+token, a client secret or a client id. When a credential needs a person, the
+result carries the one command to run.
+
 ### Grants (`grants`)
 
 Off by default. Delegates bounded writes for jobs where no person can answer.
