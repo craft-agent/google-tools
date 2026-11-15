@@ -58,16 +58,19 @@ function readRow(row: readonly unknown[]): { cells: Cell[]; clipped: number } {
   return { cells, clipped }
 }
 
+/** One range of a batch reply as Google returned it: the range it resolved (the one asked when it names none) and its rows, whole. */
+export type FetchedRange = { range: string; values: unknown[][] }
+
 /**
- * Reads the ranges in order against one shared budget of `MAX_CELLS` cells.
+ * Applies one shared budget of `MAX_CELLS` cells to the ranges, in order.
  * A range keeps whole rows while they fit; at the first that does not, the
  * rest of the range and every range after it are dropped, and each range that
  * lost rows is `truncated`.
  */
-function budgeted(valueRanges: NonNullable<z.output<typeof batchReply>["valueRanges"]>, asked: readonly string[]) {
+export function budgeted(fetched: readonly FetchedRange[]): ReadRange[] {
   let remaining = MAX_CELLS
-  return valueRanges.map((valueRange, position): ReadRange => {
-    const rows = valueRange.values ?? []
+  return fetched.map((fetchedRange): ReadRange => {
+    const rows = fetchedRange.values
     const kept: Cell[][] = []
     let clipped = 0
     for (const row of rows) {
@@ -79,7 +82,7 @@ function budgeted(valueRanges: NonNullable<z.output<typeof batchReply>["valueRan
     }
     if (kept.length < rows.length) remaining = 0
     return {
-      range: valueRange.range ?? asked[position] ?? "",
+      range: fetchedRange.range,
       values: kept,
       rows: rows.length,
       truncated: kept.length < rows.length,
@@ -88,13 +91,13 @@ function budgeted(valueRanges: NonNullable<z.output<typeof batchReply>["valueRan
   })
 }
 
-/** The values of each range, as Google reports them (a range may resolve to another A1 form), within the call's cell budget. */
-export async function readValues(
+/** Reads the ranges in one batch call, with no budget applied: every row Google returns, in the order asked. */
+export async function fetchValueRanges(
   client: GoogleClient,
   id: string,
   ranges: readonly string[],
-  render: Render = "formatted",
-): Promise<ValuesResult> {
+  render: Render,
+): Promise<FetchedRange[]> {
   const reply = parseReply(
     batchReply,
     await client.request(SHEETS_ROUTES.batchGet, {
@@ -108,5 +111,18 @@ export async function readValues(
     }),
     "the values",
   )
-  return { spreadsheet_id: id, ranges: budgeted(reply.valueRanges ?? [], ranges) }
+  return (reply.valueRanges ?? []).map((valueRange, position) => ({
+    range: valueRange.range ?? ranges[position] ?? "",
+    values: valueRange.values ?? [],
+  }))
+}
+
+/** The values of each range, as Google reports them (a range may resolve to another A1 form), within the call's cell budget. */
+export async function readValues(
+  client: GoogleClient,
+  id: string,
+  ranges: readonly string[],
+  render: Render = "formatted",
+): Promise<ValuesResult> {
+  return { spreadsheet_id: id, ranges: budgeted(await fetchValueRanges(client, id, ranges, render)) }
 }

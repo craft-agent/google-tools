@@ -10,6 +10,19 @@ const PLAIN_TITLE_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/
 /** What reads as a cell (`A1`) or as R1C1 notation (`R1C1`, `RC`, `R`, `C`), which a bare title must not look like. */
 const CELL_LIKE_PATTERN = /^(?:[A-Z]{1,3}\d+|R\d*C\d*|[RC])$/i
 
+/** A single-quoted tab title (inner quotes doubled), optionally followed by `!` and the cells. */
+const QUOTED_TAB_PATTERN = /^'((?:[^']|'')*)'(?:!(.*))?$/s
+
+const COLUMN = "\\$?[A-Za-z]{1,3}"
+const ROW = "\\$?[0-9]+"
+const CELL = `${COLUMN}${ROW}`
+
+/** Cells written with no tab: a cell, a cell up to a cell or column (`A1:C`), whole columns or whole rows. A bare word is a tab. */
+const BARE_CELLS_PATTERN = new RegExp(`^(?:${CELL}(?::(?:${CELL}|${COLUMN}))?|${COLUMN}:${COLUMN}|${ROW}:${ROW})$`)
+
+/** A range split into the tab it names, unquoted (none for cells with no tab), and the cells after it (none for a tab alone). */
+export type RangeParts = { tab: string | undefined; cells: string }
+
 /** The zero-based, end-exclusive bounds of a grid range, as Google's `GridRange` gives them; a bound left out is open (a start left out is 0). */
 export type GridBounds = {
   startRowIndex?: number
@@ -34,6 +47,23 @@ export function columnLetters(index: number): string {
 export function quoteTab(title: string): string {
   if (PLAIN_TITLE_PATTERN.test(title) && !CELL_LIKE_PATTERN.test(title)) return title
   return `'${title.replaceAll("'", "''")}'`
+}
+
+/**
+ * Splits an A1 range into its tab and its cells: `'My Tab'!A1:C` gives the tab
+ * `My Tab` and the cells `A1:C`, `Plan!B2` the tab `Plan`, `A1:C3` no tab and a
+ * bare word or a quoted title alone (`Plan`, `'Q1'`) a tab and no cells. It
+ * gives `undefined` for a range with an unclosed or stray quote or an empty tab.
+ */
+export function splitRange(range: string): RangeParts | undefined {
+  if (range.startsWith("'")) {
+    const match = QUOTED_TAB_PATTERN.exec(range)
+    if (match === null || match[1] === "") return undefined
+    return { tab: (match[1] ?? "").replaceAll("''", "'"), cells: match[2] ?? "" }
+  }
+  const bang = range.indexOf("!")
+  if (bang >= 0) return bang === 0 ? undefined : { tab: range.slice(0, bang), cells: range.slice(bang + 1) }
+  return BARE_CELLS_PATTERN.test(range) ? { tab: undefined, cells: range } : { tab: range, cells: "" }
 }
 
 /**

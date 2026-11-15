@@ -15,14 +15,22 @@ export const MAX_QUERY_LENGTH = 200
 export const MAX_RANGES = 100
 export const MAX_RANGE_LENGTH = 500
 
+/** The `account` argument of every Sheets tool. */
+export const accountArg = z
+  .string()
+  .optional()
+  .describe(
+    "The account's label. Left out, the only account is used; with several accounts, the call fails and lists them.",
+  )
+
+/** The `spreadsheet` argument of the Sheets tools that write. */
+export const spreadsheetArg = z
+  .string()
+  .describe("The spreadsheet's id, or its URL (https://docs.google.com/spreadsheets/d/<id>/…).")
+
 export const sheetsReadInput = z.strictObject({
   method: z.enum(SHEETS_METHODS),
-  account: z
-    .string()
-    .optional()
-    .describe(
-      "The account's label. Left out, the only account is used; with several accounts, the call fails and lists them.",
-    ),
+  account: accountArg,
   query: z
     .string()
     .min(1)

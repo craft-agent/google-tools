@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { ToolError } from "../errors"
-import { columnLetters, gridRangeA1, quoteTab } from "./a1"
+import { columnLetters, gridRangeA1, quoteTab, splitRange } from "./a1"
 
 describe("columnLetters", () => {
   test.each([
@@ -87,5 +87,41 @@ describe("gridRangeA1", () => {
 
   test("the title is quoted in a range too", () => {
     expect(gridRangeA1("It's here", { endRowIndex: 2, endColumnIndex: 2 })).toBe("'It''s here'!A1:B2")
+  })
+})
+
+describe("splitRange", () => {
+  test.each([
+    ["Plan!A1:C10", "Plan", "A1:C10"],
+    ["Plan!B2", "Plan", "B2"],
+    ["'My tab'!A:C", "My tab", "A:C"],
+    ["'It''s here'!A1", "It's here", "A1"],
+    ["'a!b'!A1", "a!b", "A1"],
+    ["'a/b'!A1", "a/b", "A1"],
+    ["My tab!A1", "My tab", "A1"],
+    ["Plan", "Plan", ""],
+    ["Log", "Log", ""],
+    ["'Q1'", "Q1", ""],
+    ["'Plan'!", "Plan", ""],
+    ["Plan!", "Plan", ""],
+  ])("%p is the tab %p and the cells %p", (range, tab, cells) => {
+    expect(splitRange(range)).toEqual({ tab, cells })
+  })
+
+  test.each(["A1", "a1", "$A$1", "A1:C10", "A:C", "1:5", "A2:C", "$A:$C", "AB12:AC3"])(
+    "%p is cells with no tab",
+    (range) => {
+      expect(splitRange(range)).toEqual({ tab: undefined, cells: range })
+    },
+  )
+
+  test.each(["'Plan!A1", "'a'b'!A1", "'Plan'x", "!A1", "''!A1", "''"])("%p is none", (range) => {
+    expect(splitRange(range)).toBeUndefined()
+  })
+
+  test("quoteTab and splitRange agree for a title and its cells", () => {
+    for (const title of ["Sheet1", "My tab", "It's", "2026", "A1", "a!b"]) {
+      expect(splitRange(`${quoteTab(title)}!B2`)).toEqual({ tab: title, cells: "B2" })
+    }
   })
 })

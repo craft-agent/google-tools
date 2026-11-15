@@ -80,6 +80,16 @@ export class GoogleClient {
   }
 
   /**
+   * Throws `unauthenticated`, as `request` would, when the label lacks the
+   * scopes of the route; nothing is sent. A tool that reads before it writes
+   * asks this first, so a label that cannot write fails before any call.
+   */
+  async requireScopes(route: Route): Promise<void> {
+    const { credential } = await this.#tokens.readCredential()
+    checkScopes(route, this.#paths.label, credential, this.#missingScopeFix)
+  }
+
+  /**
    * Calls one allowlisted route and returns its parsed JSON reply (an empty
    * one is `{}`), every string masked.
    *

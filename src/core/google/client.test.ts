@@ -130,6 +130,19 @@ describe("GoogleClient scope check", () => {
     expect(requests).toHaveLength(0)
   })
 
+  test("requireScopes refuses the same way without sending a request, and passes when the label holds a scope", async () => {
+    await storeCredential(paths, { ...CREDENTIAL, scopes: [DRIVE_SCOPE] })
+    const { client, requests } = clientOver([tokenHandler, infoHandler])
+    const error = await toolError(client.requireScopes(GET_ROUTE))
+    expect(error.code).toBe("unauthenticated")
+    expect(error.details).toEqual({ account: "work", needs: [OPENID_SCOPE, EMAIL_SCOPE] })
+    await client.requireScopes(OPEN_ROUTE)
+
+    await storeCredential(paths, { ...CREDENTIAL, scopes: [OPENID_SCOPE] })
+    await client.requireScopes(GET_ROUTE)
+    expect(requests).toHaveLength(0)
+  })
+
   test("with a missingScopeFix, the message ends with the fix and details carry it", async () => {
     await storeCredential(paths, { ...CREDENTIAL, scopes: [DRIVE_SCOPE] })
     const seen: { needs: readonly string[]; scopes: readonly string[] }[] = []

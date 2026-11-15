@@ -28,4 +28,28 @@ export const SHEETS_ROUTES = {
     path: "/v4/spreadsheets/{spreadsheet_id}/values:batchGet",
     scopes: [SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE],
   },
+  update: {
+    method: "POST",
+    host: SHEETS_HOST,
+    path: "/v4/spreadsheets/{spreadsheet_id}/values:batchUpdate",
+    scopes: [SHEETS_WRITE_SCOPE],
+  },
+  clear: {
+    method: "POST",
+    host: SHEETS_HOST,
+    path: "/v4/spreadsheets/{spreadsheet_id}/values:batchClear",
+    scopes: [SHEETS_WRITE_SCOPE],
+  },
+  append: {
+    method: "POST",
+    host: SHEETS_HOST,
+    path: "/v4/spreadsheets/{spreadsheet_id}/values/{range}:append",
+    scopes: [SHEETS_WRITE_SCOPE],
+  },
+  batchUpdate: {
+    method: "POST",
+    host: SHEETS_HOST,
+    path: "/v4/spreadsheets/{spreadsheet_id}:batchUpdate",
+    scopes: [SHEETS_WRITE_SCOPE],
+  },
 } as const satisfies Record<string, Route>
