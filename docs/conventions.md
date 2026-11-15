@@ -534,8 +534,11 @@ and every entry point checks them the same way.
 - `execute(args, context)` gets the working directory, an abort signal, an
   optional `ownDir` (the directory the tools are installed in, never the
   working tree), the values of the package's own settings as `options` (see
-  "Toolsets and settings"; `gate`, `describe` and `targets` get them too) and
-  an optional `confirm(request) => Promise<boolean>` hook.
+  "Toolsets and settings"; `gate`, `describe` and `targets` get them too),
+  the state directory as `stateDir`, a `runtime` (the variable prefix, the
+  command line a recovery command names, the environment, the clock and the
+  `fetch` the Google client calls through, which tests replace) and an
+  optional `confirm(request) => Promise<boolean>` hook.
   Nothing in it names a harness. An entry point supplies `confirm` when the
   `elicitation` setting is on; without it the harness's approval stands, and a
   tool that needs a confirmation treats a missing hook as the harness having
@@ -617,6 +620,10 @@ and every entry point checks them the same way.
   for Sheets then holds no mail scope, and a leaked token reaches no further
   than the toolsets it was meant for. One label may hold Workspace and Cloud
   scopes together; the README recommends a label per use.
+- **Every login also asks for `openid` and `email`**, which are not
+  sensitive, so the label records the address of the account that consented.
+  The account read shows it, and a token check notices a login made with
+  another account than the label was meant for.
 - **Adding a toolset to a label is a new login with the whole list.**
   Desktop clients have no incremental authorization, so every consent grants
   exactly the scopes it asks for, and the new token replaces the old.
@@ -631,20 +638,30 @@ and every entry point checks them the same way.
 ## Credentials and state
 
 - **Each label keeps all of its state in one directory**,
-  `<state root>/<label>/`, created with mode 700: the credential file when
-  there is one, the granted scopes and the lock that serializes refreshes.
+  `<state root>/accounts/<label>/`, created with mode 700: the credential
+  file when there is one and the lock that serializes refreshes.
   The state root is the `state_dir` path option, by default
   `$XDG_STATE_HOME/google-tools` when `XDG_STATE_HOME` is absolute, else
   `~/.local/state/google-tools`. One directory per label means a label is
   moved, backed up or removed as a whole.
-- **A label's credential comes from the environment first**, a variable per
-  label, and the package then stores nothing; otherwise from the label's
-  credential file (mode 600), which `login` writes. How the variable is
-  filled (a keychain, a password manager, a service manager's credentials) is
-  the user's choice; the file works where nothing injects it, Codex included,
-  which forwards no variable whose name depends on a label. The credential is
-  the refresh token, the client id and secret, and the scopes granted; the
-  variables' names are settled with the API client.
+- **A label's credential is one JSON object**: the refresh token, the
+  client id and secret of the OAuth client that issued it, the scopes granted
+  and the account's address. The client is kept with the token, per label,
+  since a refresh token can be refreshed only by the client that issued it;
+  labels may then use different clients, and replacing one client logs out
+  only the labels that use it.
+- **It comes from the environment first**: `GOOGLE_TOOLS_CREDENTIALS_<LABEL>`
+  (the label in capitals, `GOOGLE_TOOLS_CREDENTIALS_DEFAULT` for `default`),
+  holding the same JSON, and the package then stores nothing; otherwise from
+  the label's `credentials.json` (mode 600, a regular file and no link),
+  which `login` writes. One variable keeps the credential one secret in a
+  keychain. How the variable is filled (a keychain, a password manager, a
+  service manager's credentials) is the user's choice; the file works where
+  nothing injects it, Codex included, which forwards no variable whose name
+  depends on a label.
+- **A credential that cannot be read is `unauthenticated`, a file anyone
+  else can reach is `forbidden`**, and neither message quotes any part of
+  it: a JSON parser's message can echo its input.
 - **A credential is never an argument, a setting or a tool's input.** A
   harness shows and logs a call's arguments, and settings land in
   configuration files.

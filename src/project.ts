@@ -11,11 +11,11 @@ export const PROJECT = {
   /** Every setting's environment variable is `<envPrefix>_<SETTING>`. */
   envPrefix: "GOOGLE_TOOLS",
   /** The toolsets, in the order `all` lists them. */
-  toolsets: [] as readonly string[],
+  toolsets: ["account"] as readonly string[],
   /** The toolsets on when a setting names none. */
-  defaultToolsets: [] as readonly string[],
+  defaultToolsets: ["account"] as readonly string[],
   /** The package's own settings, which the tools themselves read: each snake_case name and its type, with bounds when it needs them. */
-  options: {} as Readonly<Record<string, OptionSpec>>,
+  options: { state_dir: "path" } as Readonly<Record<string, OptionSpec>>,
   /** The environment variables the tools read besides the settings, which Codex forwards to the server after them. */
-  toolVariables: [] as readonly string[],
+  toolVariables: ["XDG_STATE_HOME"] as readonly string[],
 } as const
