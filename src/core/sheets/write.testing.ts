@@ -4,15 +4,18 @@ import type { FakeHandler, FakeRequest } from "../google/fake-google.testing"
 import { invoke, type ToolSpec } from "../tool"
 import { googleSheetsAppend } from "./append"
 import { googleSheetsClear } from "./clear"
+import { googleSheetsCreate } from "./create"
 import { googleSheetsEdit } from "./edit"
 import { BATCH_GET_URL, SPREADSHEET_URL, answer, callOf, fixture } from "./read.testing"
 import { SHEETS_WRITE_SCOPE } from "./scopes"
+import { googleSheetsTabAdd } from "./tab-add"
 
 /** Fixtures the Sheets write tests share, on top of the read fixtures: a label logged in to write, and a spreadsheet of three tabs. */
 
 export const UPDATE_URL = `${SPREADSHEET_URL}/values:batchUpdate`
 export const CLEAR_URL = `${SPREADSHEET_URL}/values:batchClear`
 export const BATCH_UPDATE_URL = `${SPREADSHEET_URL}:batchUpdate`
+export const CREATE_URL = "https://sheets.googleapis.com/v4/spreadsheets"
 
 /** The URL of the append route for `range`, encoded as the client encodes it. */
 export const appendUrl = (range: string) => `${SPREADSHEET_URL}/values/${encodeURIComponent(range)}:append`
@@ -74,6 +77,8 @@ export async function writeFixture(
     append: (args: unknown) => run(googleSheetsAppend, args),
     edit: (args: unknown) => run(googleSheetsEdit, args),
     clear: (args: unknown) => run(googleSheetsClear, args),
+    create: (args: unknown) => run(googleSheetsCreate, args),
+    tabAdd: (args: unknown) => run(googleSheetsTabAdd, args),
     /** `METHOD origin+path` of each request the fake received, the token refresh left out. */
     names: () => h.calls().map(callOf),
   }
