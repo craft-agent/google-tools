@@ -48,18 +48,31 @@ export const sheetsAddOutput = z.object({
   filter_views: z
     .array(z.object({ view_id: z.number().int(), title: z.string() }))
     .describe("The filter views the call made, in the order of the operations, as Google answered."),
+  charts: z
+    .array(z.object({ chart_id: z.number().int(), title: z.string().nullable() }))
+    .describe("The charts the call made, in the order of the operations, as Google answered: id and title."),
 })
 
 type AddArgs = z.output<typeof sheetsAddInput>
+
+const createdTabReply = z
+  .object({
+    properties: z
+      .object({ sheetId: z.number().optional(), title: z.string().optional(), index: z.number().optional() })
+      .optional(),
+  })
+  .optional()
 
 const batchReply = z.object({
   replies: z
     .array(
       z.object({
-        duplicateSheet: z
+        duplicateSheet: createdTabReply,
+        addSheet: createdTabReply,
+        addChart: z
           .object({
-            properties: z
-              .object({ sheetId: z.number().optional(), title: z.string().optional(), index: z.number().optional() })
+            chart: z
+              .object({ chartId: z.number().optional(), spec: z.object({ title: z.string().optional() }).optional() })
               .optional(),
           })
           .optional(),
@@ -121,7 +134,14 @@ async function addToSpreadsheet(args: AddArgs, ctx: ToolContext) {
     "the additions",
   )
   const created = plan.requests.flatMap((request, position) =>
-    "duplicateSheet" in request ? [reply.replies?.[position]?.duplicateSheet?.properties] : [],
+    "duplicateSheet" in request
+      ? [reply.replies?.[position]?.duplicateSheet?.properties]
+      : "addSheet" in request
+        ? [reply.replies?.[position]?.addSheet?.properties]
+        : [],
+  )
+  const charts = plan.requests.flatMap((request, position) =>
+    "addChart" in request ? [reply.replies?.[position]?.addChart?.chart] : [],
   )
   const tables = plan.requests.flatMap((request, position) =>
     "addTable" in request ? [reply.replies?.[position]?.addTable?.table] : [],
@@ -148,6 +168,7 @@ async function addToSpreadsheet(args: AddArgs, ctx: ToolContext) {
       ),
     })),
     filter_views: views.map((view) => ({ view_id: view?.filterViewId ?? 0, title: view?.title ?? "" })),
+    charts: charts.map((chart) => ({ chart_id: chart?.chartId ?? 0, title: chart?.spec?.title ?? null })),
   }
 }
 
@@ -156,7 +177,7 @@ export const googleSheetsAdd = defineTool({
   title: "Add rows and tabs to a Google spreadsheet",
   intent: "About to add to a spreadsheet",
   description:
-    `Add rows, columns, tabs, tables, conditional rules, data validation and filters to a Google spreadsheet, by \`spreadsheet\` (its id or URL): 1 to ${MAX_ADD_OPERATIONS} \`operations\` that apply in order as one batch, so all of them land or none does. ` +
+    `Add rows, columns, tabs, tables, conditional rules, data validation, filters, charts and pivot tables to a Google spreadsheet, by \`spreadsheet\` (its id or URL): 1 to ${MAX_ADD_OPERATIONS} \`operations\` that apply in order as one batch, so all of them land or none does. ` +
     "It never removes or overwrites a cell or an object a person made, but it is not idempotent: applying the same operations again adds again. " +
     "Each operation is an object with `op` and its arguments. " +
     "`insert` takes a `range` of whole rows (`Plan!5:7`) or whole columns (`Plan!C:D`) and inserts as many empty ones as it spans before them, so the rows or columns named and everything after them shift down or right, and a later operation's range means the cells as they stand by then; `inherit` (`before` by default, or `after`) says whose formatting the new ones take, and the first row or column has none before it. " +
@@ -166,7 +187,9 @@ export const googleSheetsAdd = defineTool({
     "`validate` sets a data validation rule over `range` or `ranges` that have none: `when` (such as `ONE_OF_LIST`, whose options are `values`, or `NUMBER_BETWEEN`), `values`, `strict` (default true: reject other input, false: warn), `dropdown` (default true) and `help`; a range that has validation already is refused (google_sheets_restructure's `validate_replace` replaces it), and so is a range of more than 10,000 cells, which cannot be checked. " +
     "`filter` sets the `range`'s tab's basic filter with optional `filter_columns` (`{ column, hide?, when?, values? }`: values to hide, or a condition to show by) on a tab that has none (google_sheets_restructure's `filter_replace` replaces it). " +
     "`filter_view` adds a filter view `name` over `range` with optional `filter_columns`; the result's `filter_views` lists each new view's `view_id` and `title`. " +
-    "Any other operation is refused. Use google_sheets_tab_add for an empty tab, google_sheets_format for formatting and google_sheets_restructure to delete, move or merge, and to change or remove tables, rules, validation and filters. " +
+    "`chart` adds a chart of `range`, a block or whole columns (`Sales!A1:C13`, `Sales!A:C`): its first column labels the rows, each other column is a series, and its first row is the header unless `header` is false; a `pie` chart takes two columns. `chart_type` (`column` by default, `bar`, `line`, `area`, `scatter`, `combo` or `pie`), `title`, `legend` (`bottom` by default, `top`, `left`, `right` or `none`), `stacked` (`bar`, `column`, `area` and `combo` charts), `width` and `height` in pixels are optional, and the chart sits beside the data unless `at` (the cell its top-left corner is on) or `new_tab: true` (a tab of its own) says otherwise; the result's `charts` lists each new chart's `chart_id` and `title`. " +
+    "`pivot` adds a pivot table of the source `range` (a block or whole columns with its header row): `pivot_rows` and `pivot_columns` (each a column letter, or `{ column, group?, sort?, label?, totals? }` to group dates by a part such as `YEAR_MONTH`, sort `desc`, set a heading or hide the totals), `pivot_values` (at least one `{ column, summarize?, name? }`, or `{ formula, summarize?, name? }` with a formula such as `=SUM(Amount)` that names the source's columns by their header) and `pivot_filters` (`{ column, show }`, the values to keep), placed at the cell `at` or on a new tab with `new_tab: true` and an optional `title` (the result's `created` lists it). A pivot table's size is unknown until Google computes it, so one placed at `at` is refused when any cell from there to the tab's last row and column holds a value or a pivot table, and when that is more than 10,000 cells, which cannot be checked. " +
+    "Any other operation is refused. Use google_sheets_tab_add for an empty tab, google_sheets_format for formatting and google_sheets_restructure to delete, move or merge, and to change or remove tables, rules, validation, filters, charts and pivot tables. " +
     `A call names at most ${MAX_OPERATION_RANGES} ranges in all. ` +
     "`account` is needed when several accounts are set up.",
   toolset: SHEETS_TOOLSET,

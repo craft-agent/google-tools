@@ -1,7 +1,9 @@
 import { z } from "zod"
 import { mergeOperation } from "./operations.merge"
 import { unknownOperationError, type OperationTable } from "./operations"
+import { chartDeleteOperation, chartMoveOperation, chartUpdateOperation } from "./operations.chart-edits"
 import { filterViewDeleteOperation, filterViewUpdateOperation } from "./operations.filter-views"
+import { pivotDeleteOperation } from "./operations.pivots"
 import { filterClearOperation, filterReplaceOperation } from "./operations.filters"
 import { conditionalDeleteOperation, conditionalUpdateOperation } from "./operations.rules"
 import { deleteOperation, moveOperation } from "./operations.shifting"
@@ -29,6 +31,10 @@ export const RESTRUCTURE_OPERATIONS = {
   filter_clear: filterClearOperation,
   filter_view_update: filterViewUpdateOperation,
   filter_view_delete: filterViewDeleteOperation,
+  chart_update: chartUpdateOperation,
+  chart_move: chartMoveOperation,
+  chart_delete: chartDeleteOperation,
+  pivot_delete: pivotDeleteOperation,
 } as const satisfies OperationTable
 
 /** The names of the operations, as a sentence part. */
@@ -55,6 +61,10 @@ export const restructureOperationSchema = z.discriminatedUnion(
     RESTRUCTURE_OPERATIONS.filter_clear.schema,
     RESTRUCTURE_OPERATIONS.filter_view_update.schema,
     RESTRUCTURE_OPERATIONS.filter_view_delete.schema,
+    RESTRUCTURE_OPERATIONS.chart_update.schema,
+    RESTRUCTURE_OPERATIONS.chart_move.schema,
+    RESTRUCTURE_OPERATIONS.chart_delete.schema,
+    RESTRUCTURE_OPERATIONS.pivot_delete.schema,
   ],
   { error: unknownOperationError(RESTRUCTURE_OPERATION_NAMES) },
 )
