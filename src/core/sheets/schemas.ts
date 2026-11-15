@@ -1,10 +1,18 @@
 import { z } from "zod"
 
 /** The methods of the Sheets read. */
-export const SHEETS_METHODS = ["list", "view", "values"] as const
+export const SHEETS_METHODS = ["list", "view", "values", "snapshot"] as const
 
 /** How `values` renders a cell: as shown, as stored (numbers, booleans, dates as shown), or as the formula that makes it. */
 export const RENDER_OPTIONS = ["formatted", "unformatted", "formula"] as const
+
+/** How `snapshot` fits the sheet to the paper, and the sizes of paper it prints on. */
+export const SNAPSHOT_FITS = ["width", "height", "page", "none"] as const
+export const SNAPSHOT_PAPERS = ["a4", "a3", "letter", "legal", "tabloid"] as const
+
+/** How many pages `snapshot` renders to images when `pages` is left out, and the most. */
+export const DEFAULT_SNAPSHOT_PAGES = 3
+export const MAX_SNAPSHOT_PAGES = 10
 
 /** What `list` returns when `limit` is left out, and the most it returns. */
 export const DEFAULT_LIST_LIMIT = 20
@@ -69,6 +77,39 @@ export const sheetsReadInput = z.strictObject({
     .describe(
       "values: `formatted` (as shown in the sheet; the default), `unformatted` (numbers and booleans as stored, dates as shown) or `formula` (the formula of a cell that has one).",
     ),
+  tab: z
+    .string()
+    .min(1)
+    .max(MAX_RANGE_LENGTH)
+    .optional()
+    .describe("snapshot: the tab's title; left out, the first tab (or the tab `range` names)."),
+  range: z
+    .string()
+    .min(1)
+    .max(MAX_RANGE_LENGTH)
+    .optional()
+    .describe(
+      "snapshot: a closed block of the tab in A1 notation with both corners (`A1:F40`, `Sheet1!A1:F40`); left out, the whole tab.",
+    ),
+  pages: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_SNAPSHOT_PAGES)
+    .optional()
+    .describe(
+      `snapshot: how many pages of the PDF to render to images (1 to ${MAX_SNAPSHOT_PAGES}, default ${DEFAULT_SNAPSHOT_PAGES}).`,
+    ),
+  fit: z
+    .enum(SNAPSHOT_FITS)
+    .optional()
+    .describe("snapshot: `width` (the default), `height`, `page` (both) or `none` (actual size)."),
+  paper: z
+    .enum(SNAPSHOT_PAPERS)
+    .optional()
+    .describe("snapshot: the paper size: `a4` (the default), `a3`, `letter`, `legal` or `tabloid`."),
+  portrait: z.boolean().optional().describe("snapshot: portrait orientation; default false (landscape)."),
+  gridlines: z.boolean().optional().describe("snapshot: print the gridlines; default true."),
 })
 
 /** One cell as `values` returns it: text, a number, a boolean, or `null` for what is none of these. */
@@ -128,12 +169,27 @@ const valuesOutput = {
   ranges: z.array(readRangeSchema),
 }
 
-/** One object for all three methods, each filling its own keys: `list` the first two, `view` `spreadsheet_id` to `tabs`, `values` `spreadsheet_id` and `ranges`. */
+const snapshotOutput = {
+  spreadsheet_id: z.string(),
+  /** The title of the tab that was exported. */
+  tab: z.string(),
+  /** The block that was exported, as given; null for the whole tab. */
+  range: z.string().nullable(),
+  /** The path of the saved PDF. */
+  pdf: z.string(),
+  /** The paths of the rendered page images, in page order; empty when no renderer ran. */
+  pages: z.array(z.string()),
+  /** Why fewer pages than asked for were rendered, or that more may exist; null when there is nothing to say. */
+  note: z.string().nullable(),
+}
+
+/** One object for all four methods, each filling its own keys: `list` the first two, `view` `spreadsheet_id` to `tabs`, `values` `spreadsheet_id` and `ranges`, `snapshot` `spreadsheet_id` to `note` (`tab`, `range`, `pdf`, `pages`). */
 export const sheetsReadOutput = z
   .object({
     ...listOutput,
     ...viewOutput,
     ...valuesOutput,
+    ...snapshotOutput,
   })
   .partial()
 
@@ -147,3 +203,6 @@ export type ReadRange = z.infer<typeof readRangeSchema>
 export type ListResult = z.infer<z.ZodObject<typeof listOutput>>
 export type ViewResult = z.infer<z.ZodObject<typeof viewOutput>>
 export type ValuesResult = z.infer<z.ZodObject<typeof valuesOutput>>
+export type SnapshotFit = (typeof SNAPSHOT_FITS)[number]
+export type SnapshotPaper = (typeof SNAPSHOT_PAPERS)[number]
+export type SnapshotResult = z.infer<z.ZodObject<typeof snapshotOutput>>

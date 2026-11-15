@@ -48,18 +48,25 @@ export function callOf(request: { method: string; url: URL }): string {
 
 /**
  * A state directory with the label `work` holding `credential` (none when
- * `null`), a fake Google answering `handlers` and the token endpoint, and the
- * tool's context over them.
+ * `null`), an empty download directory, a fake Google answering `handlers` and
+ * the token endpoint, and the tool's context over them, with `env` as the
+ * runtime's environment.
  */
-export async function fixture(handlers: FakeHandler[] = [], credential: Credential | null = SHEETS_CREDENTIAL) {
+export async function fixture(
+  handlers: FakeHandler[] = [],
+  credential: Credential | null = SHEETS_CREDENTIAL,
+  env: Record<string, string> = {},
+) {
   const stateDir = await mkdtemp(join(tmpdir(), "sheets-read-"))
-  made.push(stateDir)
+  const downloadDir = await mkdtemp(join(tmpdir(), "sheets-downloads-"))
+  made.push(stateDir, downloadDir)
   if (credential) await writeCredential(await ensureLabelDir(stateDir, "work"), credential)
   const google = fakeGoogle([tokenHandler, ...handlers])
-  const runtime: ToolRuntime = { envPrefix: ENV_PREFIX, cli: CLI, env: {}, fetch: google.fetch, now: () => NOW }
-  const ctx: ToolContext = { cwd: stateDir, stateDir, runtime }
+  const runtime: ToolRuntime = { envPrefix: ENV_PREFIX, cli: CLI, env, fetch: google.fetch, now: () => NOW }
+  const ctx: ToolContext = { cwd: stateDir, stateDir, downloadDir, runtime }
   return {
     stateDir,
+    downloadDir,
     ctx,
     /** Everything the fake Google received, the token refresh included. */
     requests: google.requests,
