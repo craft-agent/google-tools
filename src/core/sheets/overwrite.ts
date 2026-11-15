@@ -24,7 +24,7 @@ export async function planOverwrite(
 
 /** What the call replaces, read right before the write and after the expected cells were checked, so a stale call writes nothing. */
 export async function readGuardedBefore(plan: OverwritePlan, expect: readonly Guard[] | undefined): Promise<Before> {
-  if (expect !== undefined) await checkExpect(plan.client, plan.id, expect)
+  if (expect !== undefined) await checkExpect(plan, expect)
   return readBefore(plan.client, plan.id, plan.ranges)
 }
 
