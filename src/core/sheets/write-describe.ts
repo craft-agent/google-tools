@@ -31,6 +31,16 @@ export function checksFact(count: number): CallFact {
   return countFact(SHEETS_WORDS.checks, count, SHEETS_WORDS.checkCount, SHEETS_WORDS.checksCount)
 }
 
+/** The `Operations` fact: how many operations the call carries. */
+export function operationsFact(count: number): CallFact {
+  return countFact(SHEETS_WORDS.operations, count, SHEETS_WORDS.operationCount, SHEETS_WORDS.operationsCount)
+}
+
+/** The `Ranges` fact: how many ranges the call's operations name. */
+export function rangesFact(count: number): CallFact {
+  return countFact(SHEETS_WORDS.ranges, count, SHEETS_WORDS.rangeCount, SHEETS_WORDS.rangesCount)
+}
+
 /** The `Tabs` fact: the titles Google reports for the tabs the call writes to, each once, in the order of the tabs. */
 export function tabsFact(tabs: readonly SheetTab[]): CallFact {
   const distinct = [...new Map(tabs.map((tab) => [tab.sheetId, tab])).values()].sort((a, b) => a.index - b.index)

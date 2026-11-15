@@ -12,6 +12,7 @@ provides_tools:
   - google_sheets_clear
   - google_sheets_create
   - google_sheets_edit
+  - google_sheets_format
   - google_sheets_read
   - google_sheets_tab_add
 provides_hooks:

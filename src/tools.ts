@@ -4,6 +4,7 @@ import { googleSheetsAppend } from "./core/sheets/append"
 import { googleSheetsClear } from "./core/sheets/clear"
 import { googleSheetsCreate } from "./core/sheets/create"
 import { googleSheetsEdit } from "./core/sheets/edit"
+import { googleSheetsFormat } from "./core/sheets/format"
 import { googleSheetsRead } from "./core/sheets/read"
 import { googleSheetsTabAdd } from "./core/sheets/tab-add"
 
@@ -16,4 +17,5 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleSheetsClear,
   googleSheetsCreate,
   googleSheetsTabAdd,
+  googleSheetsFormat,
 ]
