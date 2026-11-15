@@ -27,6 +27,14 @@ describe("the account read", () => {
   })
 })
 
+describe("the Sheets read", () => {
+  test("is a read tool of the sheets toolset, which is on by default", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_sheets_read")
+    expect(spec).toMatchObject({ toolset: "sheets", class: "read" })
+    expect(PROJECT.defaultToolsets).toContain("sheets")
+  })
+})
+
 describe("the package's toolsets", () => {
   test("none is listed twice", () => {
     expect(new Set(PROJECT.toolsets).size).toBe(PROJECT.toolsets.length)

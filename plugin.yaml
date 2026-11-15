@@ -8,6 +8,7 @@ provides_tools:
   - google_grant_create
   - google_grant_read
   - google_grant_revoke
+  - google_sheets_read
 provides_hooks:
   - pre_tool_call
 config_schema:
