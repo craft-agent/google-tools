@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { annotations } from "./core"
 import { PROJECT } from "./project"
 import { ALL_TOOLS } from "./tools"
 
@@ -32,6 +33,66 @@ describe("the Sheets read", () => {
     const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_sheets_read")
     expect(spec).toMatchObject({ toolset: "sheets", class: "read" })
     expect(PROJECT.defaultToolsets).toContain("sheets")
+  })
+})
+
+describe("the Sheets writes", () => {
+  const WRITES = [
+    ["google_sheets_append", "add", false],
+    ["google_sheets_edit", "overwrite", true],
+    ["google_sheets_clear", "overwrite", true],
+  ] as const
+
+  test.each(WRITES)(
+    "%s is a %s tool of the sheets toolset with the destructive hint %p",
+    (id, writeClass, destructive) => {
+      const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+      expect(spec).toMatchObject({ toolset: "sheets", class: writeClass })
+      expect(annotations(spec)).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: destructive,
+        openWorldHint: true,
+      })
+    },
+  )
+
+  test.each(WRITES)("%s states its intent, describes its call, resolves its targets and declares bounds", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(spec.intent).toStartWith("About to ")
+    expect(spec.describe).toBeDefined()
+    expect(spec.targets).toBeDefined()
+    expect(Object.keys(spec.bounds ?? {})).not.toEqual([])
+    expect(spec.measure).toBeDefined()
+  })
+
+  test("the bounds are measured from the arguments alone", () => {
+    const find = (id: string) => ALL_TOOLS.find((candidate) => candidate.id === id)!
+    const values = [[1, 2], [3]]
+    const parsed = (spec: (typeof ALL_TOOLS)[number], args: unknown) => spec.input.parse(args)
+    const spreadsheet = "1MadeUpSpreadsheetId_abcdefghij"
+
+    const append = find("google_sheets_append")
+    const edit = find("google_sheets_edit")
+    const clear = find("google_sheets_clear")
+    expect(append.measure!(parsed(append, { spreadsheet, range: "A1", values }), { cwd: "/" })).toEqual({
+      rows: 2,
+      cells: 3,
+    })
+    expect(
+      edit.measure!(
+        parsed(edit, {
+          spreadsheet,
+          data: [
+            { range: "A1", values },
+            { range: "B1", values: [[1]] },
+          ],
+        }),
+        { cwd: "/" },
+      ),
+    ).toEqual({ cells: 4, ranges: 2 })
+    expect(clear.measure!(parsed(clear, { spreadsheet, ranges: ["A1", "B1", "C1"] }), { cwd: "/" })).toEqual({
+      ranges: 3,
+    })
   })
 })
 
