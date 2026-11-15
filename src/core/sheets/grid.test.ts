@@ -2,7 +2,13 @@ import { describe, expect, test } from "bun:test"
 import { dimensionOf, dimensionRange, gridRange, resolveRange } from "./grid"
 import type { SheetTab } from "./tabs"
 
-const tab = (sheetId: number, title: string, index: number): SheetTab => ({ sheetId, title, index, tables: [] })
+const tab = (sheetId: number, title: string, index: number): SheetTab => ({
+  sheetId,
+  title,
+  index,
+  hidden: false,
+  tables: [],
+})
 
 const TABS = [tab(0, "Plan", 0), tab(77, "My Tab", 1), tab(5, "a/b", 2)]
 

@@ -18,7 +18,7 @@ export type DimensionRange = { sheetId: number; dimension: "ROWS" | "COLUMNS"; s
 export type ResolvedRange = { tab: SheetTab; grid: GridRange }
 
 /** The zero-based index of a column's letters: `A` is 0, `Z` is 25, `AA` is 26. */
-function columnIndex(letters: string): number {
+export function columnIndex(letters: string): number {
   let index = 0
   for (const letter of letters.toUpperCase()) {
     index = index * ALPHABET_SIZE + (letter.charCodeAt(0) - FIRST_LETTER_CODE + 1)

@@ -243,6 +243,7 @@ export async function readFormat(client: GoogleClient, id: string, ranges: reado
     sheetId: sheet.properties?.sheetId ?? 0,
     title: sheet.properties?.title ?? "",
     index,
+    hidden: false,
     tables: [],
   }))
   const pending = new Map(tabs.map((tab, index) => [tab.sheetId, [...(sheets[index]?.data ?? [])]]))

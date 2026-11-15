@@ -37,7 +37,7 @@ describe("google_sheets_append: a range", () => {
 
     expect(h.names()).toEqual([`GET ${SPREADSHEET_URL}`, `POST ${appendUrl("Plan!A:C")}`])
     expect(h.calls()[0]!.url.searchParams.get("fields")).toBe(
-      "properties(title),sheets(properties(sheetId,title,index))",
+      "properties(title),sheets(properties(sheetId,title,index,hidden))",
     )
     const [write] = writesOf(h.requests)
     expect(write!.url.searchParams.get("valueInputOption")).toBe("USER_ENTERED")

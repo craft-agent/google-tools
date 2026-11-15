@@ -10,7 +10,7 @@ import { parseReply } from "./reply"
 import { SHEETS_ROUTES } from "./routes"
 import { spreadsheetId } from "./spreadsheet-id"
 
-const TABS_FIELDS = "properties(title),sheets(properties(sheetId,title,index)"
+const TABS_FIELDS = "properties(title),sheets(properties(sheetId,title,index,hidden)"
 const TABLES_FIELDS = ",tables(tableId,name,range)"
 
 /** How many tab or table names an error lists. */
@@ -27,7 +27,14 @@ const spreadsheetReply = z.object({
   sheets: z
     .array(
       z.object({
-        properties: z.object({ sheetId: gridNumber, title: z.string().optional(), index: gridNumber }).optional(),
+        properties: z
+          .object({
+            sheetId: gridNumber,
+            title: z.string().optional(),
+            index: gridNumber,
+            hidden: z.boolean().optional(),
+          })
+          .optional(),
         tables: z
           .array(
             z.object({
@@ -52,8 +59,8 @@ const spreadsheetReply = z.object({
 /** A native table of a tab, with the grid it covers. */
 export type SheetTable = { tableId: string; name: string; range: GridBounds }
 
-/** A tab as the writes need it: its id, title and position, and its tables when they were asked for. */
-export type SheetTab = { sheetId: number; title: string; index: number; tables: SheetTable[] }
+/** A tab as the writes need it: its id, title, position and whether it is hidden, and its tables when they were asked for. */
+export type SheetTab = { sheetId: number; title: string; index: number; hidden: boolean; tables: SheetTable[] }
 
 /** A spreadsheet's title and its tabs, in the order of their positions. */
 export type SpreadsheetTabs = { title: string; tabs: SheetTab[] }
@@ -77,6 +84,7 @@ export async function readTabs(client: GoogleClient, id: string, tables = false)
       sheetId: properties.sheetId ?? 0,
       title: properties.title ?? "",
       index: properties.index ?? 0,
+      hidden: properties.hidden ?? false,
       tables: (sheet.tables ?? []).map((table) => ({
         tableId: table.tableId ?? "",
         name: table.name ?? "",

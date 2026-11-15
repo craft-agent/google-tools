@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { columnLetters, gridRangeA1, quoteTab } from "./a1"
+import { columnLetters, gridRangeA1, quoteTab, type GridBounds } from "./a1"
 import { dimensionOf, resolveRange, type DimensionRange, type ResolvedRange } from "./grid"
 import { MAX_RANGE_LENGTH } from "./schemas"
 import type { SheetTab } from "./tabs"
@@ -16,7 +16,7 @@ export type RangedOperation = { range?: string; ranges?: readonly string[] }
 /** A range with the dimension (whole rows or whole columns) it covers. */
 export type ResolvedDimension = ResolvedRange & { dimension: DimensionRange }
 
-const rangeText = z.string().min(1).max(MAX_RANGE_LENGTH)
+export const rangeText = z.string().min(1).max(MAX_RANGE_LENGTH)
 
 /** The arguments an operation on ranges takes to name them; `hasOneRange` checks that exactly one is given. */
 export const rangeFields = {
@@ -72,7 +72,7 @@ export function tabsOfAreas(areas: readonly ResolvedRange[]): SheetTab[] {
 }
 
 /** A range in A1 notation with the tab's title Google reports; a single cell is `Plan!B2`, not `Plan!B2:B2`. */
-function areaLabel({ tab, grid }: ResolvedRange): string {
+export function areaLabel({ tab, grid }: { tab: Pick<SheetTab, "title">; grid: GridBounds }): string {
   const { startRowIndex, endRowIndex, startColumnIndex, endColumnIndex } = grid
   const single =
     startRowIndex !== undefined &&

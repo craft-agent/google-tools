@@ -10,10 +10,11 @@ const MAX_FROZEN = 10_000
 /** The cells of a range that has no tab, so `tabOfRange` gives the first tab. */
 const ANY_CELL = "A1"
 
-const tabTitle = z.string().min(1).max(MAX_RANGE_LENGTH)
+/** The title of a tab the spreadsheet has now. */
+export const tabTitle = z.string().min(1).max(MAX_RANGE_LENGTH)
 
 /** The tab the title names (exactly, else ignoring case when that leaves one), the first tab for no title; `invalid_argument` for one the spreadsheet lacks. */
-function tabNamed(tabs: readonly SheetTab[], title: string | undefined): SheetTab {
+export function tabNamed(tabs: readonly SheetTab[], title: string | undefined): SheetTab {
   return tabOfRange(tabs, title === undefined ? ANY_CELL : quoteTab(title))
 }
 

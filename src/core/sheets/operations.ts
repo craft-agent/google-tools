@@ -1,10 +1,15 @@
 import type { z } from "zod"
+import { isRecord } from "../describe"
 import { ToolError } from "../errors"
 import type { Route } from "../google/routes"
 import type { ToolContext } from "../tool"
+import type { Keeps } from "./before"
 import { readGroups } from "./groups"
-import type { DimensionRange } from "./grid"
+import type { DimensionRange, ResolvedRange } from "./grid"
 import { openSpreadsheet, type OpenSpreadsheet, type SheetTab } from "./tabs"
+
+/** How much of an unknown `op` an error repeats. */
+const MAX_SHOWN_OP_LENGTH = 40
 
 /** One request of a `spreadsheets.batchUpdate`: the single-key object Google takes. */
 export type SheetsRequest = Record<string, unknown>
@@ -23,7 +28,12 @@ export type OperationContext = {
   order: number[]
   /** The groups of rows and columns, filled only when an operation `needs` them. */
   groups: DimensionRange[]
+  /** The titles of the tabs earlier operations create, which Google has not reported yet. */
+  created: string[]
 }
+
+/** Cells an operation removes or replaces: the range they lie in, and which of its cells stay as they are. */
+export type LostCells = { area: ResolvedRange; keeps?: Keeps }
 
 /**
  * One operation of a vocabulary: the schema of its arguments, whose `op` is
@@ -35,19 +45,35 @@ export type OperationContext = {
 export type OperationSpec<S extends z.ZodObject<any> = z.ZodObject<any>> = {
   schema: S
   needs?: readonly OperationNeed[]
+  /** The operation moves cells, so a range of a later operation on its tab would mean other cells than the ones the call names. */
+  shifts?: true
+  /** The operation changes the spreadsheet itself (its title, its settings, a new tab) rather than the cells or properties of a tab. */
+  onSpreadsheet?: true
   /** The Google requests that carry the operation out, in the order they must run. They move `context`. */
   requests(op: z.output<S>, context: OperationContext): SheetsRequest[]
   /** The tabs the operation changes. */
   tabs(op: z.output<S>, context: OperationContext): SheetTab[]
   /** The operation as one short line of the approval prompt, in the tool's fixed words with the call's values quoted. */
   describe(op: z.output<S>, context: OperationContext): string
+  /** The cells whose values the operation removes or replaces; none for an operation that loses no value. */
+  loses?(op: z.output<S>, context: OperationContext): LostCells[]
+  /** The tabs the operation renames or deletes, whose titles the approval pins. */
+  retitles?(op: z.output<S>, context: OperationContext): SheetTab[]
 }
 
 /** A vocabulary of operations, by the `op` that names each. */
 export type OperationTable = Readonly<Record<string, OperationSpec>>
 
-/** One operation planned: its requests, the tabs it changes and its line. */
-export type PlannedOperation = { requests: SheetsRequest[]; tabs: SheetTab[]; line: string }
+/** One operation planned: its name, requests, the tabs it changes and its line, the cells it loses, the tabs it renames or deletes, and whether it shifts cells. */
+export type PlannedOperation = {
+  name: string
+  requests: SheetsRequest[]
+  tabs: SheetTab[]
+  line: string
+  lost: LostCells[]
+  retitled: SheetTab[]
+  shifts: boolean
+}
 
 /** What a call of operations works with: the open spreadsheet, each operation planned, and the whole call's requests, lines and changed tabs. */
 export type OperationsPlan = OpenSpreadsheet & {
@@ -56,11 +82,29 @@ export type OperationsPlan = OpenSpreadsheet & {
   lines: string[]
   /** The tabs the operations change, each once, in the order of their positions. */
   written: SheetTab[]
+  /** Whether an operation changes the spreadsheet itself. */
+  onSpreadsheet: boolean
 }
 
 /** Returns the spec as it is, so its schema's type reaches the functions. */
 export function defineOperation<S extends z.ZodObject<any>>(spec: OperationSpec<S>): OperationSpec<S> {
   return spec
+}
+
+/**
+ * The error text of an `op` outside the vocabulary of a union of operations:
+ * it repeats the `op` given, cut, and names the ones `names` lists.
+ */
+export function unknownOperationError(names: string): z.core.$ZodErrorMap {
+  return (issue) => {
+    if (issue.code !== "invalid_union") return undefined
+    const op = isRecord(issue.input) ? issue.input.op : undefined
+    const named =
+      typeof op === "string"
+        ? ` ${JSON.stringify(op.length > MAX_SHOWN_OP_LENGTH ? `${op.slice(0, MAX_SHOWN_OP_LENGTH)}…` : op)}`
+        : ""
+    return `Unknown operation${named}; the operations are: ${names}.`
+  }
 }
 
 function specOf(table: OperationTable, op: string): OperationSpec {
@@ -94,12 +138,17 @@ export async function planOperations(
     tabs: open.tabs,
     order: open.tabs.map((tab) => tab.sheetId),
     groups: needsGroups ? await readGroups(open.client, open.id) : [],
+    created: [],
   }
   const steps = args.operations.map((op, position): PlannedOperation => {
     const spec = specs[position]!
     return {
+      name: op.op,
       tabs: spec.tabs(op, context),
       line: spec.describe(op, context),
+      lost: spec.loses?.(op, context) ?? [],
+      retitled: spec.retitles?.(op, context) ?? [],
+      shifts: spec.shifts === true,
       requests: spec.requests(op, context),
     }
   })
@@ -110,5 +159,6 @@ export async function planOperations(
     requests: steps.flatMap((step) => step.requests),
     lines: steps.map((step) => step.line),
     written: open.tabs.filter((tab) => changed.has(tab.sheetId)),
+    onSpreadsheet: specs.some((spec) => spec.onSpreadsheet === true),
   }
 }

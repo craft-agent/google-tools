@@ -26,6 +26,10 @@ export const MAX_RANGE_LENGTH = 500
 /** The most ranges `format` reads in one call. */
 export const MAX_FORMAT_RANGES = 20
 
+/** The most characters of a tab's title and of a spreadsheet's title. */
+export const MAX_TAB_TITLE_LENGTH = 100
+export const MAX_SPREADSHEET_TITLE_LENGTH = 200
+
 /** The `account` argument of every Sheets tool. */
 export const accountArg = z
   .string()
@@ -66,8 +70,14 @@ export const sheetsReadInput = z.strictObject({
     .string()
     .optional()
     .describe(
-      "view, values, format: the spreadsheet's id, or its URL (https://docs.google.com/spreadsheets/d/<id>/…).",
+      "view, values, format, structure: the spreadsheet's id, or its URL (https://docs.google.com/spreadsheets/d/<id>/…).",
     ),
+  tabs: z
+    .array(z.string().min(1).max(MAX_RANGE_LENGTH))
+    .min(1)
+    .max(MAX_RANGES)
+    .optional()
+    .describe("structure: the titles of the tabs to read; left out, every tab."),
   ranges: z
     .array(z.string().min(1).max(MAX_RANGE_LENGTH))
     .min(1)
@@ -204,6 +214,67 @@ export const formattedRangeSchema = z.object({
   truncated: z.boolean(),
 })
 
+const structuredGroupSchema = z.object({
+  /** The grouped rows or columns in A1 notation, tab included, as `ungroup` takes them. */
+  range: z.string(),
+  depth: z.number().int(),
+  collapsed: z.boolean(),
+})
+
+const structuredRuleSchema = z.object({
+  /** The rule's position among the tab's conditional formatting rules, from 0. */
+  index: z.number().int(),
+  ranges: z.array(z.string()),
+  kind: z.enum(["boolean", "gradient"]),
+  /** What a boolean rule tests: Google's condition type and its values, such as `NUMBER_GREATER 5`. */
+  condition: z.string().optional(),
+})
+
+const structuredFilterViewSchema = z.object({ view_id: z.number().int(), title: z.string(), range: z.string() })
+
+const structuredChartSchema = z.object({
+  chart_id: z.number().int(),
+  title: z.string().nullable(),
+  /** `PIE`, or Google's basic chart type such as `COLUMN`; null for another kind of chart. */
+  type: z.string().nullable(),
+  /** The cell the chart's top-left corner sits on, tab included; null for a chart on a tab of its own. */
+  anchor: z.string().nullable(),
+})
+
+const structuredProtectionSchema = z.object({
+  protection_id: z.number().int(),
+  range: z.string(),
+  description: z.string().nullable(),
+  warning_only: z.boolean(),
+  /** The emails of those who may edit the range; null when Google does not show them to the account. */
+  editors: z.array(z.string()).nullable(),
+})
+
+export const structuredTabSchema = z.object({
+  sheet_id: z.number().int(),
+  title: z.string(),
+  merges: z.array(z.string()),
+  row_groups: z.array(structuredGroupSchema),
+  column_groups: z.array(structuredGroupSchema),
+  tables: z.array(viewedTableSchema),
+  conditional_rules: z.array(structuredRuleSchema),
+  basic_filter: z.object({ range: z.string() }).nullable(),
+  filter_views: z.array(structuredFilterViewSchema),
+  charts: z.array(structuredChartSchema),
+  protections: z.array(structuredProtectionSchema),
+  /** For each list, how many entries beyond the ones listed the tab has. */
+  more: z.object({
+    merges: z.number().int(),
+    row_groups: z.number().int(),
+    column_groups: z.number().int(),
+    tables: z.number().int(),
+    conditional_rules: z.number().int(),
+    filter_views: z.number().int(),
+    charts: z.number().int(),
+    protections: z.number().int(),
+  }),
+})
+
 const listOutput = {
   spreadsheets: z.array(listedSpreadsheetSchema),
   next_page_token: z.string().nullable(),
@@ -243,7 +314,13 @@ const formatOutput = {
   formats: z.array(formattedRangeSchema),
 }
 
-/** One object for all five methods, each filling its own keys: `list` the first two, `view` `spreadsheet_id` to `tabs`, `values` `spreadsheet_id` and `ranges`, `snapshot` `spreadsheet_id` to `note` (`tab`, `range`, `pdf`, `pages`), `format` `spreadsheet_id` and `formats`. */
+const structureOutput = {
+  spreadsheet_id: z.string(),
+  /** The structure of each tab asked for, left to right. */
+  structure: z.array(structuredTabSchema),
+}
+
+/** One object for all six methods, each filling its own keys: `list` the first two, `view` `spreadsheet_id` to `tabs`, `values` `spreadsheet_id` and `ranges`, `snapshot` `spreadsheet_id` to `note` (`tab`, `range`, `pdf`, `pages`), `format` `spreadsheet_id` and `formats`, `structure` `spreadsheet_id` and `structure`. */
 export const sheetsReadOutput = z
   .object({
     ...listOutput,
@@ -251,6 +328,7 @@ export const sheetsReadOutput = z
     ...valuesOutput,
     ...snapshotOutput,
     ...formatOutput,
+    ...structureOutput,
   })
   .partial()
 
@@ -268,6 +346,8 @@ export type CellFormat = z.infer<typeof cellFormatSchema>
 export type FormattedCell = z.infer<typeof formattedCellSchema>
 export type FormattedRange = z.infer<typeof formattedRangeSchema>
 export type FormatResult = z.infer<z.ZodObject<typeof formatOutput>>
+export type StructuredTab = z.infer<typeof structuredTabSchema>
+export type StructureResult = z.infer<z.ZodObject<typeof structureOutput>>
 export type SnapshotFit = (typeof SNAPSHOT_FITS)[number]
 export type SnapshotPaper = (typeof SNAPSHOT_PAPERS)[number]
 export type SnapshotResult = z.infer<z.ZodObject<typeof snapshotOutput>>

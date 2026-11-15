@@ -33,16 +33,18 @@ export async function resolveSpreadsheetTargets(
 
 /**
  * What a write to the tabs `plan` resolves writes to: one target per distinct
- * tab, sorted, or `*` when the plan cannot be made (an unknown tab, no label,
+ * tab, and the spreadsheet's own when the plan changes the spreadsheet itself,
+ * sorted, or `*` when the plan cannot be made (an unknown tab, no label,
  * Google failing). A cancellation is rethrown.
  */
 export async function resolveSheetTargets(
   ctx: ToolContext,
-  plan: () => Promise<{ label: string; id: string; written: readonly SheetTab[] }>,
+  plan: () => Promise<{ label: string; id: string; written: readonly SheetTab[]; onSpreadsheet?: boolean }>,
 ): Promise<string[]> {
   try {
-    const { label, id, written } = await plan()
-    return [...new Set(written.map((tab) => sheetTarget(label, id, tab.sheetId)))].sort()
+    const { label, id, written, onSpreadsheet } = await plan()
+    const targets = written.map((tab) => sheetTarget(label, id, tab.sheetId))
+    return [...new Set(onSpreadsheet === true ? [spreadsheetTarget(label, id), ...targets] : targets)].sort()
   } catch (error) {
     if (isAbortError(error) || ctx.signal?.aborted) throw error
     return [ANY_TARGET]

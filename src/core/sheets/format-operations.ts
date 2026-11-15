@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { isRecord } from "../describe"
 import { bordersOperation, formatOperation, unmergeOperation } from "./operations.cells"
 import {
   groupOperation,
@@ -8,7 +7,7 @@ import {
   unhideOperation,
   ungroupOperation,
 } from "./operations.dimensions"
-import type { OperationTable } from "./operations"
+import { unknownOperationError, type OperationTable } from "./operations"
 import { freezeOperation, tabOperation } from "./operations.tabs"
 
 /** The operations of `google_sheets_format`, by the `op` that names each: formatting that changes no value and removes nothing. */
@@ -43,12 +42,5 @@ export const formatOperationSchema = z.discriminatedUnion(
     FORMAT_OPERATIONS.freeze.schema,
     FORMAT_OPERATIONS.tab.schema,
   ],
-  {
-    error: (issue) => {
-      if (issue.code !== "invalid_union") return undefined
-      const op = isRecord(issue.input) ? issue.input.op : undefined
-      const named = typeof op === "string" ? ` ${JSON.stringify(op.length > 40 ? `${op.slice(0, 40)}…` : op)}` : ""
-      return `Unknown operation${named}; the operations are: ${FORMAT_OPERATION_NAMES}.`
-    },
-  },
+  { error: unknownOperationError(FORMAT_OPERATION_NAMES) },
 )
