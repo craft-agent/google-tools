@@ -1,0 +1,57 @@
+import type { Translations } from "../words"
+
+/** The English headline templates, fact labels, value templates and text labels the Sheets describers use. */
+export const SHEETS_WORDS = {
+  appendOne: "About to append a row to {tab} in {spreadsheet}",
+  appendMany: "About to append {rows} rows to {tab} in {spreadsheet}",
+  overwriteOne: "About to overwrite {range} in {spreadsheet}",
+  overwriteMany: "About to overwrite {ranges} ranges in {spreadsheet}",
+  clearOne: "About to clear {range} in {spreadsheet}",
+  clearMany: "About to clear {ranges} ranges in {spreadsheet}",
+  table: "Table",
+  rows: "Rows",
+  ranges: "Ranges",
+  overwrites: "Overwrites",
+  checks: "Checks",
+  tabs: "Tabs",
+  cells: "Cells",
+  rowCount: "{count} row",
+  rowsCount: "{count} rows",
+  cellCount: "{count} cell",
+  cellsCount: "{count} cells",
+  checkCount: "{count} check",
+  checksCount: "{count} checks",
+  none: "none",
+} as const
+
+/** The translations of the Sheets tools' words: their titles, intents, headline templates, fact labels, value templates and text labels. */
+export const SHEETS_TRANSLATIONS: Translations = {
+  ja: {
+    "Append rows to Google Sheets": "Google スプレッドシートに行を追加する",
+    "Overwrite Google Sheets cells": "Google スプレッドシートのセルを上書きする",
+    "Clear Google Sheets cells": "Google スプレッドシートのセルを消去する",
+    "About to append rows to a spreadsheet": "スプレッドシートに行を追加しようとしています",
+    "About to overwrite spreadsheet cells": "スプレッドシートのセルを上書きしようとしています",
+    "About to clear spreadsheet cells": "スプレッドシートのセルを消去しようとしています",
+    [SHEETS_WORDS.appendOne]: "{spreadsheet} の {tab} に 1 行を追加しようとしています",
+    [SHEETS_WORDS.appendMany]: "{spreadsheet} の {tab} に {rows} 行を追加しようとしています",
+    [SHEETS_WORDS.overwriteOne]: "{spreadsheet} の {range} を上書きしようとしています",
+    [SHEETS_WORDS.overwriteMany]: "{spreadsheet} の {ranges} 個の範囲を上書きしようとしています",
+    [SHEETS_WORDS.clearOne]: "{spreadsheet} の {range} を消去しようとしています",
+    [SHEETS_WORDS.clearMany]: "{spreadsheet} の {ranges} 個の範囲を消去しようとしています",
+    [SHEETS_WORDS.table]: "テーブル",
+    [SHEETS_WORDS.rows]: "行",
+    [SHEETS_WORDS.ranges]: "範囲",
+    [SHEETS_WORDS.overwrites]: "上書きされるセル",
+    [SHEETS_WORDS.checks]: "事前チェック",
+    [SHEETS_WORDS.tabs]: "シート",
+    [SHEETS_WORDS.cells]: "セル",
+    [SHEETS_WORDS.rowCount]: "{count} 行",
+    [SHEETS_WORDS.rowsCount]: "{count} 行",
+    [SHEETS_WORDS.cellCount]: "{count} セル",
+    [SHEETS_WORDS.cellsCount]: "{count} セル",
+    [SHEETS_WORDS.checkCount]: "{count} 件",
+    [SHEETS_WORDS.checksCount]: "{count} 件",
+    [SHEETS_WORDS.none]: "なし",
+  },
+}
