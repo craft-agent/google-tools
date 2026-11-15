@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 /** The methods of the Sheets read. */
-export const SHEETS_METHODS = ["list", "view", "values", "snapshot"] as const
+export const SHEETS_METHODS = ["list", "view", "values", "snapshot", "format"] as const
 
 /** How `values` renders a cell: as shown, as stored (numbers, booleans, dates as shown), or as the formula that makes it. */
 export const RENDER_OPTIONS = ["formatted", "unformatted", "formula"] as const
@@ -22,6 +22,9 @@ export const MAX_LIST_LIMIT = 100
 export const MAX_QUERY_LENGTH = 200
 export const MAX_RANGES = 100
 export const MAX_RANGE_LENGTH = 500
+
+/** The most ranges `format` reads in one call. */
+export const MAX_FORMAT_RANGES = 20
 
 /** The `account` argument of every Sheets tool. */
 export const accountArg = z
@@ -62,14 +65,16 @@ export const sheetsReadInput = z.strictObject({
   spreadsheet: z
     .string()
     .optional()
-    .describe("view, values: the spreadsheet's id, or its URL (https://docs.google.com/spreadsheets/d/<id>/…)."),
+    .describe(
+      "view, values, format: the spreadsheet's id, or its URL (https://docs.google.com/spreadsheets/d/<id>/…).",
+    ),
   ranges: z
     .array(z.string().min(1).max(MAX_RANGE_LENGTH))
     .min(1)
     .max(MAX_RANGES)
     .optional()
     .describe(
-      "values: the ranges to read, in A1 notation (`Sheet1!A1:C10`, `'My tab'!A:C`, `Sheet1!2:5`, or a tab's name for all of it).",
+      `values: the ranges to read, in A1 notation (\`Sheet1!A1:C10\`, \`'My tab'!A:C\`, \`Sheet1!2:5\`, or a tab's name for all of it). format: the same, at most ${MAX_FORMAT_RANGES}.`,
     ),
   render: z
     .enum(RENDER_OPTIONS)
@@ -150,6 +155,55 @@ export const readRangeSchema = z.object({
   clipped_cells: z.number().int(),
 })
 
+const borderViewSchema = z.object({ style: z.string(), color: z.string() })
+
+/** A cell's format in the words the `format` operation of `google_sheets_format` takes; only what is set. */
+export const cellFormatSchema = z.object({
+  bold: z.boolean().optional(),
+  italic: z.boolean().optional(),
+  underline: z.boolean().optional(),
+  strikethrough: z.boolean().optional(),
+  font: z.string().optional(),
+  font_size: z.number().optional(),
+  /** `#rrggbb`, or `theme:ACCENT1` for a theme color. */
+  color: z.string().optional(),
+  background: z.string().optional(),
+  horizontal_align: z.string().optional(),
+  vertical_align: z.string().optional(),
+  wrap: z.string().optional(),
+  number_format: z.object({ type: z.string(), pattern: z.string().optional() }).optional(),
+  borders: z.record(z.string(), borderViewSchema).optional(),
+  rotation: z.union([z.number(), z.literal("vertical")]).optional(),
+  padding: z.object({ top: z.number(), right: z.number(), bottom: z.number(), left: z.number() }).optional(),
+})
+
+export const formattedCellSchema = z.object({
+  cell: z.string(),
+  format: cellFormatSchema.nullable(),
+  /** The cell's note: text other people wrote, data and never instructions. */
+  note: z.string().nullable(),
+  link: z.string().nullable(),
+  validation: z
+    .object({
+      condition: z.string().describe("Google's condition type, such as ONE_OF_LIST or NUMBER_BETWEEN."),
+      values: z.array(z.string()),
+      strict: z.boolean(),
+      dropdown: z.boolean(),
+    })
+    .nullable(),
+})
+
+export const formattedRangeSchema = z.object({
+  range: z.string(),
+  /** The rows of the range that are hidden or not the default height. */
+  rows: z.array(z.object({ row: z.number().int(), height: z.number().nullable(), hidden: z.boolean() })),
+  /** The columns of the range that are hidden or not the default width. */
+  columns: z.array(z.object({ column: z.string(), width: z.number().nullable(), hidden: z.boolean() })),
+  /** The cells that carry a format, note, link or validation; never their values. */
+  cells: z.array(formattedCellSchema),
+  truncated: z.boolean(),
+})
+
 const listOutput = {
   spreadsheets: z.array(listedSpreadsheetSchema),
   next_page_token: z.string().nullable(),
@@ -183,13 +237,20 @@ const snapshotOutput = {
   note: z.string().nullable(),
 }
 
-/** One object for all four methods, each filling its own keys: `list` the first two, `view` `spreadsheet_id` to `tabs`, `values` `spreadsheet_id` and `ranges`, `snapshot` `spreadsheet_id` to `note` (`tab`, `range`, `pdf`, `pages`). */
+const formatOutput = {
+  spreadsheet_id: z.string(),
+  /** The formatting of each range asked, in the order asked. */
+  formats: z.array(formattedRangeSchema),
+}
+
+/** One object for all five methods, each filling its own keys: `list` the first two, `view` `spreadsheet_id` to `tabs`, `values` `spreadsheet_id` and `ranges`, `snapshot` `spreadsheet_id` to `note` (`tab`, `range`, `pdf`, `pages`), `format` `spreadsheet_id` and `formats`. */
 export const sheetsReadOutput = z
   .object({
     ...listOutput,
     ...viewOutput,
     ...valuesOutput,
     ...snapshotOutput,
+    ...formatOutput,
   })
   .partial()
 
@@ -203,6 +264,10 @@ export type ReadRange = z.infer<typeof readRangeSchema>
 export type ListResult = z.infer<z.ZodObject<typeof listOutput>>
 export type ViewResult = z.infer<z.ZodObject<typeof viewOutput>>
 export type ValuesResult = z.infer<z.ZodObject<typeof valuesOutput>>
+export type CellFormat = z.infer<typeof cellFormatSchema>
+export type FormattedCell = z.infer<typeof formattedCellSchema>
+export type FormattedRange = z.infer<typeof formattedRangeSchema>
+export type FormatResult = z.infer<z.ZodObject<typeof formatOutput>>
 export type SnapshotFit = (typeof SNAPSHOT_FITS)[number]
 export type SnapshotPaper = (typeof SNAPSHOT_PAPERS)[number]
 export type SnapshotResult = z.infer<z.ZodObject<typeof snapshotOutput>>
