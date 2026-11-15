@@ -17,6 +17,7 @@ import {
 import { errorBody } from "../entry/errors"
 import { approvalOf, checkPin } from "../entry/pin"
 import { PROJECT_PROFILE } from "../entry/profile"
+import { createToolRuntime } from "../entry/runtime"
 import { parseTargetSettings, parseToolSettings, promptLanguage, type ToolEntrySettings } from "../entry/settings"
 import { stateDirContext } from "../entry/state-dir"
 import { visible } from "../entry/visible"
@@ -153,7 +154,7 @@ async function readArguments(io: CliIo): Promise<unknown> {
   }
 }
 
-/** The context a `run` or `target` call gets from the command line and the process's surroundings. */
+/** The context a `run` or `target` call gets from the command line and the process's surroundings, its runtime made of the command's environment, profile and `fetch`. */
 function callContext(command: Extract<Command, { name: "run" | "target" }>, io: CliIo) {
   return {
     cwd: command.cwd,
@@ -161,6 +162,7 @@ function callContext(command: Extract<Command, { name: "run" | "target" }>, io: 
     options: command.options,
     grants: command.grants,
     ...stateDirContext(command),
+    runtime: createToolRuntime(io),
     signal: io.signal,
   }
 }

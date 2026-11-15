@@ -534,8 +534,11 @@ and every entry point checks them the same way.
 - `execute(args, context)` gets the working directory, an abort signal, an
   optional `ownDir` (the directory the tools are installed in, never the
   working tree), the values of the package's own settings as `options` (see
-  "Toolsets and settings"; `gate`, `describe` and `targets` get them too) and
-  an optional `confirm(request) => Promise<boolean>` hook.
+  "Toolsets and settings"; `gate`, `describe` and `targets` get them too),
+  the state directory as `stateDir`, a `runtime` (the variable prefix, the
+  command line a recovery command names, the environment, the clock and the
+  `fetch` the Google client calls through, which tests replace) and an
+  optional `confirm(request) => Promise<boolean>` hook.
   Nothing in it names a harness. An entry point supplies `confirm` when the
   `elicitation` setting is on; without it the harness's approval stands, and a
   tool that needs a confirmation treats a missing hook as the harness having
