@@ -10,8 +10,10 @@ provides_tools:
   - google_grant_revoke
   - google_sheets_append
   - google_sheets_clear
+  - google_sheets_create
   - google_sheets_edit
   - google_sheets_read
+  - google_sheets_tab_add
 provides_hooks:
   - pre_tool_call
 config_schema:

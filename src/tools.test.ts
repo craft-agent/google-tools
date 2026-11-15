@@ -41,6 +41,8 @@ describe("the Sheets writes", () => {
     ["google_sheets_append", "add", false],
     ["google_sheets_edit", "overwrite", true],
     ["google_sheets_clear", "overwrite", true],
+    ["google_sheets_create", "add", false],
+    ["google_sheets_tab_add", "add", false],
   ] as const
 
   test.each(WRITES)(
@@ -61,6 +63,11 @@ describe("the Sheets writes", () => {
     expect(spec.intent).toStartWith("About to ")
     expect(spec.describe).toBeDefined()
     expect(spec.targets).toBeDefined()
+    expect(spec.bounds).toBeDefined()
+  })
+
+  test.each(WRITES.filter(([id]) => id !== "google_sheets_tab_add"))("%s declares bounds and measures them", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
     expect(Object.keys(spec.bounds ?? {})).not.toEqual([])
     expect(spec.measure).toBeDefined()
   })
@@ -93,6 +100,9 @@ describe("the Sheets writes", () => {
     expect(clear.measure!(parsed(clear, { spreadsheet, ranges: ["A1", "B1", "C1"] }), { cwd: "/" })).toEqual({
       ranges: 3,
     })
+    const create = find("google_sheets_create")
+    expect(create.measure!(parsed(create, { title: "T", tabs: ["a", "b"] }), { cwd: "/" })).toEqual({ tabs: 2 })
+    expect(create.measure!(parsed(create, { title: "T" }), { cwd: "/" })).toEqual({ tabs: 0 })
   })
 })
 
