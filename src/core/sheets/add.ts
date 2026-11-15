@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { defineTool, type CallDescription, type ToolContext } from "../tool"
+import { gridRangeA1 } from "./a1"
 import { ADD_OPERATION_NAMES, ADD_OPERATIONS, addOperationSchema } from "./add-operations"
 import { MAX_OPERATION_RANGES, rangesIn } from "./operation-ranges"
 import { planOperations } from "./operations"
@@ -41,6 +42,12 @@ export const sheetsAddOutput = z.object({
   created: z
     .array(z.object({ sheet_id: z.number().int(), title: z.string(), index: z.number().int() }))
     .describe("The tabs the call created, in the order of the operations that made them, as Google answered."),
+  tables: z
+    .array(z.object({ table_id: z.string(), name: z.string(), range: z.string() }))
+    .describe("The tables the call made, in the order of the operations, as Google answered: id, name and range."),
+  filter_views: z
+    .array(z.object({ view_id: z.number().int(), title: z.string() }))
+    .describe("The filter views the call made, in the order of the operations, as Google answered."),
 })
 
 type AddArgs = z.output<typeof sheetsAddInput>
@@ -54,6 +61,30 @@ const batchReply = z.object({
             properties: z
               .object({ sheetId: z.number().optional(), title: z.string().optional(), index: z.number().optional() })
               .optional(),
+          })
+          .optional(),
+        addTable: z
+          .object({
+            table: z
+              .object({
+                tableId: z.string().optional(),
+                name: z.string().optional(),
+                range: z
+                  .object({
+                    sheetId: z.number().optional(),
+                    startRowIndex: z.number().optional(),
+                    endRowIndex: z.number().optional(),
+                    startColumnIndex: z.number().optional(),
+                    endColumnIndex: z.number().optional(),
+                  })
+                  .optional(),
+              })
+              .optional(),
+          })
+          .optional(),
+        addFilterView: z
+          .object({
+            filter: z.object({ filterViewId: z.number().optional(), title: z.string().optional() }).optional(),
           })
           .optional(),
       }),
@@ -92,6 +123,12 @@ async function addToSpreadsheet(args: AddArgs, ctx: ToolContext) {
   const created = plan.requests.flatMap((request, position) =>
     "duplicateSheet" in request ? [reply.replies?.[position]?.duplicateSheet?.properties] : [],
   )
+  const tables = plan.requests.flatMap((request, position) =>
+    "addTable" in request ? [reply.replies?.[position]?.addTable?.table] : [],
+  )
+  const views = plan.requests.flatMap((request, position) =>
+    "addFilterView" in request ? [reply.replies?.[position]?.addFilterView?.filter] : [],
+  )
   return {
     spreadsheet_id: plan.id,
     applied: plan.lines,
@@ -102,6 +139,15 @@ async function addToSpreadsheet(args: AddArgs, ctx: ToolContext) {
       title: properties?.title ?? "",
       index: properties?.index ?? 0,
     })),
+    tables: tables.map((table) => ({
+      table_id: table?.tableId ?? "",
+      name: table?.name ?? "",
+      range: gridRangeA1(
+        plan.tabs.find((tab) => tab.sheetId === (table?.range?.sheetId ?? 0))?.title ?? "",
+        table?.range,
+      ),
+    })),
+    filter_views: views.map((view) => ({ view_id: view?.filterViewId ?? 0, title: view?.title ?? "" })),
   }
 }
 
@@ -110,12 +156,17 @@ export const googleSheetsAdd = defineTool({
   title: "Add rows and tabs to a Google spreadsheet",
   intent: "About to add to a spreadsheet",
   description:
-    `Add rows, columns and tabs to a Google spreadsheet, by \`spreadsheet\` (its id or URL): 1 to ${MAX_ADD_OPERATIONS} \`operations\` that apply in order as one batch, so all of them land or none does. ` +
-    "It never removes or overwrites a cell, but it is not idempotent: applying the same operations again adds again. " +
+    `Add rows, columns, tabs, tables, conditional rules, data validation and filters to a Google spreadsheet, by \`spreadsheet\` (its id or URL): 1 to ${MAX_ADD_OPERATIONS} \`operations\` that apply in order as one batch, so all of them land or none does. ` +
+    "It never removes or overwrites a cell or an object a person made, but it is not idempotent: applying the same operations again adds again. " +
     "Each operation is an object with `op` and its arguments. " +
     "`insert` takes a `range` of whole rows (`Plan!5:7`) or whole columns (`Plan!C:D`) and inserts as many empty ones as it spans before them, so the rows or columns named and everything after them shift down or right, and a later operation's range means the cells as they stand by then; `inherit` (`before` by default, or `after`) says whose formatting the new ones take, and the first row or column has none before it. " +
     "`tab_duplicate` copies the `tab` as a new tab, with an optional `title` (no tab may have it already, ignoring case) and `position` counted from 0 (left out, right after the original); the result's `created` lists each new tab's `sheet_id`, `title` and `index`. " +
-    "Any other operation is refused. Use google_sheets_tab_add for an empty tab, google_sheets_format for formatting and google_sheets_restructure to delete, move or merge. " +
+    "`table` makes a native table of `range`, a closed block with its header row, that overlaps no table; `name` (default `Table1`, `Table2`…), `table_columns` (`{ column, type?, name?, values? }`: Google's column type, such as `DOUBLE` or `DROPDOWN` with its options in `values`), `header_color`, `band_colors` (one or two) and `footer_color` are optional, and a column new to the table that is not named keeps its header cell's text as its name; the result's `tables` lists each new table's `table_id`, `name` and `range`. " +
+    "`conditional` adds a conditional formatting rule over `range` or `ranges` of one tab, as the tab's first rule (the numbers of the others go up by one): either `when` (Google's condition type, such as `NUMBER_GREATER`) with its `values` and at least one style of `bold`, `italic`, `strikethrough`, `color` and `background`, or `scale`, two or three colors from the lowest value up. " +
+    "`validate` sets a data validation rule over `range` or `ranges` that have none: `when` (such as `ONE_OF_LIST`, whose options are `values`, or `NUMBER_BETWEEN`), `values`, `strict` (default true: reject other input, false: warn), `dropdown` (default true) and `help`; a range that has validation already is refused (google_sheets_restructure's `validate_replace` replaces it), and so is a range of more than 10,000 cells, which cannot be checked. " +
+    "`filter` sets the `range`'s tab's basic filter with optional `filter_columns` (`{ column, hide?, when?, values? }`: values to hide, or a condition to show by) on a tab that has none (google_sheets_restructure's `filter_replace` replaces it). " +
+    "`filter_view` adds a filter view `name` over `range` with optional `filter_columns`; the result's `filter_views` lists each new view's `view_id` and `title`. " +
+    "Any other operation is refused. Use google_sheets_tab_add for an empty tab, google_sheets_format for formatting and google_sheets_restructure to delete, move or merge, and to change or remove tables, rules, validation and filters. " +
     `A call names at most ${MAX_OPERATION_RANGES} ranges in all. ` +
     "`account` is needed when several accounts are set up.",
   toolset: SHEETS_TOOLSET,
