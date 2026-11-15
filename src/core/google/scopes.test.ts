@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { EMAIL_SCOPE, OPENID_SCOPE } from "./routes"
-import { IDENTITY_SCOPES, TOOLSET_SCOPES, loginScopes, type ToolsetScopes } from "./scopes"
+import { IDENTITY_SCOPES, TOOLSET_SCOPES, loginScopes, needsWrite, toolsetsFor, type ToolsetScopes } from "./scopes"
 
 const NOTES_READ = "https://www.example.test/auth/notes.readonly"
 const NOTES_WRITE = "https://www.example.test/auth/notes"
@@ -56,6 +56,25 @@ describe("loginScopes", () => {
 
   test("no toolset asks for the identity scopes alone", () => {
     expect(loginScopes([], false)).toEqual([OPENID_SCOPE, EMAIL_SCOPE].sort())
+  })
+
+  test("toolsetsFor names the toolsets that hold a scope, in the table's order", () => {
+    addToolset("notes", { read: [NOTES_READ], write: [NOTES_WRITE] })
+    addToolset("files", { read: [FILES_READ], write: [] })
+
+    expect(toolsetsFor([FILES_READ, NOTES_WRITE])).toEqual(["notes", "files"])
+    expect(toolsetsFor([NOTES_READ])).toEqual(["notes"])
+    expect(toolsetsFor([OPENID_SCOPE, "https://www.example.test/auth/none"])).toEqual([])
+    expect(toolsetsFor([])).toEqual([])
+  })
+
+  test("needsWrite is true only when no scope is a read scope, the identity scopes included", () => {
+    addToolset("notes", { read: [NOTES_READ], write: [NOTES_WRITE] })
+
+    expect(needsWrite([NOTES_WRITE])).toBe(true)
+    expect(needsWrite([NOTES_READ, NOTES_WRITE])).toBe(false)
+    expect(needsWrite([OPENID_SCOPE])).toBe(false)
+    expect(needsWrite(["https://www.example.test/auth/none"])).toBe(true)
   })
 
   test("an unknown toolset is invalid_argument listing the known ones, without repeating it", () => {

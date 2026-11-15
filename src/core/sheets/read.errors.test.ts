@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { CREDENTIAL } from "../google/client.fixtures"
+import { CREDENTIAL, toolError } from "../google/client.fixtures"
 import type { FakeHandler } from "../google/fake-google.testing"
 import {
   BATCH_GET_URL,
@@ -34,11 +34,17 @@ describe("google_sheets_read: the label's scopes", () => {
     async (_method, args) => {
       const h = await fixture([], CREDENTIAL)
 
-      const error = await h.read(args).catch((caught: unknown) => caught as { code: string; message: string })
+      const error = await toolError(h.read(args))
 
       expect(error).toMatchObject({ code: "unauthenticated" })
-      expect((error as { message: string }).message).toContain("was not logged in with a scope this call needs")
-      expect((error as { message: string }).message).toContain("Log it in again with the toolsets that need it.")
+      expect(error.message).toContain("was not logged in with a scope this call needs")
+      expect(error.message).toContain("Ask a person to log it in again with: ")
+      expect(error.message).toContain("login --account work --toolsets account,sheets")
+      expect(error.message).toContain("--state-dir")
+      expect(error.message).not.toContain("--read-only")
+      const fix = String(error.details?.fix)
+      expect(fix).toContain("login --account work --toolsets account,sheets")
+      expect(error.message.endsWith(fix)).toBe(true)
       expect(h.requests).toEqual([])
     },
   )

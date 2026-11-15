@@ -12,6 +12,9 @@ const HTTP_UNAUTHORIZED = 401
 
 const JSON_CONTENT_TYPE = "application/json"
 
+/** The step for a person that gives the label the scopes of a route it lacks: the route's `needs` and the credential the label holds. */
+export type MissingScopeFix = (needs: readonly string[], credential: Credential) => string
+
 export type GoogleClientOptions = {
   paths: LabelPaths
   /** The name of the variable that may hold the label's credential. */
@@ -24,6 +27,8 @@ export type GoogleClientOptions = {
   timeoutMs?: number
   /** Cancels the call; the call then fails as `upstream_error`, "The call was cancelled.". */
   signal?: AbortSignal
+  /** Says what a person runs when the label lacks a route's scopes; the error's message ends with it and its `details` carry it as `fix`. Without it the message only says to log in again. */
+  missingScopeFix?: MissingScopeFix
 }
 
 export type RequestOptions = {
@@ -37,13 +42,19 @@ export type RequestOptions = {
 }
 
 /** Throws `unauthenticated` unless one of the route's scopes is among the credential's; a route with no scopes needs none. */
-function checkScopes(route: Route, label: string, credential: Credential): void {
+function checkScopes(route: Route, label: string, credential: Credential, missingScopeFix?: MissingScopeFix): void {
   if (route.scopes.length === 0 || route.scopes.some((scope) => credential.scopes.includes(scope))) return
-  throw new ToolError(
-    "unauthenticated",
-    `Google account "${label}" was not logged in with a scope this call needs (${route.scopes.join(" or ")}). Log it in again with the toolsets that need it.`,
-    { details: { account: label, needs: [...route.scopes] } },
-  )
+  const needs = [...route.scopes]
+  const what = `Google account "${label}" was not logged in with a scope this call needs (${needs.join(" or ")}).`
+  if (!missingScopeFix) {
+    throw new ToolError("unauthenticated", `${what} Log it in again with the toolsets that need it.`, {
+      details: { account: label, needs },
+    })
+  }
+  const fix = missingScopeFix(needs, credential)
+  throw new ToolError("unauthenticated", `${what} Ask a person to log it in again with: ${fix}`, {
+    details: { account: label, needs, fix },
+  })
 }
 
 /**
@@ -55,9 +66,11 @@ export class GoogleClient {
   readonly #paths: LabelPaths
   readonly #tokens: TokenSource
   readonly #transport: Transport
+  readonly #missingScopeFix: MissingScopeFix | undefined
 
   constructor(options: GoogleClientOptions) {
     this.#paths = options.paths
+    this.#missingScopeFix = options.missingScopeFix
     this.#tokens = new TokenSource(options)
     this.#transport = {
       fetch: options.fetch,
@@ -79,7 +92,7 @@ export class GoogleClient {
   async request<T = unknown>(route: Route, options: RequestOptions = {}): Promise<T> {
     const url = routeUrl(route, options.params, options.query).toString()
     const { credential } = await this.#tokens.readCredential()
-    checkScopes(route, this.#paths.label, credential)
+    checkScopes(route, this.#paths.label, credential, this.#missingScopeFix)
 
     for (let attempt = 0; ; attempt++) {
       const grant = await this.#tokens.accessToken(this.#transport.signal)

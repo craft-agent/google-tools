@@ -48,6 +48,19 @@ export function grantedToolsets(
   return covered
 }
 
+/** The toolsets of `TOOLSET_SCOPES`, in its order, that have a read or write scope among `scopes`. */
+export function toolsetsFor(scopes: readonly string[]): string[] {
+  return Object.entries(TOOLSET_SCOPES)
+    .filter(([, { read, write }]) => [...read, ...write].some((scope) => scopes.includes(scope)))
+    .map(([name]) => name)
+}
+
+/** Whether a call that any one of `scopes` allows needs a write scope: none of them is a read scope of a toolset or an identity scope. */
+export function needsWrite(scopes: readonly string[]): boolean {
+  const reads = new Set([...IDENTITY_SCOPES, ...Object.values(TOOLSET_SCOPES).flatMap(({ read }) => read)])
+  return !scopes.some((scope) => reads.has(scope))
+}
+
 /**
  * The scopes a login asks for: the identity scopes, the read scopes of each of
  * `toolsets` and, unless `readOnly`, their write scopes; deduplicated and
