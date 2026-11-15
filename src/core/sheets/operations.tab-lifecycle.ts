@@ -12,7 +12,7 @@ const PENDING_TAB = -1
 const newTabTitle = z.string().min(1).max(MAX_TAB_TITLE_LENGTH)
 
 /** Refuses a title that another tab of the spreadsheet has, or that an earlier operation of the call gives a tab, ignoring case; `own` is the tab being renamed, which may change the case of its own title. */
-function requireFreeTitle(context: OperationContext, title: string, own?: SheetTab): void {
+export function requireFreeTitle(context: OperationContext, title: string, own?: SheetTab): void {
   const taken = [
     ...context.tabs.filter((tab) => tab.sheetId !== own?.sheetId).map((tab) => tab.title),
     ...context.created,

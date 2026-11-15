@@ -40,6 +40,20 @@ export function onlyClosedArea(op: { range: string }, tabs: readonly SheetTab[],
   return closedAreasOf(op, tabs, name)[0]!
 }
 
+/** The area as one cell, refusing a range of more cells or one with an open end; `what` names the argument that gave it. */
+export function singleCell({ tab, grid }: ResolvedRange, what: string): ClosedArea {
+  const { sheetId, startRowIndex, endRowIndex, startColumnIndex, endColumnIndex } = grid
+  if (
+    startRowIndex === undefined ||
+    startColumnIndex === undefined ||
+    endRowIndex !== startRowIndex + 1 ||
+    endColumnIndex !== startColumnIndex + 1
+  ) {
+    throw new ToolError("invalid_argument", `\`${what}\` is one cell, such as \`Report!A1\`.`)
+  }
+  return { tab, grid: { sheetId, startRowIndex, endRowIndex, startColumnIndex, endColumnIndex } }
+}
+
 /** The block of `rows` by `columns` cells whose top-left cell is at the zero-based `top` and `left` of the tab `sheetId`. */
 export function blockAt(sheetId: number, top: number, left: number, { rows, columns }: BlockSize): ClosedGrid {
   return {

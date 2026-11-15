@@ -4,6 +4,7 @@ import { ToolError } from "../errors"
 import type { Route } from "../google/routes"
 import type { ToolContext } from "../tool"
 import type { Keeps } from "./before"
+import { readCharts, type ChartState } from "./charts"
 import { readGroups } from "./groups"
 import type { DimensionRange, ResolvedRange } from "./grid"
 import { noObjects, readObjects, type SheetObjects } from "./objects"
@@ -16,8 +17,8 @@ const MAX_SHOWN_OP_LENGTH = 40
 /** One request of a `spreadsheets.batchUpdate`: the single-key object Google takes. */
 export type SheetsRequest = Record<string, unknown>
 
-/** What an operation reads beyond the tabs: the groups of rows and columns, or the tables, conditional rules, filters and filter views, the spreadsheet has now. */
-export type OperationNeed = "groups" | "objects"
+/** What an operation reads beyond the tabs: the groups of rows and columns, the tables, conditional rules, filters and filter views, or the charts, the spreadsheet has now. */
+export type OperationNeed = "groups" | "objects" | "charts"
 
 /**
  * What the operations of a call are built from: the tabs as Google reports
@@ -32,8 +33,12 @@ export type OperationContext = {
   groups: DimensionRange[]
   /** The tables, rules, filters and filter views, filled only when an operation `needs` them. */
   objects: SheetObjects
+  /** The charts, filled only when an operation `needs` them. */
+  charts: ChartState[]
   /** The titles of the tabs earlier operations create, which Google has not reported yet. */
   created: string[]
+  /** The ids of the tabs earlier operations create under an id of their own, which Google has not reported yet. */
+  newIds: number[]
   /** What each operation that asked (`reads`) had read from the cells, by the operation. */
   read: WeakMap<object, CellsRead>
 }
@@ -150,7 +155,9 @@ export async function planOperations(
     order: open.tabs.map((tab) => tab.sheetId),
     groups: needs("groups") ? await readGroups(open.client, open.id) : [],
     objects: needs("objects") ? await readObjects(open.client, open.id) : noObjects(),
+    charts: needs("charts") ? await readCharts(open.client, open.id) : [],
     created: [],
+    newIds: [],
     read: new WeakMap(),
   }
   const steps: PlannedOperation[] = []
