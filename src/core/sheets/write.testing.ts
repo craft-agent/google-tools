@@ -2,12 +2,14 @@ import { CREDENTIAL } from "../google/client.fixtures"
 import type { Credential } from "../google/credentials"
 import type { FakeHandler, FakeRequest } from "../google/fake-google.testing"
 import { invoke, type ToolSpec } from "../tool"
+import { googleSheetsAdd } from "./add"
 import { googleSheetsAppend } from "./append"
 import { googleSheetsClear } from "./clear"
 import { googleSheetsCreate } from "./create"
 import { googleSheetsEdit } from "./edit"
 import { googleSheetsFormat } from "./format"
 import { BATCH_GET_URL, SPREADSHEET_URL, answer, callOf, fixture } from "./read.testing"
+import { googleSheetsRestructure } from "./restructure"
 import { SHEETS_WRITE_SCOPE } from "./scopes"
 import { googleSheetsTabAdd } from "./tab-add"
 
@@ -81,6 +83,8 @@ export async function writeFixture(
     create: (args: unknown) => run(googleSheetsCreate, args),
     tabAdd: (args: unknown) => run(googleSheetsTabAdd, args),
     format: (args: unknown) => run(googleSheetsFormat, args),
+    add: (args: unknown) => run(googleSheetsAdd, args),
+    restructure: (args: unknown) => run(googleSheetsRestructure, args),
     /** `METHOD origin+path` of each request the fake received, the token refresh left out. */
     names: () => h.calls().map(callOf),
   }
