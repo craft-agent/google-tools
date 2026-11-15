@@ -20,6 +20,7 @@ import { googleSheetsTransform } from "./transform"
 export const UPDATE_URL = `${SPREADSHEET_URL}/values:batchUpdate`
 export const CLEAR_URL = `${SPREADSHEET_URL}/values:batchClear`
 export const BATCH_UPDATE_URL = `${SPREADSHEET_URL}:batchUpdate`
+export const METADATA_SEARCH_URL = `${SPREADSHEET_URL}/developerMetadata:search`
 export const CREATE_URL = "https://sheets.googleapis.com/v4/spreadsheets"
 
 /** The URL of the append route for `range`, encoded as the client encodes it. */
@@ -64,9 +65,14 @@ export function valuesHandler(rows: (range: string, render: string) => unknown[]
   }
 }
 
-/** The requests that are not reads of the spreadsheet or its values: the writes the fake received. */
+/** The requests that are not reads of the spreadsheet, its values or its developer metadata: the writes the fake received. */
 export function writesOf(requests: FakeRequest[]): FakeRequest[] {
-  return requests.filter((request) => request.method === "POST" && request.url.hostname === "sheets.googleapis.com")
+  return requests.filter(
+    (request) =>
+      request.method === "POST" &&
+      request.url.hostname === "sheets.googleapis.com" &&
+      callOf(request) !== `POST ${METADATA_SEARCH_URL}`,
+  )
 }
 
 /** The tools wired to a fake Google that answers `handlers`, for a label logged in to read and write. */
