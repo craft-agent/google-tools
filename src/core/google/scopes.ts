@@ -1,4 +1,5 @@
 import { ToolError } from "../errors"
+import { DRIVE_METADATA_READ_SCOPE, SHEETS_READ_SCOPE, SHEETS_TOOLSET, SHEETS_WRITE_SCOPE } from "../sheets/scopes"
 import { EMAIL_SCOPE, OPENID_SCOPE } from "./routes"
 
 /** The scopes one toolset's tools need, read and write apart, each the narrowest an operation accepts. */
@@ -13,6 +14,7 @@ export const ACCOUNT_TOOLSET = "account"
 /** The scopes of each toolset a label can be logged in for; each domain adds its own with its tools. */
 export const TOOLSET_SCOPES: Readonly<Record<string, ToolsetScopes>> = {
   [ACCOUNT_TOOLSET]: { read: [], write: [] },
+  [SHEETS_TOOLSET]: { read: [SHEETS_READ_SCOPE, DRIVE_METADATA_READ_SCOPE], write: [SHEETS_WRITE_SCOPE] },
 }
 
 /** What every login asks for besides its toolsets' scopes, so the label records the account's address. */
