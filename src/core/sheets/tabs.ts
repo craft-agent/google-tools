@@ -113,6 +113,11 @@ export function listNames(names: readonly string[]): string {
   return names.length > MAX_LISTED_NAMES ? `${shown} (+${names.length - MAX_LISTED_NAMES} more)` : shown
 }
 
+/** The range as an error repeats it: cut to `MAX_SHOWN_LENGTH` characters. */
+export function shownRange(range: string): string {
+  return range.length > MAX_SHOWN_LENGTH ? `${range.slice(0, MAX_SHOWN_LENGTH)}…` : range
+}
+
 /**
  * The tab an A1 range writes to: the one its title names (exactly, else
  * ignoring case when that leaves one), and the first tab for cells with no tab.
@@ -120,7 +125,7 @@ export function listNames(names: readonly string[]): string {
  * `invalid_argument`.
  */
 export function tabOfRange(tabs: readonly SheetTab[], range: string): SheetTab {
-  const shown = range.length > MAX_SHOWN_LENGTH ? `${range.slice(0, MAX_SHOWN_LENGTH)}…` : range
+  const shown = shownRange(range)
   const parts = splitRange(range)
   if (parts === undefined) {
     throw new ToolError("invalid_argument", `${JSON.stringify(shown)} is not a range in A1 notation.`)
