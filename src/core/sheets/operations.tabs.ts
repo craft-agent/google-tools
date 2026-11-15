@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { ToolError } from "../errors"
 import { quoteTab } from "./a1"
 import { colorArg, normalizedColor, toColorStyle } from "./colors"
 import { defineOperation } from "./operations"
@@ -16,6 +17,13 @@ export const tabTitle = z.string().min(1).max(MAX_RANGE_LENGTH)
 /** The tab the title names (exactly, else ignoring case when that leaves one), the first tab for no title; `invalid_argument` for one the spreadsheet lacks. */
 export function tabNamed(tabs: readonly SheetTab[], title: string | undefined): SheetTab {
   return tabOfRange(tabs, title === undefined ? ANY_CELL : quoteTab(title))
+}
+
+/** The tab with the id, for an object that lies on a tab the call still has. */
+export function tabWithId(tabs: readonly SheetTab[], sheetId: number): SheetTab {
+  const tab = tabs.find((candidate) => candidate.sheetId === sheetId)
+  if (tab === undefined) throw new ToolError("internal_error", `The tab with id ${sheetId} is not in the spreadsheet.`)
+  return tab
 }
 
 const freezeSchema = z
