@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { columnLetters, gridRangeA1, quoteTab, type GridBounds } from "./a1"
+import { columnLetters, gridRangeA1, quoteTab, splitRange, type GridBounds } from "./a1"
 import { dimensionOf, resolveRange, type DimensionRange, type ResolvedRange } from "./grid"
 import { MAX_RANGE_LENGTH } from "./schemas"
 import type { SheetTab } from "./tabs"
@@ -17,6 +17,9 @@ export type RangedOperation = { range?: string; ranges?: readonly string[] }
 export type ResolvedDimension = ResolvedRange & { dimension: DimensionRange }
 
 export const rangeText = z.string().min(1).max(MAX_RANGE_LENGTH)
+
+/** A column's letters (`C`, `AB`), as A1 notation allows them. */
+export const columnLetterArg = z.string().regex(/^[A-Za-z]{1,3}$/, "A column is its letters, such as `C` or `AB`.")
 
 /** The arguments an operation on ranges takes to name them; `hasOneRange` checks that exactly one is given. */
 export const rangeFields = {
@@ -58,6 +61,14 @@ export function rangesIn(operations: readonly (RangedOperation | object)[]): num
 /** Each range of the operation with its tab and grid, refusing a range whose tab does not exist or whose cells are not A1. */
 export function areasOf(op: RangedOperation | object, tabs: readonly SheetTab[]): ResolvedRange[] {
   return rangesOf(op).map((range) => resolveRange(tabs, range))
+}
+
+/** The range as an area; a range that names no tab stays on `own` rather than falling to the first tab. */
+export function resolveOn(tabs: readonly SheetTab[], range: string, own: SheetTab): ResolvedRange {
+  const parts = splitRange(range)
+  return parts !== undefined && parts.tab === undefined
+    ? resolveRange(tabs, `${quoteTab(own.title)}!${range}`)
+    : resolveRange(tabs, range)
 }
 
 /** Each range of the operation as whole rows or whole columns, refusing any other block. */
