@@ -81,6 +81,12 @@ export const sheetsReadInput = z.strictObject({
     .max(MAX_RANGES)
     .optional()
     .describe("structure: the titles of the tabs to read; left out, every tab."),
+  pivots: z
+    .boolean()
+    .optional()
+    .describe(
+      "structure: `true` also lists the pivot tables of the tabs read (default false, which leaves `pivots` null). It reads every cell of the tabs, so it is slower on large tabs.",
+    ),
   ranges: z
     .array(z.string().min(1).max(MAX_RANGE_LENGTH))
     .min(1)
@@ -269,6 +275,20 @@ const structuredChartSchema = z.object({
   type: z.string().nullable(),
   /** The cell the chart's top-left corner sits on, tab included; null for a chart on a tab of its own. */
   anchor: z.string().nullable(),
+  /** The ranges the chart draws its data from, in A1 notation with the tab, as `chart_update` takes them; the last entry may count the ranges beyond the ones listed (`+3 more`). */
+  source: z.array(z.string()),
+})
+
+const structuredPivotSchema = z.object({
+  /** The pivot table's top-left cell, tab included, as `pivot_delete` takes it. */
+  at: z.string(),
+  /** The source range, tab included. */
+  source: z.string(),
+  /** The rows and the columns, each the source column's letter, with the part of the date it groups by (`C by YEAR_MONTH`). */
+  rows: z.array(z.string()),
+  columns: z.array(z.string()),
+  /** The values, each the summary and the source column (`SUM of D`) or the formula, with its heading (`as "Total"`). */
+  values: z.array(z.string()),
 })
 
 const structuredProtectionSchema = z.object({
@@ -291,6 +311,8 @@ export const structuredTabSchema = z.object({
   basic_filter: z.object({ range: z.string(), criteria: structuredCriteriaSchema }).nullable(),
   filter_views: z.array(structuredFilterViewSchema),
   charts: z.array(structuredChartSchema),
+  /** The pivot tables of the tab; null when the call did not ask for them with `pivots`. */
+  pivots: z.array(structuredPivotSchema).nullable(),
   protections: z.array(structuredProtectionSchema),
   /** For each list, how many entries beyond the ones listed the tab has. */
   more: z.object({
@@ -301,6 +323,7 @@ export const structuredTabSchema = z.object({
     conditional_rules: z.number().int(),
     filter_views: z.number().int(),
     charts: z.number().int(),
+    pivots: z.number().int(),
     protections: z.number().int(),
   }),
 })

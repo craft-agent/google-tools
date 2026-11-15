@@ -169,10 +169,11 @@ describe("google_sheets_read structure", () => {
         { view_id: 9001, title: "Open only", range: "Plan!A1:F30", criteria: ["A hide (x), show TEXT_CONTAINS y"] },
       ],
       charts: [
-        { chart_id: 501, title: "Spend", type: "COLUMN", anchor: "Plan!E12" },
-        { chart_id: 502, title: null, type: "PIE", anchor: "Plan!A1" },
-        { chart_id: 503, title: "Own tab", type: "LINE", anchor: null },
+        { chart_id: 501, title: "Spend", type: "COLUMN", anchor: "Plan!E12", source: [] },
+        { chart_id: 502, title: null, type: "PIE", anchor: "Plan!A1", source: [] },
+        { chart_id: 503, title: "Own tab", type: "LINE", anchor: null, source: [] },
       ],
+      pivots: null,
       protections: [
         {
           protection_id: 7,
@@ -192,6 +193,7 @@ describe("google_sheets_read structure", () => {
         conditional_rules: 0,
         filter_views: 0,
         charts: 0,
+        pivots: 0,
         protections: 0,
       },
     })
@@ -213,12 +215,13 @@ describe("google_sheets_read structure", () => {
       basic_filter: null,
       filter_views: [],
       charts: [],
+      pivots: null,
       protections: [],
       more: expect.objectContaining({ merges: 0 }),
     })
   })
 
-  test("reads the spreadsheet once, with a field mask, and holds no cell values", async () => {
+  test("reads the spreadsheet once, with a field mask and no grid data, and holds no cell values", async () => {
     const h = await fixture([answer(SPREADSHEET_URL, BOOK)])
 
     const result = await h.read(STRUCTURE)
@@ -227,6 +230,8 @@ describe("google_sheets_read structure", () => {
     const fields = h.calls()[0]!.url.searchParams.get("fields")!
     expect(fields).toStartWith("sheets(properties(sheetId,title,index),merges,")
     expect(fields).toContain("protectedRanges(protectedRangeId,range,description,warningOnly,editors(users))")
+    expect(fields).toContain("domains(domain(sourceRange))")
+    expect(fields).not.toContain("data(")
     expect(h.calls()[0]!.url.searchParams.has("includeGridData")).toBe(false)
     expect(result.spreadsheet_id).toBe(SPREADSHEET_ID)
   })
@@ -250,6 +255,7 @@ describe("google_sheets_read structure", () => {
 
   test.each([
     ["an argument it does not take", { ...STRUCTURE, ranges: ["A1"] }, "takes no `ranges`"],
+    ["pivots on another method", { method: "view", spreadsheet: SPREADSHEET_ID, pivots: true }, "takes no `pivots`"],
     ["tabs on another method", { method: "view", spreadsheet: SPREADSHEET_ID, tabs: ["Plan"] }, "takes no `tabs`"],
     ["no spreadsheet", { method: "structure" }, "needs `spreadsheet`"],
   ])("refuses %s before any request", async (_name, args, message) => {
@@ -313,6 +319,7 @@ describe("google_sheets_read structure: the lists are capped", () => {
       conditional_rules: 10,
       filter_views: 20,
       charts: 2,
+      pivots: 0,
       protections: 0,
     })
   })

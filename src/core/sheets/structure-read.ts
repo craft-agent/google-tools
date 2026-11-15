@@ -3,10 +3,12 @@ import type { GoogleClient } from "../google/client"
 import { columnLetters, quoteTab, type GridBounds } from "./a1"
 import { colorReply, colorStyleReply } from "./colors"
 import { conditionText } from "./conditions"
+import { chartReply, chartSources } from "./charts"
 import { areaLabel } from "./operation-ranges"
 import { parseReply } from "./reply"
 import { SHEETS_ROUTES } from "./routes"
 import type { StructureResult, StructuredTab } from "./schemas"
+import { pivotViews, readPivotData, type PivotData } from "./structure-pivots"
 import { criteriaSummaries, ruleSummary, type FilterSpecReply } from "./structure-summaries"
 import { tabOfRange, type SheetTab } from "./tabs"
 
@@ -19,7 +21,8 @@ const STRUCTURE_FIELDS =
   "conditionalFormats(ranges,booleanRule(condition,format),gradientRule)," +
   "rowGroups(range,depth,collapsed),columnGroups(range,depth,collapsed),basicFilter(range,filterSpecs)," +
   "filterViews(filterViewId,title,range,filterSpecs)," +
-  "charts(chartId,spec(title,basicChart(chartType),pieChart(legendPosition)),position)," +
+  "charts(chartId,spec(title,basicChart(chartType,domains(domain(sourceRange)),series(series(sourceRange)))," +
+  "pieChart(legendPosition,domain(sourceRange),series(sourceRange))),position)," +
   "protectedRanges(protectedRangeId,range,description,warningOnly,editors(users)))"
 
 /** The type of a table column Google reports no type for. */
@@ -136,27 +139,7 @@ const structureReply = z.object({
             }),
           )
           .optional(),
-        charts: z
-          .array(
-            z.object({
-              chartId: gridNumber,
-              spec: z
-                .object({
-                  title: z.string().optional(),
-                  basicChart: z.object({ chartType: z.string().optional() }).optional(),
-                  pieChart: z.record(z.string(), z.unknown()).optional(),
-                })
-                .optional(),
-              position: z
-                .object({
-                  overlayPosition: z
-                    .object({ anchorCell: z.object({ rowIndex: gridNumber, columnIndex: gridNumber }).optional() })
-                    .optional(),
-                })
-                .optional(),
-            }),
-          )
-          .optional(),
+        charts: z.array(chartReply).optional(),
         protectedRanges: z
           .array(
             z.object({
@@ -200,10 +183,15 @@ function groupView(
   return { range: rangeA1(title, bounds), depth: group.depth ?? 1, collapsed: group.collapsed ?? false }
 }
 
+/** The texts cut to `MAX_STRUCTURE_ENTRIES` with the rest counted in a last entry. */
+function cappedTexts(texts: readonly string[]): string[] {
+  const { shown, more } = capped(texts)
+  return more > 0 ? [...shown, `+${more} more`] : shown
+}
+
 /** The criteria of a filter, one entry per column, cut to `MAX_STRUCTURE_ENTRIES` with the rest counted in a last entry. */
 function cappedCriteria(specs: readonly FilterSpecReply[] | undefined): string[] {
-  const { shown, more } = capped(criteriaSummaries(specs))
-  return more > 0 ? [...shown, `+${more} more`] : shown
+  return cappedTexts(criteriaSummaries(specs))
 }
 
 /** The table's columns, left to right as the tab counts them, cut to `MAX_STRUCTURE_ENTRIES`. */
@@ -229,8 +217,26 @@ function tableColumns(table: NonNullable<SheetReply["tables"]>[number]): {
   }
 }
 
-/** The tab's merges, groups, tables, rules, filters, charts and protections, each list cut to `MAX_STRUCTURE_ENTRIES`. */
-function structuredTab(sheet: SheetReply): StructuredTab {
+/** The ranges a chart draws its data from, each once, in A1 notation with the tab it is on (`titleOf`, else the chart's own tab). */
+function chartSourceRanges(
+  chart: NonNullable<SheetReply["charts"]>[number],
+  title: string,
+  titleOf: (sheetId: number) => string | undefined,
+): string[] {
+  const ranges = chartSources(chart.spec).map((grid) => rangeA1(titleOf(grid.sheetId ?? 0) ?? title, grid))
+  return cappedTexts([...new Set(ranges)])
+}
+
+/**
+ * The tab's merges, groups, tables, rules, filters, charts, pivot tables and
+ * protections, each list cut to `MAX_STRUCTURE_ENTRIES`; `pivots` is `null`
+ * when the pivot tables were not asked for.
+ */
+function structuredTab(
+  sheet: SheetReply,
+  titleOf: (sheetId: number) => string | undefined,
+  pivotData: PivotData | undefined,
+): StructuredTab {
   const properties = sheet.properties ?? {}
   const title = properties.title ?? ""
   const merges = capped(sheet.merges)
@@ -240,6 +246,9 @@ function structuredTab(sheet: SheetReply): StructuredTab {
   const rules = capped(sheet.conditionalFormats)
   const views = capped(sheet.filterViews)
   const charts = capped(sheet.charts)
+  const pivots = capped(
+    pivotData === undefined ? undefined : pivotViews(title, pivotData.get(properties.sheetId ?? 0), titleOf),
+  )
   const protections = capped(sheet.protectedRanges)
   return {
     sheet_id: properties.sheetId ?? 0,
@@ -287,8 +296,10 @@ function structuredTab(sheet: SheetReply): StructuredTab {
           overlay === undefined
             ? null
             : `${quoteTab(title)}!${columnLetters(anchor?.columnIndex ?? 0)}${(anchor?.rowIndex ?? 0) + 1}`,
+        source: chartSourceRanges(chart, title, titleOf),
       }
     }),
+    pivots: pivotData === undefined ? null : pivots.shown,
     protections: protections.shown.map((protection) => ({
       protection_id: protection.protectedRangeId ?? 0,
       range: rangeA1(title, protection.range),
@@ -304,6 +315,7 @@ function structuredTab(sheet: SheetReply): StructuredTab {
       conditional_rules: rules.more,
       filter_views: views.more,
       charts: charts.more,
+      pivots: pivots.more,
       protections: protections.more,
     },
   }
@@ -314,12 +326,14 @@ function structuredTab(sheet: SheetReply): StructuredTab {
  * tables, conditional rules, filters, charts and protections each has, in A1
  * notation with the tab and with the ids that name them; no cell values. `titles`
  * picks the tabs (every tab when left out), a title the spreadsheet lacks being
- * `invalid_argument`.
+ * `invalid_argument`. The pivot tables lie in the cells, so they are listed only
+ * with `pivots`, by a second read of the picked tabs' cells.
  */
 export async function readStructure(
   client: GoogleClient,
   id: string,
   titles: readonly string[] | undefined,
+  pivots = false,
 ): Promise<StructureResult> {
   const reply = parseReply(
     structureReply,
@@ -330,6 +344,8 @@ export async function readStructure(
     "the structure",
   )
   const sheets = reply.sheets ?? []
+  const tabTitles = new Map(sheets.map((sheet) => [sheet.properties?.sheetId ?? 0, sheet.properties?.title ?? ""]))
+  const titleOf = (sheetId: number) => tabTitles.get(sheetId)
   const tabs: SheetTab[] = sheets.map((sheet, index) => ({
     sheetId: sheet.properties?.sheetId ?? 0,
     title: sheet.properties?.title ?? "",
@@ -339,10 +355,13 @@ export async function readStructure(
   }))
   const picked =
     titles === undefined ? undefined : new Set(titles.map((title) => tabOfRange(tabs, quoteTab(title)).sheetId))
-  return {
-    spreadsheet_id: id,
-    structure: sheets
-      .filter((sheet) => picked === undefined || picked.has(sheet.properties?.sheetId ?? 0))
-      .map(structuredTab),
-  }
+  const read = sheets.filter((sheet) => picked === undefined || picked.has(sheet.properties?.sheetId ?? 0))
+  const pivotData = pivots
+    ? await readPivotData(
+        client,
+        id,
+        read.map((sheet) => quoteTab(sheet.properties?.title ?? "")),
+      )
+    : undefined
+  return { spreadsheet_id: id, structure: read.map((sheet) => structuredTab(sheet, titleOf, pivotData)) }
 }
