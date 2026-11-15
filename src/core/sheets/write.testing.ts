@@ -8,6 +8,7 @@ import { googleSheetsClear } from "./clear"
 import { googleSheetsCreate } from "./create"
 import { googleSheetsEdit } from "./edit"
 import { googleSheetsFormat } from "./format"
+import { googleSheetsProtect } from "./protect"
 import { BATCH_GET_URL, SPREADSHEET_URL, answer, callOf, fixture } from "./read.testing"
 import { googleSheetsRestructure } from "./restructure"
 import { SHEETS_WRITE_SCOPE } from "./scopes"
@@ -87,6 +88,7 @@ export async function writeFixture(
     add: (args: unknown) => run(googleSheetsAdd, args),
     restructure: (args: unknown) => run(googleSheetsRestructure, args),
     transform: (args: unknown) => run(googleSheetsTransform, args),
+    protect: (args: unknown) => run(googleSheetsProtect, args),
     /** `METHOD origin+path` of each request the fake received, the token refresh left out. */
     names: () => h.calls().map(callOf),
   }
