@@ -46,6 +46,12 @@ export const SHEETS_ROUTES = {
     path: "/v4/spreadsheets/{spreadsheet_id}/values/{range}:append",
     scopes: [SHEETS_WRITE_SCOPE],
   },
+  create: {
+    method: "POST",
+    host: SHEETS_HOST,
+    path: "/v4/spreadsheets",
+    scopes: [SHEETS_WRITE_SCOPE],
+  },
   batchUpdate: {
     method: "POST",
     host: SHEETS_HOST,

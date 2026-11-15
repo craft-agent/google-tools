@@ -9,7 +9,13 @@ describe("SHEETS_ROUTES", () => {
   })
 
   test("the reads are GETs and the writes POSTs that only the write scope allows", () => {
-    const writes = [SHEETS_ROUTES.update, SHEETS_ROUTES.clear, SHEETS_ROUTES.append, SHEETS_ROUTES.batchUpdate]
+    const writes = [
+      SHEETS_ROUTES.update,
+      SHEETS_ROUTES.clear,
+      SHEETS_ROUTES.append,
+      SHEETS_ROUTES.create,
+      SHEETS_ROUTES.batchUpdate,
+    ]
     for (const route of [SHEETS_ROUTES.files, SHEETS_ROUTES.spreadsheet, SHEETS_ROUTES.batchGet]) {
       expect(route.method).toBe("GET")
     }
