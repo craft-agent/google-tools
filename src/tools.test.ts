@@ -43,6 +43,7 @@ describe("the Sheets writes", () => {
     ["google_sheets_clear", "overwrite", true],
     ["google_sheets_create", "add", false],
     ["google_sheets_tab_add", "add", false],
+    ["google_sheets_format", "idempotent", false],
   ] as const
 
   test.each(WRITES)(
@@ -103,6 +104,16 @@ describe("the Sheets writes", () => {
     const create = find("google_sheets_create")
     expect(create.measure!(parsed(create, { title: "T", tabs: ["a", "b"] }), { cwd: "/" })).toEqual({ tabs: 2 })
     expect(create.measure!(parsed(create, { title: "T" }), { cwd: "/" })).toEqual({ tabs: 0 })
+    const format = find("google_sheets_format")
+    const operations = [
+      { op: "hide", ranges: ["A:A", "C:C"] },
+      { op: "unmerge", range: "A1:B2" },
+      { op: "freeze", rows: 1 },
+    ]
+    expect(format.measure!(parsed(format, { spreadsheet, operations }), { cwd: "/" })).toEqual({
+      operations: 3,
+      ranges: 3,
+    })
   })
 })
 
