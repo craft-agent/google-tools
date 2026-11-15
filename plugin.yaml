@@ -17,6 +17,7 @@ provides_tools:
   - google_sheets_read
   - google_sheets_restructure
   - google_sheets_tab_add
+  - google_sheets_transform
 provides_hooks:
   - pre_tool_call
 config_schema:

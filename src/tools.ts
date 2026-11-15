@@ -9,6 +9,7 @@ import { googleSheetsFormat } from "./core/sheets/format"
 import { googleSheetsRead } from "./core/sheets/read"
 import { googleSheetsRestructure } from "./core/sheets/restructure"
 import { googleSheetsTabAdd } from "./core/sheets/tab-add"
+import { googleSheetsTransform } from "./core/sheets/transform"
 
 /** Every tool spec of the package; entry points register their tools from this list. */
 export const ALL_TOOLS: ToolSpec[] = [
@@ -22,4 +23,5 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleSheetsFormat,
   googleSheetsAdd,
   googleSheetsRestructure,
+  googleSheetsTransform,
 ]

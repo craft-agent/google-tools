@@ -46,6 +46,7 @@ describe("the Sheets writes", () => {
     ["google_sheets_format", "idempotent", false],
     ["google_sheets_add", "add", false],
     ["google_sheets_restructure", "administrative", true],
+    ["google_sheets_transform", "administrative", true],
   ] as const
 
   test.each(WRITES)(

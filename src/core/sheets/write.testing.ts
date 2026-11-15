@@ -12,6 +12,7 @@ import { BATCH_GET_URL, SPREADSHEET_URL, answer, callOf, fixture } from "./read.
 import { googleSheetsRestructure } from "./restructure"
 import { SHEETS_WRITE_SCOPE } from "./scopes"
 import { googleSheetsTabAdd } from "./tab-add"
+import { googleSheetsTransform } from "./transform"
 
 /** Fixtures the Sheets write tests share, on top of the read fixtures: a label logged in to write, and a spreadsheet of three tabs. */
 
@@ -85,6 +86,7 @@ export async function writeFixture(
     format: (args: unknown) => run(googleSheetsFormat, args),
     add: (args: unknown) => run(googleSheetsAdd, args),
     restructure: (args: unknown) => run(googleSheetsRestructure, args),
+    transform: (args: unknown) => run(googleSheetsTransform, args),
     /** `METHOD origin+path` of each request the fake received, the token refresh left out. */
     names: () => h.calls().map(callOf),
   }
