@@ -4,6 +4,7 @@ import { DEFAULT_TIMEOUT_MS, readReply, sendRequest, type FetchLike, type Transp
 import type { LabelPaths } from "./labels"
 import { maskValue } from "./mask"
 import { routeUrl, type QueryValue, type Route } from "./routes"
+import { UNAUTHORIZED, sendDownload, type DownloadSink, type Downloaded } from "./stream"
 import { TokenSource, forgetAccessToken } from "./token"
 
 export type { FetchLike } from "./fetch"
@@ -40,6 +41,14 @@ export type RequestOptions = {
   /** Sent beside `Authorization` and `Accept`, which these never replace. */
   headers?: Record<string, string>
 }
+
+export type DownloadOptions = {
+  /** Values for the `{name}` parts of the route's path. */
+  params?: Record<string, string>
+  query?: Record<string, QueryValue>
+  /** The time limit of this download, body included; defaults to the client's. */
+  timeoutMs?: number
+} & DownloadSink
 
 /** Throws `unauthenticated` unless one of the route's scopes is among the credential's; a route with no scopes needs none. */
 function checkScopes(route: Route, label: string, credential: Credential, missingScopeFix?: MissingScopeFix): void {
@@ -116,10 +125,39 @@ export class GoogleClient {
     }
   }
 
-  #init(route: Route, options: RequestOptions, token: string): RequestInit {
+  /**
+   * Calls one allowlisted route and streams its body to `options.write`,
+   * returning how many bytes came and their media type. Scopes, token, time
+   * limit (which covers the whole body), the retry after a 401 and the refusal
+   * of a redirect are as in `request`; a failure status throws what
+   * `googleError` maps it to. A body whose content type does not start with
+   * `options.accept` is `upstream_error` naming the type only, and one over
+   * `options.maxBytes` stops as `invalid_argument`. A call that fails may have
+   * written part of the body: the caller removes it.
+   */
+  async download(route: Route, options: DownloadOptions): Promise<Downloaded> {
+    const url = routeUrl(route, options.params, options.query).toString()
+    const { credential } = await this.#tokens.readCredential()
+    checkScopes(route, this.#paths.label, credential, this.#missingScopeFix)
+    const transport = { ...this.#transport, timeoutMs: options.timeoutMs ?? this.#transport.timeoutMs }
+
+    for (let attempt = 0; ; attempt++) {
+      const grant = await this.#tokens.accessToken(this.#transport.signal)
+      const known = [...credentialSecrets(grant.credential), grant.token]
+      const init = this.#init(route, {}, grant.token, options.accept)
+      const outcome = await sendDownload(transport, url, init, known, options, attempt === 0)
+      if (outcome === UNAUTHORIZED) {
+        forgetAccessToken(this.#paths, grant.credential.refresh_token)
+        continue
+      }
+      return outcome
+    }
+  }
+
+  #init(route: Route, options: RequestOptions, token: string, accept = JSON_CONTENT_TYPE): RequestInit {
     const headers = new Headers(options.headers)
     headers.set("Authorization", `Bearer ${token}`)
-    headers.set("Accept", JSON_CONTENT_TYPE)
+    headers.set("Accept", accept)
     const init: RequestInit = { method: route.method, headers }
     if (options.body !== undefined) {
       headers.set("Content-Type", JSON_CONTENT_TYPE)
