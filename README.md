@@ -209,19 +209,24 @@ picks one with its `account` argument, which may be left out while there is
 only one. The package's `login` command takes the client's JSON file, the
 label and the toolsets the label is for, opens your browser, and asks Google
 only for the scopes of those toolsets (`--read-only`: only their read
-scopes). To add a toolset to a label later, log in again with the whole list;
+scopes), plus your address (`openid` and `email`), which the label records.
+To add a toolset to a label later, log in again with the whole list;
 Desktop clients cannot add scopes to a consent. One label may hold Workspace
 and Cloud scopes together, but a label per use (one for mail and files, one
 for Cloud) keeps a leaked token from reaching both. `remove` revokes a
 label's token at Google and deletes its state.
 
-Each label keeps its state in its own directory, `<state root>/<label>/`
-(mode 700), under the `state_dir` [setting](#settings): by default
-`$XDG_STATE_HOME/google-tools`, else `~/.local/state/google-tools`. A label's
-credential comes from its environment variable when it is set, else from the
-credential file (mode 600) that `login` writes there. Never pass a token as
-an argument. Codex forwards no variable whose name depends on a label, so use
-the file there.
+Each label keeps its state in its own directory,
+`<state root>/accounts/<label>/` (mode 700), under the `state_dir`
+[setting](#settings): by default `$XDG_STATE_HOME/google-tools`, else
+`~/.local/state/google-tools`. A label's credential is one JSON object (the
+refresh token, the OAuth client it belongs to, the granted scopes and the
+account's address). It comes from `GOOGLE_TOOLS_CREDENTIALS_<LABEL>`
+(`GOOGLE_TOOLS_CREDENTIALS_DEFAULT` for `default`) when that is set, else
+from `credentials.json` (mode 600), which `login` writes in the label's
+directory; to keep it in a keychain instead, store that file's content in the
+variable and delete the file. Never pass a token as an argument. Codex
+forwards no variable whose name depends on a label, so use the file there.
 
 ## Adding a tool
 
