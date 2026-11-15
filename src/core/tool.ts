@@ -75,6 +75,8 @@ export type ToolContext = {
   grants?: GrantContext
   /** Where every label's state lives: an absolute path the entry point resolved. */
   stateDir?: string
+  /** Where downloads and exports are written: an absolute path the entry point resolved. */
+  downloadDir?: string
   /** The package's identity, environment, `fetch` and clock, which the entry point supplies. */
   runtime?: ToolRuntime
 }

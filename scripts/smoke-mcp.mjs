@@ -6,7 +6,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { PLUGIN_NAME } from "./package-name.mjs"
-import { ACCOUNT_READ } from "./smoke-shared.mjs"
+import { ACCOUNT_READ, SHEETS_READ } from "./smoke-shared.mjs"
 
 const SERVER = fileURLToPath(new URL("../dist/mcp.js", import.meta.url))
 const EXIT_USAGE = 2
@@ -34,6 +34,12 @@ async function listTools() {
     }
     if (readdirSync(stateDir).length !== 0) throw new Error("Listing the accounts must not create state.")
     console.log(`The MCP server lists ${ACCOUNT_READ}, which returns no accounts from an empty state directory.`)
+
+    const sheetsRead = tools.find((tool) => tool.name === SHEETS_READ)
+    if (sheetsRead?.annotations?.readOnlyHint !== true) {
+      throw new Error(`Expected ${SHEETS_READ} to be listed with readOnlyHint, got ${JSON.stringify(sheetsRead)}`)
+    }
+    console.log(`The MCP server lists ${SHEETS_READ} with readOnlyHint.`)
 
     const result = await client.callTool({ name: UNKNOWN_TOOL })
     const [block] = result.content

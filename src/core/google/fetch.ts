@@ -32,8 +32,14 @@ export type HttpReply = {
   text: string
 }
 
-function isRedirect(status: number): boolean {
+/** Whether `status` is a redirect, which the client never follows. */
+export function isRedirect(status: number): boolean {
   return status >= HTTP_REDIRECT_MIN && status <= HTTP_REDIRECT_MAX
+}
+
+/** Whether `status` is a success. */
+export function isSuccess(status: number): boolean {
+  return status >= HTTP_OK_MIN && status < HTTP_REDIRECT_MIN
 }
 
 function parseBody(text: string): unknown {
@@ -43,6 +49,26 @@ function parseBody(text: string): unknown {
   } catch {
     return undefined
   }
+}
+
+/**
+ * The `upstream_error` for a request that failed before or while Google
+ * answered: a cancellation ("The call was cancelled."), the time limit
+ * (`timedOut`) or a network failure, whose message is masked with `known` and
+ * shown without its cause.
+ */
+export function requestFailure(
+  error: unknown,
+  transport: Transport,
+  timedOut: boolean,
+  known: readonly string[],
+): ToolError {
+  if (transport.signal?.aborted) return cancelledError()
+  if (timedOut) {
+    return new ToolError("upstream_error", `${SUBJECT} did not answer within ${transport.timeoutMs / MS_PER_SECOND} s`)
+  }
+  const reason = error instanceof Error ? error.message : String(error)
+  return new ToolError("upstream_error", `${SUBJECT} could not be reached: ${maskText(reason, known)}`)
 }
 
 /**
@@ -73,12 +99,7 @@ export async function sendRequest(
       reply = { status: response.status, text: await response.text() }
     }
   } catch (error) {
-    if (callerSignal?.aborted) throw cancelledError()
-    if (timeout.signal.aborted) {
-      throw new ToolError("upstream_error", `${SUBJECT} did not answer within ${timeoutMs / MS_PER_SECOND} s`)
-    }
-    const reason = error instanceof Error ? error.message : String(error)
-    throw new ToolError("upstream_error", `${SUBJECT} could not be reached: ${maskText(reason, known)}`)
+    throw requestFailure(error, transport, timeout.signal.aborted, known)
   } finally {
     clearTimeout(timer)
   }
@@ -86,6 +107,11 @@ export async function sendRequest(
     throw new ToolError("upstream_error", `${SUBJECT} answered with a redirect, which is never followed`)
   }
   return reply
+}
+
+/** The error `googleError` maps the failure `reply` to, masked with `known`. */
+export function failedReplyError(reply: HttpReply, known: readonly string[]): unknown {
+  return maskError(googleError(reply.status, parseBody(reply.text), SUBJECT), known)
 }
 
 /**
@@ -96,9 +122,7 @@ export async function sendRequest(
  */
 export function readReply(reply: HttpReply, known: readonly string[]): unknown {
   const body = parseBody(reply.text)
-  if (reply.status < HTTP_OK_MIN || reply.status >= HTTP_REDIRECT_MIN) {
-    throw maskError(googleError(reply.status, body, SUBJECT), known)
-  }
+  if (!isSuccess(reply.status)) throw failedReplyError(reply, known)
   if (body === undefined) {
     throw new ToolError("upstream_error", `${SUBJECT} answered with a body that is not JSON.`)
   }

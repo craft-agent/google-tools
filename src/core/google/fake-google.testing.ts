@@ -23,11 +23,13 @@ export type FakeRequest = {
   signal?: AbortSignal
 }
 
-/** What the fake answers: a JSON body, or a text one, with a status (default 200) and headers. */
+/** What the fake answers: a JSON body, a text one or raw bytes, with a status (default 200) and headers. */
 export type FakeReply = {
   status?: number
   json?: unknown
   text?: string
+  /** A binary body; the reply carries the content type its `headers` give. */
+  bytes?: Uint8Array<ArrayBuffer>
   headers?: Record<string, string>
 }
 
@@ -68,7 +70,7 @@ function describeRequest(url: string, init: RequestInit): FakeRequest {
 function toResponse(reply: FakeReply): Response {
   const status = reply.status ?? 200
   const headers = new Headers(reply.headers)
-  let body: string | null = reply.text ?? ""
+  let body: string | Uint8Array<ArrayBuffer> | null = reply.bytes ?? reply.text ?? ""
   if (reply.json !== undefined) {
     body = JSON.stringify(reply.json)
     if (!headers.has("content-type")) headers.set("content-type", "application/json")

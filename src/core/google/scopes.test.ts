@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { EMAIL_SCOPE, OPENID_SCOPE } from "./routes"
-import { IDENTITY_SCOPES, TOOLSET_SCOPES, loginScopes, type ToolsetScopes } from "./scopes"
+import { IDENTITY_SCOPES, TOOLSET_SCOPES, loginScopes, needsWrite, toolsetsFor, type ToolsetScopes } from "./scopes"
 
-const SHEETS_READ = "https://www.example.test/auth/sheets.readonly"
-const SHEETS_WRITE = "https://www.example.test/auth/sheets"
-const DRIVE_READ = "https://www.example.test/auth/drive.readonly"
+const NOTES_READ = "https://www.example.test/auth/notes.readonly"
+const NOTES_WRITE = "https://www.example.test/auth/notes"
+const FILES_READ = "https://www.example.test/auth/files.readonly"
 
-/** The toolsets the package has so far hold no scopes, so a test adds its own and removes them afterwards. */
+/** A test adds stand-in toolsets of its own, named apart from the package's, and removes them afterwards. */
 const added: string[] = []
 
 function addToolset(name: string, scopes: ToolsetScopes): void {
@@ -40,22 +40,41 @@ describe("loginScopes", () => {
   })
 
   test("adds the read and write scopes of each toolset, deduplicated and sorted", () => {
-    addToolset("sheets", { read: [SHEETS_READ], write: [SHEETS_WRITE, SHEETS_READ] })
-    addToolset("drive", { read: [DRIVE_READ], write: [] })
+    addToolset("notes", { read: [NOTES_READ], write: [NOTES_WRITE, NOTES_READ] })
+    addToolset("files", { read: [FILES_READ], write: [] })
 
-    const scopes = loginScopes(["sheets", "drive", "sheets"], false)
+    const scopes = loginScopes(["notes", "files", "notes"], false)
 
-    expect(scopes).toEqual([...new Set([OPENID_SCOPE, EMAIL_SCOPE, SHEETS_READ, SHEETS_WRITE, DRIVE_READ])].sort())
+    expect(scopes).toEqual([...new Set([OPENID_SCOPE, EMAIL_SCOPE, NOTES_READ, NOTES_WRITE, FILES_READ])].sort())
   })
 
   test("only the read scopes with readOnly", () => {
-    addToolset("sheets", { read: [SHEETS_READ], write: [SHEETS_WRITE] })
+    addToolset("notes", { read: [NOTES_READ], write: [NOTES_WRITE] })
 
-    expect(loginScopes(["sheets"], true)).toEqual([OPENID_SCOPE, EMAIL_SCOPE, SHEETS_READ].sort())
+    expect(loginScopes(["notes"], true)).toEqual([OPENID_SCOPE, EMAIL_SCOPE, NOTES_READ].sort())
   })
 
   test("no toolset asks for the identity scopes alone", () => {
     expect(loginScopes([], false)).toEqual([OPENID_SCOPE, EMAIL_SCOPE].sort())
+  })
+
+  test("toolsetsFor names the toolsets that hold a scope, in the table's order", () => {
+    addToolset("notes", { read: [NOTES_READ], write: [NOTES_WRITE] })
+    addToolset("files", { read: [FILES_READ], write: [] })
+
+    expect(toolsetsFor([FILES_READ, NOTES_WRITE])).toEqual(["notes", "files"])
+    expect(toolsetsFor([NOTES_READ])).toEqual(["notes"])
+    expect(toolsetsFor([OPENID_SCOPE, "https://www.example.test/auth/none"])).toEqual([])
+    expect(toolsetsFor([])).toEqual([])
+  })
+
+  test("needsWrite is true only when no scope is a read scope, the identity scopes included", () => {
+    addToolset("notes", { read: [NOTES_READ], write: [NOTES_WRITE] })
+
+    expect(needsWrite([NOTES_WRITE])).toBe(true)
+    expect(needsWrite([NOTES_READ, NOTES_WRITE])).toBe(false)
+    expect(needsWrite([OPENID_SCOPE])).toBe(false)
+    expect(needsWrite(["https://www.example.test/auth/none"])).toBe(true)
   })
 
   test("an unknown toolset is invalid_argument listing the known ones, without repeating it", () => {

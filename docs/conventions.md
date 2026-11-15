@@ -761,11 +761,17 @@ and every entry point checks them the same way.
 - **Downloads and exports are written only under a directory a setting
   names**, judged by real path, never over an existing file, never through a
   link, and never inside the state root or the tools' own install directory.
+- **The setting is `download_dir`**, by default `~/Downloads/<package name>`
+  (`~/Downloads/google-tools`): a person looks in Downloads for what a tool
+  fetched, and nothing there is state. Tools write in a subdirectory per kind
+  (`sheet-snapshots/`), so one kind is found and cleared apart from another.
+  A file is named `<stem>-<UTC timestamp>`, and `-2`, `-3`… is added rather
+  than overwriting one. It is opened without following links, with mode 600,
+  since an export holds the person's content.
 - **An upload reads only under directories a setting names**, opened without
   following links and refused for a hard-linked file, so a link placed in an
-  allowed directory cannot carry a file from elsewhere to Google.
-- The settings and their defaults are settled with the first tool that
-  writes or reads a file.
+  allowed directory cannot carry a file from elsewhere to Google. Its setting
+  is settled with the first tool that uploads.
 
 ## Text a tool reads
 
@@ -784,3 +790,47 @@ and every entry point checks them the same way.
   Workspace is what most users set the package up for, and a write there asks
   every time. A Cloud write reaches running services and other people's
   traffic, so turning a Cloud toolset on is a choice of its own.
+
+## Sheets
+
+- **Six tools**: `google_sheets_read` (`list`, `view`, `values`, `snapshot`;
+  read), `google_sheets_create`, `google_sheets_tab_add` and
+  `google_sheets_append` (add), `google_sheets_edit` and `google_sheets_clear`
+  (overwrite). `edit` and `clear` are destructive because they replace
+  values; `append`, `create` and `tab_add` only add, and are not idempotent.
+  Each write is its own tool, so an approval remembered for appending never
+  carries over to overwriting.
+- **`expect` guards a write against moved rows.** It names single cells (not
+  ranges), compared as the sheet displays them, trimmed, with booleans as
+  `TRUE` and `FALSE`, up to 200 per call. They are read right before the
+  write, in the same call, and any difference refuses the call as `stale`
+  with `details.differs`, nothing written. A header cell and an id cell per
+  row are enough to notice that rows were inserted, deleted or sorted. It is
+  not a lock: Google has no revision check for values.
+- **`before` makes an overwrite undoable.** `edit` and `clear` return the
+  replaced ranges as formulas, as `edit` takes them back. It is within the
+  read budget (below) and is `null`, with `before_truncated: true`, when the
+  ranges exceed it or a cell would be clipped, since a clipped copy cannot
+  restore what it cut.
+- **Targets are per tab and per spreadsheet**: `<label>/spreadsheets/<id>/sheets/<tab id>`
+  for each tab a write changes, `<label>/spreadsheets/<id>` for a new tab, and
+  `<label>/spreadsheets/new` for a new spreadsheet. A tab id survives a
+  rename, so an "always" answer follows the tab.
+- **The prompt's facts**: `Overwrites`, `Checks`, `Tabs` and `Cells` for
+  `edit` and `clear` (what is there now and how many cells are replaced, how
+  many `expect` cells are checked); `Table` and `Rows` for `append`; `Tabs`
+  for `create`; `Position` and `Size` for `tab_add`. The prompt pins the
+  current values of the cells to be overwritten, so a call whose cells changed
+  after the answer fails as `stale` and is asked again.
+- **The read budget is 10,000 cells a call and 2,000 characters a cell.** A
+  range that loses rows says `truncated: true`, and `clipped_cells` counts the
+  cut text cells, so the model never takes a cut for the whole.
+- **The snapshot's export URL is undocumented by Google**, so it is checked
+  at a real install, not only against the fake. It needs only the Sheets read
+  scopes; no Drive content scope is asked for it.
+- **Searching uses `drive.metadata.readonly`**: names and dates, a restricted
+  scope that personal use needs no verification for (see "The OAuth client").
+  No Drive content scope is asked.
+- **Not offered yet**: formatting, structure, charts and protections belong to
+  a later unit, and a named range is not accepted as a range (A1 notation
+  only), since a name may point somewhere other than where the prompt shows.

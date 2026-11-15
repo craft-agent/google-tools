@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { rm } from "node:fs/promises"
-import { GoogleClient } from "./client"
+import { GoogleClient, type MissingScopeFix } from "./client"
 import {
   CREDENTIAL,
   DRIVE_SCOPE,
@@ -39,7 +39,10 @@ afterEach(async () => {
   await rm(stateDir, { recursive: true, force: true })
 })
 
-function clientOver(handlers: FakeHandler[], options: { env?: Record<string, string> } = {}) {
+function clientOver(
+  handlers: FakeHandler[],
+  options: { env?: Record<string, string>; missingScopeFix?: MissingScopeFix } = {},
+) {
   const google = fakeGoogle(handlers)
   const client = new GoogleClient({ paths, variable: VARIABLE, env: {}, fetch: google.fetch, ...options })
   return { client, requests: google.requests }
@@ -125,6 +128,52 @@ describe("GoogleClient scope check", () => {
     )
     expect(error.details).toEqual({ account: "work", needs: [OPENID_SCOPE, EMAIL_SCOPE] })
     expect(requests).toHaveLength(0)
+  })
+
+  test("requireScopes refuses the same way without sending a request, and passes when the label holds a scope", async () => {
+    await storeCredential(paths, { ...CREDENTIAL, scopes: [DRIVE_SCOPE] })
+    const { client, requests } = clientOver([tokenHandler, infoHandler])
+    const error = await toolError(client.requireScopes(GET_ROUTE))
+    expect(error.code).toBe("unauthenticated")
+    expect(error.details).toEqual({ account: "work", needs: [OPENID_SCOPE, EMAIL_SCOPE] })
+    await client.requireScopes(OPEN_ROUTE)
+
+    await storeCredential(paths, { ...CREDENTIAL, scopes: [OPENID_SCOPE] })
+    await client.requireScopes(GET_ROUTE)
+    expect(requests).toHaveLength(0)
+  })
+
+  test("with a missingScopeFix, the message ends with the fix and details carry it", async () => {
+    await storeCredential(paths, { ...CREDENTIAL, scopes: [DRIVE_SCOPE] })
+    const seen: { needs: readonly string[]; scopes: readonly string[] }[] = []
+    const { client, requests } = clientOver([tokenHandler, infoHandler], {
+      missingScopeFix: (needs, credential) => {
+        seen.push({ needs, scopes: credential.scopes })
+        return "gt login --account work"
+      },
+    })
+    const error = await toolError(client.request(GET_ROUTE))
+    expect(error.code).toBe("unauthenticated")
+    expect(error.message).toBe(
+      `Google account "work" was not logged in with a scope this call needs (${OPENID_SCOPE} or ${EMAIL_SCOPE}). Ask a person to log it in again with: gt login --account work`,
+    )
+    expect(error.details).toEqual({
+      account: "work",
+      needs: [OPENID_SCOPE, EMAIL_SCOPE],
+      fix: "gt login --account work",
+    })
+    expect(seen).toEqual([{ needs: [OPENID_SCOPE, EMAIL_SCOPE], scopes: [DRIVE_SCOPE] }])
+    expect(requests).toHaveLength(0)
+  })
+
+  test("a missingScopeFix is not asked when the label holds a scope the route takes", async () => {
+    await storeCredential(paths, { ...CREDENTIAL, scopes: [OPENID_SCOPE] })
+    const { client } = clientOver([tokenHandler, infoHandler], {
+      missingScopeFix: () => {
+        throw new Error("must not be asked")
+      },
+    })
+    expect(await client.request(GET_ROUTE)).toEqual(REPLY.json)
   })
 
   test("accepts a label holding any one of the route's scopes", async () => {

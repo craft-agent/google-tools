@@ -1,0 +1,70 @@
+import type { Route } from "../google/routes"
+import { DRIVE_METADATA_READ_SCOPE, SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE } from "./scopes"
+
+const DRIVE_HOST = "www.googleapis.com"
+const SHEETS_HOST = "sheets.googleapis.com"
+const DOCS_HOST = "docs.google.com"
+
+/** Drive scopes beyond the metadata one that also list files. */
+const DRIVE_READ_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive"
+
+/** The calls the Sheets tools may make, each with every scope that allows it. */
+export const SHEETS_ROUTES = {
+  files: {
+    method: "GET",
+    host: DRIVE_HOST,
+    path: "/drive/v3/files",
+    scopes: [DRIVE_METADATA_READ_SCOPE, DRIVE_READ_SCOPE, DRIVE_SCOPE],
+  },
+  spreadsheet: {
+    method: "GET",
+    host: SHEETS_HOST,
+    path: "/v4/spreadsheets/{spreadsheet_id}",
+    scopes: [SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE],
+  },
+  batchGet: {
+    method: "GET",
+    host: SHEETS_HOST,
+    path: "/v4/spreadsheets/{spreadsheet_id}/values:batchGet",
+    scopes: [SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE],
+  },
+  update: {
+    method: "POST",
+    host: SHEETS_HOST,
+    path: "/v4/spreadsheets/{spreadsheet_id}/values:batchUpdate",
+    scopes: [SHEETS_WRITE_SCOPE],
+  },
+  clear: {
+    method: "POST",
+    host: SHEETS_HOST,
+    path: "/v4/spreadsheets/{spreadsheet_id}/values:batchClear",
+    scopes: [SHEETS_WRITE_SCOPE],
+  },
+  append: {
+    method: "POST",
+    host: SHEETS_HOST,
+    path: "/v4/spreadsheets/{spreadsheet_id}/values/{range}:append",
+    scopes: [SHEETS_WRITE_SCOPE],
+  },
+  create: {
+    method: "POST",
+    host: SHEETS_HOST,
+    path: "/v4/spreadsheets",
+    scopes: [SHEETS_WRITE_SCOPE],
+  },
+  batchUpdate: {
+    method: "POST",
+    host: SHEETS_HOST,
+    path: "/v4/spreadsheets/{spreadsheet_id}:batchUpdate",
+    scopes: [SHEETS_WRITE_SCOPE],
+  },
+  // The export URL is not a documented API: the scopes it accepts and the redirects it may answer with are
+  // checked at a real install, not here.
+  export: {
+    method: "GET",
+    host: DOCS_HOST,
+    path: "/spreadsheets/d/{spreadsheet_id}/export",
+    scopes: [SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE],
+  },
+} as const satisfies Record<string, Route>
