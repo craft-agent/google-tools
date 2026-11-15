@@ -19,6 +19,7 @@ import { checkPin } from "../entry/pin"
 import { PROJECT_PROFILE } from "../entry/profile"
 import type { RuntimeOptions } from "../entry/runtime"
 import { settingsFromOptions } from "../entry/settings"
+import { downloadDirContext, type DownloadDirContext } from "../entry/download-dir"
 import { stateDirContext, type StateDirContext } from "../entry/state-dir"
 import { promptTranslator, promptWords } from "../entry/words"
 import type { PluginOptions } from "./types"
@@ -71,13 +72,14 @@ export function needsPermission(spec: Pick<ToolSpec, "class">): boolean {
 /**
  * The tools the plugin options (and the environment behind them) select from
  * `specs`, the translator of the prompt language they set over the plugin's
- * translations, the package's own settings, the grants' context and the state directory.
+ * translations, the package's own settings, the grants' context and the state and download directories.
  */
 export function selectedTools(
   specs: ToolSpec[],
   options: PluginOptions | undefined,
   deps: PluginDeps,
-): { specs: ToolSpec[]; translator: Translator; options: ToolOptions; grants: GrantContext } & StateDirContext {
+): { specs: ToolSpec[]; translator: Translator; options: ToolOptions; grants: GrantContext } & StateDirContext &
+  DownloadDirContext {
   const profile = deps.profile ?? PROJECT_PROFILE
   const settings = settingsFromOptions(options, deps.env ?? process.env, profile)
   return {
@@ -86,6 +88,7 @@ export function selectedTools(
     options: settings.options,
     grants: settings.grants,
     ...stateDirContext(settings),
+    ...downloadDirContext(settings),
   }
 }
 
