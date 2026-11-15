@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 /** The methods of the Sheets read. */
-export const SHEETS_METHODS = ["list", "view", "values", "snapshot", "format"] as const
+export const SHEETS_METHODS = ["list", "view", "values", "snapshot", "format", "structure"] as const
 
 /** How `values` renders a cell: as shown, as stored (numbers, booleans, dates as shown), or as the formula that makes it. */
 export const RENDER_OPTIONS = ["formatted", "unformatted", "formula"] as const
