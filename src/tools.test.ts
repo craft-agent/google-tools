@@ -47,6 +47,7 @@ describe("the Sheets writes", () => {
     ["google_sheets_add", "add", false],
     ["google_sheets_restructure", "administrative", true],
     ["google_sheets_transform", "administrative", true],
+    ["google_sheets_protect", "administrative", true],
   ] as const
 
   test.each(WRITES)(
@@ -135,6 +136,15 @@ describe("the Sheets writes", () => {
       restructure.measure!(parsed(restructure, { spreadsheet, operations }), { cwd: "/" })
     expect(measureOf(changes)).toEqual({ operations: 2, ranges: 2, deletes_tabs: false })
     expect(measureOf([{ op: "tab_delete", tab: "Plan" }])).toEqual({ operations: 1, ranges: 0, deletes_tabs: true })
+    const protect = find("google_sheets_protect")
+    const protections = [
+      { op: "protect", range: "Plan", editors: ["a@example.test", "b@example.test", "a@example.test"] },
+      { op: "protect_delete", protection: 7 },
+    ]
+    expect(protect.measure!(parsed(protect, { spreadsheet, operations: protections }), { cwd: "/" })).toEqual({
+      operations: 2,
+      editors: 2,
+    })
   })
 })
 

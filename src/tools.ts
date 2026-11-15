@@ -6,6 +6,7 @@ import { googleSheetsClear } from "./core/sheets/clear"
 import { googleSheetsCreate } from "./core/sheets/create"
 import { googleSheetsEdit } from "./core/sheets/edit"
 import { googleSheetsFormat } from "./core/sheets/format"
+import { googleSheetsProtect } from "./core/sheets/protect"
 import { googleSheetsRead } from "./core/sheets/read"
 import { googleSheetsRestructure } from "./core/sheets/restructure"
 import { googleSheetsTabAdd } from "./core/sheets/tab-add"
@@ -24,4 +25,5 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleSheetsAdd,
   googleSheetsRestructure,
   googleSheetsTransform,
+  googleSheetsProtect,
 ]
