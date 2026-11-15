@@ -793,35 +793,87 @@ and every entry point checks them the same way.
 
 ## Sheets
 
-- **Six tools**: `google_sheets_read` (`list`, `view`, `values`, `snapshot`;
-  read), `google_sheets_create`, `google_sheets_tab_add` and
-  `google_sheets_append` (add), `google_sheets_edit` and `google_sheets_clear`
-  (overwrite). `edit` and `clear` are destructive because they replace
-  values; `append`, `create` and `tab_add` only add, and are not idempotent.
-  Each write is its own tool, so an approval remembered for appending never
-  carries over to overwriting.
-- **`expect` guards a write against moved rows.** It names single cells (not
-  ranges), compared as the sheet displays them, trimmed, with booleans as
-  `TRUE` and `FALSE`, up to 200 per call. They are read right before the
-  write, in the same call, and any difference refuses the call as `stale`
-  with `details.differs`, nothing written. A header cell and an id cell per
-  row are enough to notice that rows were inserted, deleted or sorted. It is
-  not a lock: Google has no revision check for values.
-- **`before` makes an overwrite undoable.** `edit` and `clear` return the
-  replaced ranges as formulas, as `edit` takes them back. It is within the
-  read budget (below) and is `null`, with `before_truncated: true`, when the
-  ranges exceed it or a cell would be clipped, since a clipped copy cannot
-  restore what it cut.
+- **Eleven tools**, each write its own so an approval remembered for one
+  never carries over to a harsher one: `google_sheets_read` (`list`, `view`,
+  `values`, `snapshot`, `format`, `structure`, `metadata`; read);
+  `google_sheets_create`, `google_sheets_tab_add`, `google_sheets_append` and
+  `google_sheets_add` (add); `google_sheets_format` (idempotent change);
+  `google_sheets_edit` and `google_sheets_clear` (overwrite);
+  `google_sheets_restructure`, `google_sheets_transform` and
+  `google_sheets_protect` (administrative).
+- **The class is the strictest the arguments can reach.** `add` adds rows,
+  columns, tabs and objects and removes nothing, but repeating it adds again,
+  so it is not idempotent. `format` changes no value and removes nothing, and
+  the same call again leaves the same result. `restructure` deletes and
+  replaces, and deleting twice deletes more. `transform` rewrites what people
+  wrote, and a `cut`, or a replacement that holds what it finds, changes more
+  on a second run. `protect` changes who can edit.
+- **Destructive is an operation that loses a value or a setting a person
+  made**: it deletes, moves or overwrites cells, renames, changes the locale
+  or time zone, or changes or deletes an object. It is `restructure`,
+  `transform`, `protect`, `edit` or `clear`, never `add` or `format`.
+  Replacing a format and inserting rows or columns are not destructive. An
+  operation that only adds an object where there is none (`validate`, `filter`)
+  stays in `add`, and the tool refuses where one exists.
+- **Operation lists are a fixed vocabulary.** `format`, `add`, `restructure`,
+  `transform` and `protect` take 1 to 100 `operations`, each an object told
+  apart by `op`; an `op` outside the table is refused, naming the ones
+  offered. They are never raw Google requests: the tool builds the requests
+  from validated arguments, so what the prompt lists is what runs. All
+  operations are one `spreadsheets.batchUpdate`, so all land or none does, and
+  they name at most 500 ranges in all. Describing, targeting and running plan
+  with the same code.
+- **The shifting rule.** After a `delete` or `move` on a tab, a
+  `restructure` call holds no later operation on that tab: its ranges would
+  mean other cells than the prompt shows. It is refused, and the next step
+  goes in a call of its own. An `insert` in `add` shifts too, but it only
+  adds, and a later operation's range is read as the cells stand by then.
+- **`expect` guards a write against moved rows.** It is on `edit`, `clear`,
+  `restructure` and `transform`. An item names a single cell (not a range),
+  compared as the sheet displays it, trimmed, with booleans as `TRUE` and
+  `FALSE`, up to 200 per call. Or it is `{ range, metadata: { key, value? },
+along?: rows|columns }`, which holds when the cell's row (or column) carries
+  that developer-metadata mark, so a row is found by its mark wherever sorting
+  moved it. They are checked right before the write, in the same call, and any
+  difference refuses the call as `stale` with `details.differs`, nothing
+  written. A header cell and an id cell per row are enough to notice that rows
+  were inserted, deleted or sorted. It is not a lock: Google has no revision
+  check for values.
+- **`before` makes a rewrite undoable.** `edit`, `clear`, `restructure` and
+  `transform` return the replaced or removed ranges as formulas, as `edit`
+  takes them back. It is within the read budget (below) and is `null`, with
+  `before_truncated: true`, when the ranges exceed it or a cell would be
+  clipped, since a clipped copy cannot restore what it cut. It holds values
+  only: a deleted row, tab or object, a format or a note is not restored from
+  it.
+- **Pins make an answer hold only for what was shown.** The prompt pins what
+  it asked about, so a call whose subject changed after the answer fails as
+  `stale` and is asked again: the current values of the cells to be
+  overwritten (`edit`, `clear`, and the cells `restructure` and `transform`
+  lose), the titles of tabs renamed or deleted, the definitions of the tables,
+  rules, validation, filters, views, charts and pivots changed or deleted, the
+  notes `transform` sets over, and the protections `protect` changes.
 - **Targets are per tab and per spreadsheet**: `<label>/spreadsheets/<id>/sheets/<tab id>`
-  for each tab a write changes, `<label>/spreadsheets/<id>` for a new tab, and
-  `<label>/spreadsheets/new` for a new spreadsheet. A tab id survives a
-  rename, so an "always" answer follows the tab.
-- **The prompt's facts**: `Overwrites`, `Checks`, `Tabs` and `Cells` for
-  `edit` and `clear` (what is there now and how many cells are replaced, how
-  many `expect` cells are checked); `Table` and `Rows` for `append`; `Tabs`
-  for `create`; `Position` and `Size` for `tab_add`. The prompt pins the
-  current values of the cells to be overwritten, so a call whose cells changed
-  after the answer fails as `stale` and is asked again.
+  for each tab a write changes, `<label>/spreadsheets/<id>` where the change is
+  the spreadsheet's own (a rename, locale or time zone, a new tab, a copied
+  tab), and `<label>/spreadsheets/new` for a new spreadsheet. A tab id survives
+  a rename, so an "always" answer follows the tab.
+- **The prompt's facts, per tool** (the words are in `words.ts`, the builders
+  in `write-describe.ts` and `protect-facts.ts`): `Overwrites`, `Checks`,
+  `Tabs` and `Cells` for `edit` and `clear` (what is there now and how many
+  cells are replaced, how many `expect` cells are checked); `Table` and `Rows`
+  for `append`; `Tabs` for `create`; `Position` and `Size` for `tab_add`;
+  `Tabs`, `Operations` and `Ranges` for `format` and `add`; `Overwrites`,
+  `Checks`, `Tabs` and `Operations` for `restructure` and `transform`; and
+  `Editors`, `Warning only`, `Tabs` and `Operations` for `protect`. Each
+  operation is also a line of the prompt's `Operations` text, in the tool's
+  fixed words with the call's values quoted.
+- **`protect` names every editor.** The prompt's `Editors` fact lists each
+  editor the call leaves, in full, never cut, and says when a protection only
+  warns, leaves only the account, or restricts nobody; the result lists every
+  protection added or changed as Google reports it, read back, with every
+  editor, and `errors` says so when the read-back fails after the write. A
+  person decides on who may edit, so the tool never hides one.
 - **The read budget is 10,000 cells a call and 2,000 characters a cell.** A
   range that loses rows says `truncated: true`, and `clipped_cells` counts the
   cut text cells, so the model never takes a cut for the whole.
@@ -831,6 +883,11 @@ and every entry point checks them the same way.
 - **Searching uses `drive.metadata.readonly`**: names and dates, a restricted
   scope that personal use needs no verification for (see "The OAuth client").
   No Drive content scope is asked.
-- **Not offered yet**: formatting, structure, charts and protections belong to
-  a later unit, and a named range is not accepted as a range (A1 notation
+- **The structure read lists pivot tables only on request.** `pivots: true`
+  reads every cell of the tabs, which is slow on large tabs, so the default
+  leaves `pivots` null and the other structure comes cheap.
+- **Not offered**: a named range is not accepted as a range (A1 notation
   only), since a name may point somewhere other than where the prompt shows.
+  Slicers, banded ranges outside a table, data sources and anything else
+  outside an operation vocabulary above are not offered either: an operation
+  outside the vocabulary is refused, and a raw request is never accepted.
