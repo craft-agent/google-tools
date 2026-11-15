@@ -179,6 +179,26 @@ On by default. Shows which Google accounts are set up and what each can reach.
 token, a client secret or a client id. When a credential needs a person, the
 result carries the one command to run.
 
+### Sheets (`sheets`)
+
+On by default. Finds, reads and writes the cell values of Google spreadsheets.
+
+| Tool                    | What it does                                                                                                                                                     | Class     |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `google_sheets_read`    | `list`: spreadsheets by name. `view`: a spreadsheet's tabs. `values`: cells of A1 ranges. `snapshot`: a tab or block exported as a PDF and rendered to PNG files | read      |
+| `google_sheets_create`  | create a spreadsheet, with named tabs if asked                                                                                                                   | add       |
+| `google_sheets_tab_add` | add a tab to a spreadsheet                                                                                                                                       | add       |
+| `google_sheets_append`  | add rows below a range's data, or to a native table                                                                                                              | add       |
+| `google_sheets_edit`    | overwrite the cells of A1 ranges                                                                                                                                 | overwrite |
+| `google_sheets_clear`   | empty the values of A1 ranges                                                                                                                                    | overwrite |
+
+The toolset asks for `spreadsheets.readonly` and `drive.metadata.readonly` to
+read, and `spreadsheets` to write; `--read-only` leaves the write scope out.
+`edit` and `clear` take `expect`, up to 200 cells and the values they must show
+now. If any differs the call writes nothing and fails as `stale`, naming the
+cells. Both return `before`, the replaced cells, to give back to `edit` as an
+undo. Formatting, charts and protections are not offered.
+
 ### Grants (`grants`)
 
 Off by default. Delegates bounded writes for jobs where no person can answer.
@@ -395,18 +415,20 @@ with; see [Settings](#settings) before changing the job's variables.
 Every entry point takes the same settings. A flag wins over its environment
 variable, and an option or setting wins over the variable too.
 
-| Setting           | Flag              | Variable                     | Meaning                                                                                                                       |
-| ----------------- | ----------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `toolsets`        | `--toolsets`      | `GOOGLE_TOOLS_TOOLSETS`      | the toolsets that are on, or `all`; default those `src/project.ts` names                                                      |
-| `read_only`       | `--read-only`     | `GOOGLE_TOOLS_READ_ONLY`     | registers no tool that writes; wins over every other setting                                                                  |
-| `unattended`      | `--unattended`    | `GOOGLE_TOOLS_UNATTENDED`    | no person can answer: a write runs only under a grant that covers it; off by default                                          |
-| `grants_dir`      | `--grants-dir`    | `GOOGLE_TOOLS_GRANTS_DIR`    | where grants and their use are kept; default `$XDG_STATE_HOME/google-tools/grants`, else `~/.local/state/google-tools/grants` |
-| `tools`           | `--tools`         | `GOOGLE_TOOLS_TOOLS`         | single tools to add by ID, whatever their toolset                                                                             |
-| `exclude_tools`   | `--exclude-tools` | `GOOGLE_TOOLS_EXCLUDE_TOOLS` | single tools to remove by ID; wins over `tools` and `toolsets`                                                                |
-| `confirm`         | `--confirm`       | `GOOGLE_TOOLS_CONFIRM`       | MCP server only: `harness` (default) or `elicitation`, as the conventions say                                                 |
-| `language`        | `--language`      | `GOOGLE_TOOLS_LANGUAGE`      | native plugins only: the approval prompt's language, such as `ja`                                                             |
-| `emoji`           | —                 | —                            | Hermes only: the emoji shown beside each toolset, by toolset name (`""` for none)                                             |
-| `require_plugins` | —                 | —                            | Hermes only: the plugins that must be loaded; while one is not, every write is refused before it is approved                  |
+| Setting           | Flag              | Variable                     | Meaning                                                                                                                                                                                                                           |
+| ----------------- | ----------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `toolsets`        | `--toolsets`      | `GOOGLE_TOOLS_TOOLSETS`      | the toolsets that are on, or `all`; default those `src/project.ts` names                                                                                                                                                          |
+| `read_only`       | `--read-only`     | `GOOGLE_TOOLS_READ_ONLY`     | registers no tool that writes; wins over every other setting                                                                                                                                                                      |
+| `unattended`      | `--unattended`    | `GOOGLE_TOOLS_UNATTENDED`    | no person can answer: a write runs only under a grant that covers it; off by default                                                                                                                                              |
+| `grants_dir`      | `--grants-dir`    | `GOOGLE_TOOLS_GRANTS_DIR`    | where grants and their use are kept; default `$XDG_STATE_HOME/google-tools/grants`, else `~/.local/state/google-tools/grants`                                                                                                     |
+| `state_dir`       | `--state-dir`     | `GOOGLE_TOOLS_STATE_DIR`     | where each label keeps its credential and lock; default `$XDG_STATE_HOME/google-tools`, else `~/.local/state/google-tools`                                                                                                        |
+| `download_dir`    | `--download-dir`  | `GOOGLE_TOOLS_DOWNLOAD_DIR`  | where tools write files they download or export, such as sheet snapshots; default `~/Downloads/google-tools`. Never inside the state directory or the tools' install directory, never through a link, never over an existing file |
+| `tools`           | `--tools`         | `GOOGLE_TOOLS_TOOLS`         | single tools to add by ID, whatever their toolset                                                                                                                                                                                 |
+| `exclude_tools`   | `--exclude-tools` | `GOOGLE_TOOLS_EXCLUDE_TOOLS` | single tools to remove by ID; wins over `tools` and `toolsets`                                                                                                                                                                    |
+| `confirm`         | `--confirm`       | `GOOGLE_TOOLS_CONFIRM`       | MCP server only: `harness` (default) or `elicitation`, as the conventions say                                                                                                                                                     |
+| `language`        | `--language`      | `GOOGLE_TOOLS_LANGUAGE`      | native plugins only: the approval prompt's language, such as `ja`                                                                                                                                                                 |
+| `emoji`           | —                 | —                            | Hermes only: the emoji shown beside each toolset, by toolset name (`""` for none)                                                                                                                                                 |
+| `require_plugins` | —                 | —                            | Hermes only: the plugins that must be loaded; while one is not, every write is refused before it is approved                                                                                                                      |
 
 `GOOGLE_TOOLS_GRANT_KEY` is a variable only, never a flag or a plugin
 option. Use at least 32 characters, for example from `openssl rand -hex 32`,
