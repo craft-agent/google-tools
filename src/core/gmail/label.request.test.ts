@@ -46,7 +46,7 @@ describe("google_gmail_label requests", () => {
   test("a batch holds at most 1000 ids: 2500 ids go in three requests, in order", async () => {
     const h = await mailboxFixture({ handlers })
     const ids = idsOf("m", 2500)
-    const { client: google } = await googleSession(h.ctx, undefined, "test")
+    const { client: google } = await googleSession(h.ctx, undefined, "test", "gmail")
     const plan: LabelPlan = {
       client: google,
       label: "work",

@@ -2,7 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
-import { ACCOUNT_READ, DRIVE_READ, GMAIL_READ, SHEETS_READ } from "./smoke-shared.mjs"
+import { ACCOUNT_READ, COMMENTS_READ, DRIVE_READ, GMAIL_READ, SHEETS_READ } from "./smoke-shared.mjs"
 
 const CLI = fileURLToPath(new URL("../dist/cli.js", import.meta.url))
 const SERVER = fileURLToPath(new URL("../dist/mcp.js", import.meta.url))
@@ -56,6 +56,10 @@ async function listsTheServersTools() {
       listed.some((tool) => tool.id === DRIVE_READ && tool.class === "read"),
       `Expected ${label} to list ${DRIVE_READ} as a read tool, got ${run.stdout}`,
     )
+    expect(
+      listed.some((tool) => tool.id === COMMENTS_READ && tool.class === "read"),
+      `Expected ${label} to list ${COMMENTS_READ} as a read tool, got ${run.stdout}`,
+    )
     for (const tool of listed) {
       expect(
         typeof tool.title === "string" && typeof tool.class === "string" && tool.input_schema?.type === "object",
@@ -63,7 +67,7 @@ async function listsTheServersTools() {
       )
     }
     console.log(
-      `${label} gives the ${listed.length} tools the MCP server lists, ${ACCOUNT_READ}, ${SHEETS_READ}, ${GMAIL_READ} and ${DRIVE_READ} among them.`,
+      `${label} gives the ${listed.length} tools the MCP server lists, ${ACCOUNT_READ}, ${SHEETS_READ}, ${GMAIL_READ}, ${DRIVE_READ} and ${COMMENTS_READ} among them.`,
     )
   }
 }

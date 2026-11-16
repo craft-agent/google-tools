@@ -1,6 +1,7 @@
 import { abortError } from "../exec"
 import type { GoogleClient } from "../google/client"
 import { googleSession } from "../google/session"
+import { GMAIL_TOOLSET } from "./scopes"
 import { StepErrors, type ToolContext } from "../tool"
 import { mailRoutes, selectMail, type MailSelection } from "./mail-items"
 import type { GmailTrashArgs, GmailTrashResult } from "./trash-args"
@@ -15,7 +16,7 @@ export type TrashPlan = { client: GoogleClient; label: string; selection: MailSe
 export async function planTrash(args: GmailTrashArgs, ctx: ToolContext): Promise<TrashPlan> {
   const selection = selectMail(args)
   if (ctx.signal?.aborted) throw abortError(ctx.signal)
-  const { client, label } = await googleSession(ctx, args.account, TRASH_WORK)
+  const { client, label } = await googleSession(ctx, args.account, TRASH_WORK, GMAIL_TOOLSET)
   await client.requireScopes(mailRoutes(selection.kind).trash)
   return { client, label, selection }
 }

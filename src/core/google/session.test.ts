@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { CLI } from "../account/read.testing"
 import { SHEETS_ROUTES } from "../sheets/routes"
-import { DRIVE_METADATA_READ_SCOPE, SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE } from "../sheets/scopes"
+import { DRIVE_METADATA_READ_SCOPE, SHEETS_READ_SCOPE, SHEETS_TOOLSET, SHEETS_WRITE_SCOPE } from "../sheets/scopes"
 import { SHEETS_CREDENTIAL, cleanUp, fixture, freshTokens } from "../sheets/read.testing"
 import { TOOLSET_SCOPES, type ToolsetScopes } from "./scopes"
 import { googleSession } from "./session"
@@ -17,9 +17,9 @@ afterEach(async () => {
 })
 
 /** The error a call of a route that takes any one of `scopes` fails with, and the command it names. */
-async function refusal(scopes: readonly string[], credential = SHEETS_CREDENTIAL) {
+async function refusal(scopes: readonly string[], credential = SHEETS_CREDENTIAL, toolset = SHEETS_TOOLSET) {
   const h = await fixture([], credential)
-  const { client, label } = await googleSession(h.ctx, undefined, "Test calls")
+  const { client, label } = await googleSession(h.ctx, undefined, "Test calls", toolset)
   const route: Route = { ...SHEETS_ROUTES.spreadsheet, scopes }
   const error = await toolError(client.request(route, { params: { spreadsheet_id: "sheet-0123456789" } }))
   expect(h.requests).toEqual([])
@@ -56,6 +56,15 @@ describe("googleSession's missing-scope fix", () => {
 
     expect(fix).toContain("--toolsets account,sheets ")
     expect(fix).not.toContain("--read-only")
+  })
+
+  test("asks for the calling tool's own toolset when it holds a scope the call accepts", async () => {
+    ;(TOOLSET_SCOPES as Record<string, ToolsetScopes>).notes = { read: [SHEETS_READ_SCOPE], write: [] }
+
+    const { fix, stateDir } = await refusal([SHEETS_READ_SCOPE], { ...SHEETS_CREDENTIAL, scopes: [] }, "notes")
+
+    expect(fix).toBe(`${CLI} login --account work --toolsets notes --state-dir ${stateDir}`)
+    expect(fix).not.toContain("--toolsets sheets")
   })
 
   test("the message ends with the same command", async () => {

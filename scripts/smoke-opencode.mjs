@@ -2,7 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { PLUGIN_NAME } from "./package-name.mjs"
-import { ACCOUNT_READ, DRIVE_READ, GMAIL_READ, SHEETS_READ } from "./smoke-shared.mjs"
+import { ACCOUNT_READ, COMMENTS_READ, DRIVE_READ, GMAIL_READ, SHEETS_READ } from "./smoke-shared.mjs"
 
 const PLUGIN = fileURLToPath(new URL("../dist/opencode.js", import.meta.url))
 const SERVER = fileURLToPath(new URL("../dist/mcp.js", import.meta.url))
@@ -55,6 +55,8 @@ try {
   console.log(`setup registers ${GMAIL_READ}.`)
   expect(added.includes(DRIVE_READ), `Expected setup to register ${DRIVE_READ}, got ${JSON.stringify(added)}.`)
   console.log(`setup registers ${DRIVE_READ}.`)
+  expect(added.includes(COMMENTS_READ), `Expected setup to register ${COMMENTS_READ}, got ${JSON.stringify(added)}.`)
+  console.log(`setup registers ${COMMENTS_READ}.`)
 
   const { tool } = await plugin.server({}, {})
   const served = Object.keys(tool).sort()
@@ -71,6 +73,8 @@ try {
   console.log(`server returns ${GMAIL_READ}.`)
   expect(served.includes(DRIVE_READ), `Expected server to return ${DRIVE_READ}, got ${JSON.stringify(served)}.`)
   console.log(`server returns ${DRIVE_READ}.`)
+  expect(served.includes(COMMENTS_READ), `Expected server to return ${COMMENTS_READ}, got ${JSON.stringify(served)}.`)
+  console.log(`server returns ${COMMENTS_READ}.`)
 } catch (error) {
   console.error(error)
   process.exit(1)

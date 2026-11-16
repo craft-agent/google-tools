@@ -54,6 +54,58 @@ describe("the Drive read", () => {
   })
 })
 
+describe("the comments read", () => {
+  test("is a read tool of the comments toolset, which is on by default", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_comments_read")
+    expect(spec).toMatchObject({ toolset: "comments", class: "read" })
+    expect(PROJECT.defaultToolsets).toContain("comments")
+    expect(annotations(spec!)).toMatchObject({ readOnlyHint: true, openWorldHint: true })
+  })
+})
+
+describe("the comments writes", () => {
+  test("google_comments_add is an administrative tool of the comments toolset: destructive, asked every time, with its intent, describer and targets", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_comments_add")!
+    expect(spec).toMatchObject({ toolset: "comments", class: "administrative" })
+    expect(annotations(spec)).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    })
+    expect(spec.intent).toStartWith("About to ")
+    expect(spec.describe).toBeDefined()
+    expect(spec.targets).toBeDefined()
+  })
+
+  const CHANGES = [
+    ["google_comments_status", "idempotent", false],
+    ["google_comments_edit", "overwrite", true],
+    ["google_comments_delete", "administrative", true],
+  ] as const
+
+  test.each(CHANGES)(
+    "%s is a %s tool of the comments toolset with the destructive hint %p",
+    (id, writeClass, destructive) => {
+      const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+      expect(spec).toMatchObject({ toolset: "comments", class: writeClass })
+      expect(annotations(spec)).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: destructive,
+        idempotentHint: writeClass !== "administrative",
+        openWorldHint: true,
+      })
+    },
+  )
+
+  test.each(CHANGES)("%s states its intent, describes its call and resolves its targets", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(spec.intent).toStartWith("About to ")
+    expect(spec.describe).toBeDefined()
+    expect(spec.targets).toBeDefined()
+  })
+})
+
 describe("the Drive writes", () => {
   test("google_drive_upload is an add tool of the drive toolset, not destructive, with its intent, describer, targets and bounds", () => {
     const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_drive_upload")!

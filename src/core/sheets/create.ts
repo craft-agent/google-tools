@@ -57,7 +57,7 @@ const createReply = z.object({
 /** The session the call creates with: the label it picked, checked to hold the write scope, before any request. */
 async function planCreate(args: CreateArgs, ctx: ToolContext): Promise<GoogleSession> {
   if (ctx.signal?.aborted) throw abortError(ctx.signal)
-  const session = await googleSession(ctx, args.account, "Sheets writes")
+  const session = await googleSession(ctx, args.account, "Sheets writes", SHEETS_TOOLSET)
   await session.client.requireScopes(SHEETS_ROUTES.create)
   return session
 }

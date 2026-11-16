@@ -5,6 +5,7 @@ import type { Route } from "../google/routes"
 import { googleSession } from "../google/session"
 import type { ToolContext } from "../tool"
 import { DRIVE_ROUTES } from "./routes"
+import { DRIVE_TOOLSET } from "./scopes"
 
 /** What a Drive write names its work as when a call has no runtime. */
 const DRIVE_WRITES = "Drive writes"
@@ -29,7 +30,7 @@ export async function driveWriteSession(
   write: Route,
 ): Promise<DriveWriteSession> {
   if (ctx.signal?.aborted) throw abortError(ctx.signal)
-  const { client, label } = await googleSession(ctx, account, DRIVE_WRITES)
+  const { client, label } = await googleSession(ctx, account, DRIVE_WRITES, DRIVE_TOOLSET)
   await client.requireScopes(write)
   await client.requireScopes(DRIVE_ROUTES.file)
   return { client, label }

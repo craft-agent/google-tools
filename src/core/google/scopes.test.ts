@@ -71,6 +71,20 @@ describe("loginScopes", () => {
     expect(toolsetsFor([])).toEqual([])
   })
 
+  test("toolsetsFor names only the own toolset when it holds one of the scopes", () => {
+    addToolset("notes", { read: [NOTES_READ], write: [NOTES_WRITE] })
+    addToolset("files", { read: [FILES_READ], write: [] })
+    addToolset("archive", { read: [], write: [NOTES_WRITE] })
+
+    expect(toolsetsFor([NOTES_WRITE], "archive")).toEqual(["archive"])
+    expect(toolsetsFor([FILES_READ, NOTES_WRITE], "archive")).toEqual(["archive"])
+    expect(toolsetsFor([FILES_READ, NOTES_WRITE], "notes")).toEqual(["notes"])
+    expect(toolsetsFor([FILES_READ, NOTES_WRITE], "files")).toEqual(["files"])
+    expect(toolsetsFor([FILES_READ], "notes")).toEqual(["files"])
+    expect(toolsetsFor([NOTES_WRITE, FILES_READ], "other")).toEqual(["notes", "archive"])
+    expect(toolsetsFor([NOTES_WRITE], "toString")).toEqual(["notes", "archive"])
+  })
+
   test("needsWrite is true only when no scope is a read scope, the identity scopes included", () => {
     addToolset("notes", { read: [NOTES_READ], write: [NOTES_WRITE] })
 

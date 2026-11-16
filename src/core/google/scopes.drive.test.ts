@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { COMMENTS_TOOLSET } from "../comments/scopes"
 import { DRIVE_FILE_SCOPE, DRIVE_READ_SCOPE, DRIVE_TOOLSET } from "../drive/scopes"
 import { GMAIL_TOOLSET } from "../gmail/scopes"
 import { DRIVE_METADATA_READ_SCOPE, SHEETS_TOOLSET } from "../sheets/scopes"
@@ -36,6 +37,7 @@ describe("the drive toolset's scopes", () => {
   test("a call that drive.readonly allows needs no write", () => {
     expect(needsWrite([DRIVE_READ_SCOPE])).toBe(false)
     expect(needsWrite([DRIVE_FILE_SCOPE])).toBe(true)
-    expect(toolsetsFor([DRIVE_READ_SCOPE])).toEqual([DRIVE_TOOLSET])
+    expect(toolsetsFor([DRIVE_READ_SCOPE])).toEqual([DRIVE_TOOLSET, COMMENTS_TOOLSET])
+    expect(toolsetsFor([DRIVE_READ_SCOPE], DRIVE_TOOLSET)).toEqual([DRIVE_TOOLSET])
   })
 })

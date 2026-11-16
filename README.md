@@ -300,6 +300,35 @@ up to 10 MB, and not Vids). Trashed items are deleted by Drive after 30 days;
 `google_drive_restore` undoes it. Changing who can reach a file, deleting for
 good, revisions and managing shared drives are not offered.
 
+### Comments (`comments`)
+
+On by default. Reads the comment threads of a spreadsheet or another Drive
+file, adds comments and replies, resolves and reopens threads, and edits and
+deletes the account's own comments.
+
+| Tool                     | What it does                                                                                                             | Class             |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ----------------- |
+| `google_comments_read`   | the comment threads of one file with their replies; in a spreadsheet, the cell of each, and `ranges` limits them to some | read              |
+| `google_comments_add`    | add a comment, or a reply to a thread; in a spreadsheet on one cell, and a thread may be assigned                        | administrative    |
+| `google_comments_status` | resolve or reopen a thread                                                                                               | idempotent change |
+| `google_comments_edit`   | replace the text of the account's own comment or reply                                                                   | overwrite         |
+| `google_comments_delete` | delete the account's own comment with every reply in it, or one reply                                                    | administrative    |
+
+The toolset asks for `spreadsheets.readonly` and `drive.readonly` to read and
+`spreadsheets` and `drive.file` to write; `--read-only` leaves the write scopes
+out. A spreadsheet's comments are its own, anchored to one cell. On any other
+file a comment is not anchored, and `drive.file` reaches only the files these
+tools created or a person opened with them: Google refuses a write to any
+other, and the tool reports it as `forbidden`. Adding is administrative: an
+assignee and every address a text mentions (`+name@example.com`) is emailed by
+Google, mail cannot be taken back, and the prompt lists them first. An edit
+that would mention a new address is refused, so an edit emails nobody. Google
+keeps no deleted comment, and a deleted thread takes its replies with it. Only
+the account's own comments are edited or deleted. A spreadsheet's change counts
+only when Google reports it saved; otherwise the tool says it may or may not
+have been made. Comments on files these tools did not create, anchoring a
+comment outside a spreadsheet and assigning one there are not offered.
+
 ### Grants (`grants`)
 
 Off by default. Delegates bounded writes for jobs where no person can answer.

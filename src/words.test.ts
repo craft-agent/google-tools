@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { COMMENTS_TRANSLATIONS } from "./core/comments/words"
 import { templatePlaceholders } from "./core/describe"
 import { DRIVE_TRANSLATIONS } from "./core/drive/words"
 import { FACT_TRANSLATIONS } from "./core/facts"
@@ -7,7 +8,7 @@ import { SHEETS_TRANSLATIONS } from "./core/sheets/words"
 import { ALL_TOOLS } from "./tools"
 import { ALL_TRANSLATIONS, TOOL_WORDS } from "./words"
 
-const TABLES = [FACT_TRANSLATIONS, SHEETS_TRANSLATIONS, GMAIL_TRANSLATIONS, DRIVE_TRANSLATIONS]
+const TABLES = [FACT_TRANSLATIONS, SHEETS_TRANSLATIONS, GMAIL_TRANSLATIONS, DRIVE_TRANSLATIONS, COMMENTS_TRANSLATIONS]
 
 const WRITE_TOOLS = ALL_TOOLS.filter((spec) => spec.class !== "read")
 const TOOL_PHRASES = ALL_TOOLS.flatMap((spec) => [spec.title, ...(spec.intent !== undefined ? [spec.intent] : [])])

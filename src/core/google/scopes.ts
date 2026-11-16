@@ -1,3 +1,4 @@
+import { COMMENTS_TOOLSET } from "../comments/scopes"
 import { DRIVE_FILE_SCOPE, DRIVE_READ_SCOPE, DRIVE_TOOLSET } from "../drive/scopes"
 import { ToolError } from "../errors"
 import {
@@ -25,6 +26,7 @@ export const TOOLSET_SCOPES: Readonly<Record<string, ToolsetScopes>> = {
   [SHEETS_TOOLSET]: { read: [SHEETS_READ_SCOPE, DRIVE_METADATA_READ_SCOPE], write: [SHEETS_WRITE_SCOPE] },
   [GMAIL_TOOLSET]: { read: [GMAIL_READ_SCOPE], write: [GMAIL_SEND_SCOPE, GMAIL_COMPOSE_SCOPE, GMAIL_MODIFY_SCOPE] },
   [DRIVE_TOOLSET]: { read: [DRIVE_READ_SCOPE], write: [DRIVE_FILE_SCOPE] },
+  [COMMENTS_TOOLSET]: { read: [SHEETS_READ_SCOPE, DRIVE_READ_SCOPE], write: [SHEETS_WRITE_SCOPE, DRIVE_FILE_SCOPE] },
 }
 
 /** What every login asks for besides its toolsets' scopes, so the label records the account's address. */
@@ -63,8 +65,14 @@ export function grantedToolsets(
  * `scopes` that any toolset holds, as a read or a write scope; none when no
  * toolset holds any. A route lists its scopes narrowest first, so this names
  * the toolsets that give the narrowest grant, never every one that would also do.
+ * When `own`, the calling tool's toolset, holds any of `scopes`, it is the
+ * only one named instead, since toolsets may share a scope.
  */
-export function toolsetsFor(scopes: readonly string[]): string[] {
+export function toolsetsFor(scopes: readonly string[], own?: string): string[] {
+  if (own !== undefined && Object.hasOwn(TOOLSET_SCOPES, own)) {
+    const { read, write } = TOOLSET_SCOPES[own]
+    if (scopes.some((scope) => read.includes(scope) || write.includes(scope))) return [own]
+  }
   for (const scope of scopes) {
     const holders = Object.entries(TOOLSET_SCOPES)
       .filter(([, { read, write }]) => [...read, ...write].includes(scope))

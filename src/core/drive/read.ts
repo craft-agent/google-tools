@@ -73,7 +73,7 @@ export const googleDriveRead = defineTool({
     if (ctx.signal?.aborted) throw abortError(ctx.signal)
     checkArguments(args)
     const fileId = args.file_id === undefined ? undefined : driveId(args.file_id, "file id")
-    const { client, runtime } = await googleSession(ctx, args.account, "Drive reads")
+    const { client, runtime } = await googleSession(ctx, args.account, "Drive reads", DRIVE_TOOLSET)
     if (args.method === "search") return searchFiles(client, args)
     if (args.method === "file") return readFile(client, fileId!)
     if (args.method === "drives") return listDrives(client, args)

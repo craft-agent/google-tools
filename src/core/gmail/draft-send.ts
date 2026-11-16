@@ -8,6 +8,7 @@ import { fetchDraft } from "./drafts"
 import { messageView } from "./message-view"
 import { headerOf, type FullMessage } from "./payload"
 import { GMAIL_ROUTES } from "./routes"
+import { GMAIL_TOOLSET } from "./scopes"
 import { MAX_BODY_CHARACTERS } from "./schemas"
 import type { Recipient, RecipientRole } from "./send-args"
 import { DRAFT_PIN, mailFacts, messageText, sendHeadline, type MailSummary } from "./send-facts"
@@ -62,7 +63,7 @@ function recipientsOfDraft(message: FullMessage, draftId: string): Recipient[] {
  */
 export async function planDraftSend(args: { account?: string }, draftId: string, ctx: ToolContext): Promise<DraftMail> {
   if (ctx.signal?.aborted) throw abortError(ctx.signal)
-  const { client, label } = await googleSession(ctx, args.account, "Gmail sending")
+  const { client, label } = await googleSession(ctx, args.account, "Gmail sending", GMAIL_TOOLSET)
   await client.requireScopes(GMAIL_ROUTES.draftSend)
   const { message } = await fetchDraft(client, draftId, "full")
   const recipients = recipientsOfDraft(message, draftId)

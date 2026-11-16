@@ -1,6 +1,7 @@
 import { z } from "zod"
 import type { Route } from "../google/routes"
 import { googleSession } from "../google/session"
+import { GMAIL_TOOLSET } from "./scopes"
 import { parseReply } from "../sheets/reply"
 import type { ToolBounds, ToolContext } from "../tool"
 import type { GmailDraftOutput } from "./draft-args"
@@ -29,7 +30,7 @@ export const NEW_DRAFT = "new"
 
 /** The target `<label>/drafts/<name>` of a call to a draft tool: `NEW_DRAFT`, or the id of the draft it changes. */
 export async function draftTarget(args: { account?: string }, ctx: ToolContext, name: string): Promise<string[]> {
-  const { label } = await googleSession(ctx, args.account, "Gmail drafts")
+  const { label } = await googleSession(ctx, args.account, "Gmail drafts", GMAIL_TOOLSET)
   return [`${label}/drafts/${name}`]
 }
 
