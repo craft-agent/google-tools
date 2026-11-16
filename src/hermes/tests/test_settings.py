@@ -55,8 +55,17 @@ class SettingsFlagsTest(unittest.TestCase):
 
 
 class OptionFlagsTest(unittest.TestCase):
-    def test_the_package_has_the_state_dir_download_dir_and_upload_dirs_options(self) -> None:
-        self.assertEqual(project.OPTIONS, {"state_dir": "path", "download_dir": "path", "upload_dirs": "paths"})
+    def test_the_package_has_its_directory_and_encryption_options(self) -> None:
+        self.assertEqual(
+            project.OPTIONS,
+            {
+                "state_dir": "path",
+                "download_dir": "path",
+                "upload_dirs": "paths",
+                "encrypt_dirs": "paths",
+                "age_recipients": "list",
+            },
+        )
 
     def test_each_kind_becomes_a_flag(self) -> None:
         options = {"note_text": "text", "note_pinned": "boolean", "note_count": "number", "note_tags": "list"}
