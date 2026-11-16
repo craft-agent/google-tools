@@ -987,3 +987,105 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   25 MiB and a mail carries up to 25 MB of attachments (20 files); a mail
   goes to at most 100 recipients in `to`, `cc` and `bcc` together, each once.
   Attachments are read only under `upload_dirs` (see "Files").
+
+## Drive
+
+- **Eight tools**: `google_drive_read` (`search`, `file`, `drives`,
+  `download`; read); `google_drive_upload`, `google_drive_folder_create` and
+  `google_drive_copy` (add); `google_drive_rename`, `google_drive_move` and
+  `google_drive_restore` (idempotent change); `google_drive_trash`
+  (overwrite). Each write is its own tool, so an approval remembered for one
+  never carries over to a harsher one.
+- **The classes, and why.** `upload`, `folder_create` and `copy` add, and
+  repeating them adds another item, never replacing one of the same name.
+  `rename`, `move` and `restore` change nothing more on a repeat, so they are
+  idempotent changes; none loses content (a rename's old name is shown in the
+  prompt and renaming back undoes it, and a move names the folders it left).
+  `trash` is `overwrite`, hence destructive: Drive deletes what stays in the
+  trash after 30 days, and it takes a shared file away from those it is shared
+  with; `restore` undoes it. Nothing here is administrative, since nothing
+  deletes at once or changes who can reach a file.
+- **Scopes**: `drive.readonly` to read (a restricted scope; see "The OAuth
+  client"); `drive.file` to write, which `--read-only` leaves out. `drive.file`
+  reaches only the files and folders this client created or a person opened
+  with it, so the tools can organise their own work and nothing else. A
+  write the plan could read but Google refuses answers 403 or 404 depending on
+  the item; the tools map both to `forbidden`, saying that these tools change
+  only what they created and that nothing was changed, since a 404 here is
+  not a missing item (the plan read it). A write checks both scopes before any
+  request, since planning it reads with `drive.readonly`.
+- **Nothing goes into a shared place and nothing is taken out of one.** An
+  item put in a folder takes that folder's permissions, so putting it in a
+  shared folder or a shared drive is sharing by another name, which these
+  tools never do; taking an item out of one would take it from the people who
+  reach it there. So an upload, a new folder, a copy and a move go only into My
+  Drive or a folder that is a folder, not in the trash, not in a shared drive,
+  owned by the account and reachable by no permission beyond the owner's, and
+  a move refuses an item that is in a shared drive or in a shared folder. A
+  folder whose permissions cannot be listed, an account whose address is not
+  recorded and an item whose parents Google hides all count as shared: hidden
+  sharing is sharing. Every page of a folder's permissions is read, up to
+  1,000. The refusal is `forbidden` and names the folder.
+- **Targets**: `<label>/folders/<id>` for a destination (the real id, so the
+  top of My Drive is its own id, not `root`) and `<label>/files/<id>` for each
+  item renamed, moved, trashed or restored; a move names both. An upload whose
+  plan fails gives `*`. An "always" answer therefore covers named folders or
+  items, never a write elsewhere.
+- **The prompt's facts, per tool** (words in `words.ts`, builders in
+  `upload-facts.ts`, `destination-facts.ts` and `trash-facts.ts`): `From` (the
+  file's real path), `Encrypted` (with age to how many recipients, or `no`;
+  none while `encrypt_dirs` is unset), `Size` (the plaintext's), `Type` and
+  `Already there` (how many files of that name the folder holds) for `upload`;
+  `Already there` for `folder_create`; `Source`, `Size` and `Already there`
+  for `copy`; `Type` for `rename`; `From` (the folders it leaves) and `Type`
+  for `move`, whose headline says so when the item is there already; `Count`,
+  `Deleted after` and `Shared` (how many items others reach) for `trash`, and
+  `Count` for `restore`, both with a text line per item (name, kind, shared,
+  or already in the state asked for) read from Google. Names come from Google,
+  never from the arguments.
+- **Pins**: the file's SHA-256 (and a digest of the recipients when it is
+  encrypted) and the destination's digest for `upload`; the digest of the
+  destination folder (its id, drive, trash state and each permission's id,
+  role and type) for every tool that has one; the source's `version` for
+  `copy`; the item's current name for `rename`; one digest of every folder the
+  item is in, with its sharing, for `move`; and one digest of every item's id
+  and version for `trash` and `restore`. A call whose subject changed after the
+  answer is `stale` and asked again.
+- **Uploads are resumable and never half-made.** The tool opens a resumable
+  session and streams the file in 8 MiB chunks, up to 2 GiB. The session
+  address is a bearer credential: the client validates it and masks it like
+  one, and no result or error carries it. The file is hashed as it goes and
+  the last chunk is held until the hash of everything sent equals the one the
+  prompt pinned; Drive makes the file only when its last byte lands, so a
+  file that changed, or ended early, creates nothing and is `stale`. When
+  Google takes in fewer bytes than were sent, the next chunk starts where it
+  says, up to three times. An encrypted file is encrypted whole first, and when
+  encrypting fails, or the plaintext is not the one pinned, not even the
+  session is opened. After an error or timeout without a result the tool and
+  the skill say to search for the name before uploading again.
+- **Downloads and exports.** A file is saved under `drive` in the download
+  directory (see "Files"), up to 2 GiB, and the result gives the path, never
+  the content. A file of the Google editors is exported, in `export_type` or
+  its kind's default, only in the formats Google's table gives that kind
+  (`csv` and `tsv` hold a Sheet's first sheet only). Google exports up to
+  10 MB; a larger file and a Google Vids file are refused with the way to open
+  them (`web_view_link`). A file whose `canDownload` is false is `forbidden`.
+  A folder and a shortcut are refused, the latter naming its target.
+- **Permissions are read with `permissions.list`**, up to 10 pages of 100,
+  with inherited access marked. Google shows the sharing only to people who
+  can share the file, so a 403 on the first page is no failure: `access` is
+  `null` with a note, and a folder then counts as `shared`, never as private.
+- **Not offered, and why.** Changing sharing (permissions, links, ownership)
+  would make a file public or reach other people, and nothing in a call shows
+  that, so nothing here writes a permission and the route allowlist holds
+  none. Permanent deletion and emptying the trash cannot be undone and need
+  the full Drive scope. Revisions and shared drive management wait for a need.
+  Changing a file the tools did not create is left to `drive.file`, which
+  Google refuses.
+- **Limits**: a search returns up to 100 files (default 20) and `drives` up
+  to 100 (default 50); a file's permissions are listed up to 1,000; `trash` and
+  `restore` take up to 100 items, one request each in order (a failure stops
+  the call and is reported under `errors`, beside what was changed); an upload
+  and a download are up to 2 GiB; an upload's chunk is 8 MiB; a name is 1 to
+  500 characters with no control character. Uploads are read only under
+  `upload_dirs` and encrypted under `encrypt_dirs` (see "Files").
