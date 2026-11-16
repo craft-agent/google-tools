@@ -36,6 +36,15 @@ describe("the Sheets read", () => {
   })
 })
 
+describe("the Gmail read", () => {
+  test("is a read tool of the gmail toolset, which is on by default", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_gmail_read")
+    expect(spec).toMatchObject({ toolset: "gmail", class: "read" })
+    expect(PROJECT.defaultToolsets).toContain("gmail")
+    expect(annotations(spec!)).toMatchObject({ readOnlyHint: true, openWorldHint: true })
+  })
+})
+
 describe("the Sheets writes", () => {
   const WRITES = [
     ["google_sheets_append", "add", false],
