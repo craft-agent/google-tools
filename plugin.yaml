@@ -8,8 +8,11 @@ provides_tools:
   - google_gmail_draft_create
   - google_gmail_draft_delete
   - google_gmail_draft_edit
+  - google_gmail_label
+  - google_gmail_label_create
   - google_gmail_read
   - google_gmail_send
+  - google_gmail_trash
   - google_grant_create
   - google_grant_read
   - google_grant_revoke

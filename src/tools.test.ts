@@ -51,7 +51,13 @@ describe("the Gmail writes", () => {
     ["google_gmail_draft_create", "add", false],
     ["google_gmail_draft_edit", "overwrite", true],
     ["google_gmail_draft_delete", "administrative", true],
+    ["google_gmail_label", "idempotent", false],
+    ["google_gmail_label_create", "add", false],
+    ["google_gmail_trash", "overwrite", true],
   ] as const
+
+  /** The tools that declare no bounds: a draft delete and a label creation are one object each. */
+  const UNBOUNDED = ["google_gmail_draft_delete", "google_gmail_label_create"]
 
   test.each(WRITES)(
     "%s is a %s tool of the gmail toolset with the destructive hint %p",
@@ -73,14 +79,18 @@ describe("the Gmail writes", () => {
     expect(spec.targets).toBeDefined()
   })
 
-  test.each(WRITES.filter(([id]) => id !== "google_gmail_draft_delete"))(
-    "%s declares bounds and measures them",
-    (id) => {
-      const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
-      expect(Object.keys(spec.bounds ?? {})).not.toEqual([])
-      expect(spec.measure).toBeDefined()
-    },
-  )
+  test.each(WRITES.filter(([id]) => !UNBOUNDED.includes(id)))("%s declares bounds and measures them", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(Object.keys(spec.bounds ?? {})).not.toEqual([])
+    expect(spec.measure).toBeDefined()
+  })
+
+  test("only the trash is destructive among the label tools", () => {
+    const destructive = ["google_gmail_label", "google_gmail_label_create", "google_gmail_trash"].filter(
+      (id) => annotations(ALL_TOOLS.find((candidate) => candidate.id === id)!).destructiveHint,
+    )
+    expect(destructive).toEqual(["google_gmail_trash"])
+  })
 })
 
 describe("the Sheets writes", () => {
