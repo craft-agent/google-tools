@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 /** The methods of the Gmail read. */
-export const GMAIL_METHODS = ["search", "message", "thread", "labels", "attachment"] as const
+export const GMAIL_METHODS = ["search", "message", "thread", "labels", "attachment", "drafts", "draft"] as const
 
 /** What `search` returns when `limit` is left out, and the most it returns. */
 export const DEFAULT_SEARCH_LIMIT = 10
@@ -33,6 +33,12 @@ export const accountArg = z
     "The account's label. Left out, the only account is used; with several accounts, the call fails and lists them.",
   )
 
+/** A draft's id, as `google_gmail_read` and the draft tools give it and take it. */
+export const draftIdArg = z
+  .string()
+  .min(1)
+  .describe("The id of the draft: the `draft_id` that `google_gmail_read` method `drafts` or a draft tool gave.")
+
 export const gmailReadInput = z.strictObject({
   method: z.enum(GMAIL_METHODS),
   account: accountArg,
@@ -42,7 +48,7 @@ export const gmailReadInput = z.strictObject({
     .max(MAX_QUERY_LENGTH)
     .optional()
     .describe(
-      "search: Gmail search syntax (`from:ann@example.com newer_than:7d has:attachment`); left out, the newest mail.",
+      "search, drafts: Gmail search syntax (`from:ann@example.com newer_than:7d has:attachment`); left out, the newest mail or every draft.",
     ),
   limit: z
     .number()
@@ -51,19 +57,20 @@ export const gmailReadInput = z.strictObject({
     .max(MAX_SEARCH_LIMIT)
     .optional()
     .describe(
-      `search: how many messages to return, newest first (1 to ${MAX_SEARCH_LIMIT}, default ${DEFAULT_SEARCH_LIMIT}).`,
+      `search, drafts: how many messages or drafts to return (1 to ${MAX_SEARCH_LIMIT}, default ${DEFAULT_SEARCH_LIMIT}).`,
     ),
   page_token: z
     .string()
     .min(1)
     .optional()
-    .describe("search: the `next_page_token` of the previous call, for the next page."),
+    .describe("search, drafts: the `next_page_token` of the previous call, for the next page."),
   include_spam_trash: z.boolean().optional().describe("search: `true` also searches Spam and Trash (default false)."),
   message_id: z
     .string()
     .optional()
     .describe("message, attachment: the id a `search` or `thread` result gave as `message_id`."),
   thread_id: z.string().optional().describe("thread: the id a `search` or `message` result gave as `thread_id`."),
+  draft_id: z.string().optional().describe("draft: the id a `drafts` result gave as `draft_id`."),
   part: z
     .string()
     .min(1)
@@ -123,6 +130,19 @@ export const messageSchema = z.object({
   attachments: z.array(attachmentEntrySchema),
 })
 
+export const draftSummarySchema = z.object({
+  /** What `draft` and the draft tools take as `draft_id`. */
+  draft_id: z.string(),
+  message_id: z.string(),
+  thread_id: z.string(),
+  to: headerValue,
+  cc: headerValue,
+  bcc: headerValue,
+  subject: headerValue,
+  date: headerValue,
+  snippet: z.string(),
+})
+
 export const labelSchema = z.object({
   label_id: z.string(),
   name: z.string(),
@@ -140,6 +160,16 @@ const searchOutput = {
 
 const messageOutput = messageSchema.shape
 
+const draftsOutput = {
+  /** The drafts found, newest first. */
+  drafts: z.array(draftSummarySchema),
+}
+
+const draftOutput = {
+  /** The draft a `draft` result is the message of. */
+  draft_id: z.string(),
+}
+
 const labelsOutput = {
   /** For `labels`, the labels of the mailbox; for `message` and `thread`, the label ids of the message. */
   labels: z.union([z.array(labelSchema), z.array(z.string())]),
@@ -156,13 +186,15 @@ const attachmentOutput = {
   path: z.string(),
 }
 
-/** One object for all five methods, each filling its own keys. */
+/** One object for all seven methods, each filling its own keys. */
 export const gmailReadOutput = z
   .object({
     ...messageOutput,
     ...searchOutput,
     ...labelsOutput,
     ...attachmentOutput,
+    ...draftsOutput,
+    ...draftOutput,
   })
   .partial()
 
@@ -171,12 +203,15 @@ export type GmailMethod = (typeof GMAIL_METHODS)[number]
 export type SearchedMessage = z.infer<typeof searchedMessageSchema>
 export type AttachmentEntry = z.infer<typeof attachmentEntrySchema>
 export type MessageView = z.infer<typeof messageSchema>
+export type DraftSummary = z.infer<typeof draftSummarySchema>
 export type GmailLabel = z.infer<typeof labelSchema>
 export type SearchResult = {
   messages: SearchedMessage[]
   next_page_token: string | null
   result_size_estimate: number
 }
+export type DraftsResult = { drafts: DraftSummary[]; next_page_token: string | null }
+export type DraftResult = MessageView & { draft_id: string }
 export type ThreadResult = { thread_id: string; messages: MessageView[] }
 export type LabelsResult = { labels: GmailLabel[] }
 export type AttachmentResult = z.infer<z.ZodObject<typeof attachmentOutput>>

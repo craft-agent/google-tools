@@ -11,6 +11,12 @@ const READ_SCOPES = [GMAIL_READ_SCOPE, GMAIL_MODIFY_SCOPE] as const
 /** The scopes that send mail: the send one, and the two that also compose or change it. */
 const SEND_SCOPES = [GMAIL_SEND_SCOPE, GMAIL_COMPOSE_SCOPE, GMAIL_MODIFY_SCOPE] as const
 
+/** The scopes that read drafts: the read ones, and the compose one, which also reads the drafts it makes. */
+const DRAFT_READ_SCOPES = [...READ_SCOPES, GMAIL_COMPOSE_SCOPE] as const
+
+/** The scopes that change drafts and send one: the compose scope and the modify one; the send scope reaches no draft. */
+const DRAFT_WRITE_SCOPES = [GMAIL_COMPOSE_SCOPE, GMAIL_MODIFY_SCOPE] as const
+
 /** The calls the Gmail tools may make, each with every scope that allows it. */
 export const GMAIL_ROUTES = {
   messages: { method: "GET", host: GMAIL_HOST, path: `${MAILBOX_PATH}/messages`, scopes: READ_SCOPES },
@@ -25,4 +31,27 @@ export const GMAIL_ROUTES = {
   },
   /** The media upload form of `messages.send`, which takes the mail itself beside its thread (`uploadType=multipart`). */
   send: { method: "POST", host: GMAIL_HOST, path: `/upload${MAILBOX_PATH}/messages/send`, scopes: SEND_SCOPES },
+  drafts: { method: "GET", host: GMAIL_HOST, path: `${MAILBOX_PATH}/drafts`, scopes: DRAFT_READ_SCOPES },
+  draft: { method: "GET", host: GMAIL_HOST, path: `${MAILBOX_PATH}/drafts/{draft_id}`, scopes: DRAFT_READ_SCOPES },
+  /** The media upload form of `drafts.create`, which takes the mail itself beside its thread. */
+  draftCreate: {
+    method: "POST",
+    host: GMAIL_HOST,
+    path: `/upload${MAILBOX_PATH}/drafts`,
+    scopes: DRAFT_WRITE_SCOPES,
+  },
+  /** The media upload form of `drafts.update`, which replaces the draft's whole message. */
+  draftUpdate: {
+    method: "PUT",
+    host: GMAIL_HOST,
+    path: `/upload${MAILBOX_PATH}/drafts/{draft_id}`,
+    scopes: DRAFT_WRITE_SCOPES,
+  },
+  draftDelete: {
+    method: "DELETE",
+    host: GMAIL_HOST,
+    path: `${MAILBOX_PATH}/drafts/{draft_id}`,
+    scopes: DRAFT_WRITE_SCOPES,
+  },
+  draftSend: { method: "POST", host: GMAIL_HOST, path: `${MAILBOX_PATH}/drafts/send`, scopes: DRAFT_WRITE_SCOPES },
 } as const satisfies Record<string, Route>

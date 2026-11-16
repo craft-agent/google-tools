@@ -2,15 +2,13 @@ import { z } from "zod"
 import { isToolError } from "../errors"
 import type { GoogleClient } from "../google/client"
 import { parseReply } from "../sheets/reply"
+import { fetchInBatches } from "./fetch-batches"
 import { headerOf, partSchema } from "./payload"
 import { GMAIL_ROUTES } from "./routes"
 import { DEFAULT_SEARCH_LIMIT, type GmailReadArgs, type SearchedMessage, type SearchResult } from "./schemas"
 
 /** The headers a search result shows, which is all the metadata format is asked for. */
 const SEARCH_HEADERS = ["From", "To", "Cc", "Subject", "Date"]
-
-/** How many messages are fetched at once. */
-const FETCH_CONCURRENCY = 5
 
 const listReply = z.object({
   messages: z.array(z.object({ id: z.string() })).optional(),
@@ -74,12 +72,7 @@ export async function searchMessages(
     "the message list",
   )
   const ids = (listed.messages ?? []).map((message) => message.id)
-  const found: (SearchedMessage | undefined)[] = []
-  for (let start = 0; start < ids.length; start += FETCH_CONCURRENCY) {
-    found.push(
-      ...(await Promise.all(ids.slice(start, start + FETCH_CONCURRENCY).map((id) => searchedMessage(client, id)))),
-    )
-  }
+  const found = await fetchInBatches(ids, (id) => searchedMessage(client, id))
   return {
     messages: found.filter((message) => message !== undefined),
     next_page_token: listed.nextPageToken ?? null,

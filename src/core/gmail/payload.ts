@@ -29,6 +29,9 @@ export const fullMessageSchema = z.object({
   id: z.string(),
   threadId: z.string().optional(),
   labelIds: z.array(z.string()).optional(),
+  snippet: z.string().optional(),
+  /** Google's estimate of the message's size in bytes. */
+  sizeEstimate: z.number().optional(),
   payload: partSchema.optional(),
 })
 
