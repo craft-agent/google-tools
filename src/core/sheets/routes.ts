@@ -1,3 +1,4 @@
+import { DRIVE_READ_SCOPE } from "../drive/scopes"
 import type { Route } from "../google/routes"
 import { DRIVE_METADATA_READ_SCOPE, SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE } from "./scopes"
 
@@ -5,11 +6,10 @@ const DRIVE_HOST = "www.googleapis.com"
 const SHEETS_HOST = "sheets.googleapis.com"
 const DOCS_HOST = "docs.google.com"
 
-/** Drive scopes beyond the metadata one that also list files. */
-const DRIVE_READ_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
+/** The Drive scope that reads and changes every file, the widest of those that also list files. */
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive"
 
-/** The calls the Sheets tools may make, each with every scope that allows it. */
+/** The calls the Sheets tools may make, each with every scope that allows it, narrowest first. */
 export const SHEETS_ROUTES = {
   files: {
     method: "GET",
