@@ -11,7 +11,7 @@ import { sendFixture } from "./send.testing"
 /** The fixture of the draft tools' tests: the send fixtures with a label that may compose, and the three draft tools bound to them. */
 
 /** A draft tool bound to a fixture's context: its call, its prompt, its targets and its bounds. */
-function bound(spec: ToolSpec, ctx: ToolContext) {
+export function bound(spec: ToolSpec, ctx: ToolContext) {
   return {
     run: (args: unknown) => invoke(spec, args, ctx),
     describe: async (args: unknown) => spec.describe!(spec.input.parse(args), ctx),
