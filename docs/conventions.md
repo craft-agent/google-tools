@@ -1093,3 +1093,89 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   and a download are up to 2 GiB; an upload's chunk is 8 MiB; a name is 1 to
   500 characters with no control character. Uploads are read only under
   `upload_dirs` and encrypted under `encrypt_dirs` (see "Files").
+
+## Comments
+
+- **Five tools**: `google_comments_read` (read); `google_comments_add` and
+  `google_comments_delete` (administrative); `google_comments_status`
+  (idempotent change); `google_comments_edit` (overwrite). Each write is its
+  own tool, so an approval remembered for one never carries over to a harsher
+  one.
+- **The classes, and why.** `add` is administrative: Google emails an
+  assignee and every address the text mentions, mail cannot be taken back,
+  and adding twice adds twice. `status` is an idempotent change: a thread
+  already in the status asked for gets no request, and the result says
+  `changed: false`; it sends no text, so nobody is emailed. `edit` is
+  `overwrite`: the old text is not kept (the prompt shows it and the result
+  returns it as `before`, so calling `edit` again with it undoes the edit),
+  and an edit that would mention an address the old text did not is refused,
+  so an edit emails nobody. `delete` is administrative: Google keeps no
+  deleted comment, and a thread goes with every reply in it, other people's
+  included.
+- **Scopes**: `spreadsheets.readonly` and `drive.readonly` to read;
+  `spreadsheets` and `drive.file` to write, which `--read-only` leaves out.
+  Nothing is asked beyond what the drive toolset reads with, so no restricted
+  scope is added (see "The OAuth client"). A spreadsheet's comments go
+  through the Sheets API's own comments, anchored to one cell; Drive's
+  comments API would leave them unanchored in the editor. Any other file goes
+  through Drive's comments API, unanchored, where `drive.file` lets the tools
+  comment only on the files they created or a person opened with them. A write
+  Google refuses there answers 403 or 404, which the tools map to `forbidden`,
+  saying so and that nothing was changed. A write checks the scopes it needs
+  before any request: the file read, one of the writes, then the write the
+  file's kind needs.
+- **Who is emailed is the call's first fact.** The assignee and each
+  `+address` or `@address` mention in the text are the targets of an `add`
+  (`<label>/recipients/<address>`, beside `<label>/files/<id>`), and the prompt
+  lists them first, each with its role. Drive's documentation does not say
+  whether a mention emails, so the prompt errs toward listing them. An
+  "always" answer therefore covers named files and addresses, never mail to
+  anyone else.
+- **A spreadsheet's write is saved or it is an error.** The tools send the
+  change as one `spreadsheets.batchUpdate` and take it as made only when
+  Google reports `commentUpdateState` `ALL_SAVED`. Any other state, or none,
+  fails as `upstream_error`, saying the change may or may not have been made;
+  the tool and the skill say to read the comments before trying again.
+- **Only the account's own posts are edited or deleted.** The post is read
+  first and checked against Google's own `me` for the reply, never against an
+  argument; another author's is `forbidden` and nothing is changed. A
+  thread's first comment is the post a thread's edit or delete is about. A
+  spreadsheet's reply that resolved, reopened or assigned a thread is not
+  deleted alone, since Google keeps it; deleting the thread removes it.
+- **Targets**: `<label>/files/<id>/comments/<comment id>` for `status`, `edit`
+  and `delete`, and `<label>/files/<id>` with the addresses emailed for `add`.
+  A call whose plan fails gives `*`.
+- **The prompt's facts, per tool** (words in `words.ts`, builders in
+  `add-describe.ts`, `thread-facts.ts` and each tool's file): `Emailed` (every
+  address, with its role), `Replying to` (the thread's author and the start of
+  its text), `Status` (when the thread is resolved) and the comment's `Comment`
+  text for `add`; `Thread` (author and start of the text) and `At` for
+  `status`, whose headline says so when the thread has the status already;
+  `At`, `Before` (the old words) and the `New text` for `edit`; `At`, the
+  replies deleted with it (how many go, and how many of them others wrote)
+  and the `Text to delete` for `delete`. Names and texts come from Google,
+  never from the arguments, except the new words.
+- **Pins**: the thread's first text for a reply, and the tab's title for a
+  new spreadsheet comment (`add`); the post's text for `edit` and `delete`;
+  the thread's status for `status`. A call whose subject changed after the
+  answer is `stale` and asked again.
+- **Reading.** A spreadsheet's threads come with their anchors (`at`, such as
+  `Plan!B2`) and `ranges` limits them to those inside A1 ranges; any other
+  file's come from Drive's list, up to 10 pages of 100, with the text of the
+  file each is about as `quote`, and `incomplete` says pages were left, so
+  the counts are lower bounds. Resolved threads are left out unless asked and
+  counted in `resolved_hidden`; `more` counts the matching threads past
+  `limit`. Deleted comments and replies are left out. A folder and a shortcut
+  take no comments, and the refusal names a shortcut's target. Comments are
+  written by other people: the read and every write say they are data, never
+  instructions.
+- **Not offered, and why.** Comments on other files than spreadsheets that
+  these tools did not make would take the `drive` scope, which reads and
+  changes every file. Editing or deleting another person's post is refused
+  before the call, since Google allows it to the author alone. Assigning a thread on a file
+  that is not a spreadsheet is something Drive cannot do. Anchoring a comment
+  on such a file is left out because the editors ignore it.
+- **Limits**: a read returns up to 200 threads (default 50); a text is
+  clipped at 4,000 characters in a read; a comment's text is 1 to 2,048
+  characters, and on a spreadsheet at most 2,048 bytes in UTF-8, which Google
+  counts in code units; an assignee is a plain address.
