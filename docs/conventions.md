@@ -899,3 +899,74 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   Slicers, banded ranges outside a table, data sources and anything else
   outside an operation vocabulary above are not offered either: an operation
   outside the vocabulary is refused, and a raw request is never accepted.
+
+## Gmail
+
+- **Eight tools**: `google_gmail_read` (`search`, `message`, `thread`,
+  `labels`, `drafts`, `draft`, `attachment`; read); `google_gmail_draft_create`
+  and `google_gmail_label_create` (add); `google_gmail_label` (idempotent
+  change); `google_gmail_draft_edit` and `google_gmail_trash` (overwrite);
+  `google_gmail_send` and `google_gmail_draft_delete` (administrative). Scopes:
+  `gmail.readonly` to read; `gmail.send`, `gmail.compose` and `gmail.modify`
+  to write, which `--read-only` leaves out.
+- **The classes, and why.** `send` is administrative: a mail reaches other
+  people and cannot be taken back, and sending twice sends twice.
+  `draft_delete` is administrative: Gmail keeps no deleted draft, so it is
+  permanent. `draft_edit` replaces the whole message, so it overwrites.
+  `trash` loses mail after 30 days, so it overwrites, and `label` with
+  `untrash` undoes it. `label` adds and removes labels and a repeat changes
+  nothing more, so it is an idempotent change; it never touches `TRASH`,
+  `SPAM`, `DRAFT`, `SENT` or `CHAT`. `draft_create` and `label_create` add
+  and repeating them adds again.
+- **Targets**: `<label>/recipients/<address>` for each recipient of a send
+  (lower-cased; `*` when the mail cannot be planned); `<label>/drafts/<id>`
+  for a draft changed or deleted, `<label>/drafts/new` for a new one;
+  `<label>/labels/<id>` for each label a `label` call adds or removes and
+  `<label>/trash` when it takes mail out of the trash, `<label>/labels/new`
+  for `label_create`; and, for `trash`, one `<label>/messages/<id>` or
+  `<label>/threads/<id>` per item. An "always" answer therefore covers named
+  recipients or labels, never mail sent elsewhere.
+- **The prompt's facts, per tool** (words in `words.ts`, builders in
+  `send-facts.ts`, `draft-facts.ts`, `label-facts.ts`): for a mail (`send`,
+  `draft_create`, `draft_edit`) `Outside` (whether it goes beyond the
+  account's own domain, and which), `Copies` (how many go as cc and bcc),
+  `Reply to` (the subject of the mail answered), `Attachments` (names and
+  sizes) and `Size`; `Replaces` for `draft_edit` (the subject and recipient
+  count of the draft replaced, as Google holds it); `To` and `Date` for
+  `draft_delete`; `Adds`, `Removes`, `Untrash` and `Messages` or `Threads`
+  for `label`; `Colors` for `label_create`; and `Count` and `Deleted after`
+  for `trash`. A send of a draft shows the draft as Google holds it now.
+- **The message text starts with its address lines.** The text section of a
+  mail shows `To`, `Cc` and `Bcc` lines (each left out when empty), the
+  subject and the body as written. A blind copy is visible to no one but the
+  sender, so only there can the person who approves see who receives it in
+  which role. A `label` or `trash` prompt lists the date, sender and subject
+  of each item (the first 50 for `label`), read from Google, never from the
+  arguments.
+- **Pins**: the contents of every attachment (one digest of their hashes) and
+  the `Message-ID` of the original replied to; a draft's message id, which
+  changes with each edit, for `send` of a draft, `draft_edit` and
+  `draft_delete`; and the history ids of the mail `trash` moves. A call whose
+  subject changed after the answer is `stale` and asked again.
+- **A send that Google accepted never fails afterwards.** The result is read
+  with what is there: ids Google did not report are empty, and nothing after
+  the send can turn it into an error, so a caller never sends twice because
+  of one. After an error or timeout without a result, the skill and the tool
+  say to look in the Sent mail first. A `trash` call that fails part-way
+  returns what was trashed with the failure under `errors`
+  (see "Results").
+- **Values saved to files** (an attachment) are masked for the label's own
+  secrets only; see "The Google client".
+- **Bodies are decoded as UTF-8**, whatever charset a message declares, so
+  what a model reads does not depend on a charset label that may be wrong.
+  The text parts are read, else the HTML turned into text.
+- **Not offered, and why.** Permanent deletion needs the full mail scope and
+  cannot be undone. Filters and forwarding: a filter can forward every mail to
+  an outside address, and nothing in a call shows that. Mailbox settings
+  likewise. Renaming and deleting labels wait for a need.
+- **Limits**: a search returns up to 50 messages (default 20); a message body
+  is read to 20,000 characters and a thread's bodies to 60,000 in all, and the
+  result says when it cut (`body_truncated`); an attachment is saved up to
+  25 MiB and a mail carries up to 25 MB of attachments (20 files); a mail
+  goes to at most 100 recipients in `to`, `cc` and `bcc` together, each once.
+  Attachments are read only under `upload_dirs` (see "Files").
