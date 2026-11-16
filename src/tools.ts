@@ -1,6 +1,7 @@
 import type { ToolSpec } from "./core"
 import { googleAccountRead } from "./core/account/read"
 import { googleDriveRead } from "./core/drive/read"
+import { googleDriveUpload } from "./core/drive/upload"
 import { googleGmailDraftCreate } from "./core/gmail/draft-create"
 import { googleGmailDraftDelete } from "./core/gmail/draft-delete"
 import { googleGmailDraftEdit } from "./core/gmail/draft-edit"
@@ -44,4 +45,5 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleGmailLabelCreate,
   googleGmailTrash,
   googleDriveRead,
+  googleDriveUpload,
 ]

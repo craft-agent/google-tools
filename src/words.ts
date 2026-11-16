@@ -1,4 +1,5 @@
 import { mergeTranslations, type Translations } from "./core"
+import { DRIVE_TRANSLATIONS, DRIVE_WORDS } from "./core/drive/words"
 import { FACT_TRANSLATIONS } from "./core/facts"
 import { GMAIL_TRANSLATIONS, GMAIL_WORDS } from "./core/gmail/words"
 import { SHEETS_TRANSLATIONS, SHEETS_WORDS } from "./core/sheets/words"
@@ -8,7 +9,12 @@ export const ALL_TRANSLATIONS: Translations = mergeTranslations(
   FACT_TRANSLATIONS,
   SHEETS_TRANSLATIONS,
   GMAIL_TRANSLATIONS,
+  DRIVE_TRANSLATIONS,
 )
 
 /** The headline templates, fact labels, value templates and text labels the tools' describers use, which `ALL_TRANSLATIONS` must translate. */
-export const TOOL_WORDS: readonly string[] = [...Object.values(SHEETS_WORDS), ...Object.values(GMAIL_WORDS)]
+export const TOOL_WORDS: readonly string[] = [
+  ...Object.values(SHEETS_WORDS),
+  ...Object.values(GMAIL_WORDS),
+  ...Object.values(DRIVE_WORDS),
+]

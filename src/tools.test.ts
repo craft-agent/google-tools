@@ -54,6 +54,19 @@ describe("the Drive read", () => {
   })
 })
 
+describe("the Drive writes", () => {
+  test("google_drive_upload is an add tool of the drive toolset, not destructive, with its intent, describer, targets and bounds", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_drive_upload")!
+    expect(spec).toMatchObject({ toolset: "drive", class: "add" })
+    expect(annotations(spec)).toMatchObject({ readOnlyHint: false, destructiveHint: false, openWorldHint: true })
+    expect(spec.intent).toStartWith("About to ")
+    expect(spec.describe).toBeDefined()
+    expect(spec.targets).toBeDefined()
+    expect(Object.keys(spec.bounds ?? {})).toEqual(["bytes"])
+    expect(spec.measure).toBeDefined()
+  })
+})
+
 describe("the Gmail writes", () => {
   const WRITES = [
     ["google_gmail_send", "administrative", true],
