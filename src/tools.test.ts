@@ -81,6 +81,7 @@ describe("the comments writes", () => {
   const CHANGES = [
     ["google_comments_status", "idempotent", false],
     ["google_comments_edit", "overwrite", true],
+    ["google_comments_delete", "administrative", true],
   ] as const
 
   test.each(CHANGES)(
@@ -91,7 +92,7 @@ describe("the comments writes", () => {
       expect(annotations(spec)).toMatchObject({
         readOnlyHint: false,
         destructiveHint: destructive,
-        idempotentHint: true,
+        idempotentHint: writeClass !== "administrative",
         openWorldHint: true,
       })
     },

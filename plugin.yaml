@@ -6,6 +6,7 @@ requires_hermes: ">=0.22"
 provides_tools:
   - google_account_read
   - google_comments_add
+  - google_comments_delete
   - google_comments_edit
   - google_comments_read
   - google_comments_status
