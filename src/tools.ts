@@ -1,5 +1,6 @@
 import type { ToolSpec } from "./core"
 import { googleAccountRead } from "./core/account/read"
+import { googleCommentsAdd } from "./core/comments/add"
 import { googleCommentsRead } from "./core/comments/read"
 import { googleDriveCopy } from "./core/drive/copy"
 import { googleDriveFolderCreate } from "./core/drive/folder-create"
@@ -60,4 +61,5 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleDriveTrash,
   googleDriveRestore,
   googleCommentsRead,
+  googleCommentsAdd,
 ]

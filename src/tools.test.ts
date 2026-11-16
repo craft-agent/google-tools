@@ -63,6 +63,22 @@ describe("the comments read", () => {
   })
 })
 
+describe("the comments writes", () => {
+  test("google_comments_add is an administrative tool of the comments toolset: destructive, asked every time, with its intent, describer and targets", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_comments_add")!
+    expect(spec).toMatchObject({ toolset: "comments", class: "administrative" })
+    expect(annotations(spec)).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    })
+    expect(spec.intent).toStartWith("About to ")
+    expect(spec.describe).toBeDefined()
+    expect(spec.targets).toBeDefined()
+  })
+})
+
 describe("the Drive writes", () => {
   test("google_drive_upload is an add tool of the drive toolset, not destructive, with its intent, describer, targets and bounds", () => {
     const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_drive_upload")!
