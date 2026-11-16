@@ -40,6 +40,16 @@ export type RequestOptions = {
   body?: unknown
   /** Sent beside `Authorization` and `Accept`, which these never replace. */
   headers?: Record<string, string>
+  /** The time limit of this call, body included; defaults to the client's. */
+  timeoutMs?: number
+  /**
+   * Top-level keys of the JSON reply whose string values the tool writes to a
+   * file and never returns, such as an attachment's `data`. They are masked for
+   * the label's own secrets only (the credential's and the access token, exact
+   * values), not for credential shapes, which would corrupt file content such
+   * as base64. Every other key is masked as usual.
+   */
+  saved?: readonly string[]
 }
 
 export type DownloadOptions = {
@@ -112,16 +122,17 @@ export class GoogleClient {
     const url = routeUrl(route, options.params, options.query).toString()
     const { credential } = await this.#tokens.readCredential()
     checkScopes(route, this.#paths.label, credential, this.#missingScopeFix)
+    const transport = { ...this.#transport, timeoutMs: options.timeoutMs ?? this.#transport.timeoutMs }
 
     for (let attempt = 0; ; attempt++) {
       const grant = await this.#tokens.accessToken(this.#transport.signal)
       const known = [...credentialSecrets(grant.credential), grant.token]
-      const reply = await sendRequest(this.#transport, url, this.#init(route, options, grant.token), known)
+      const reply = await sendRequest(transport, url, this.#init(route, options, grant.token), known)
       if (reply.status === HTTP_UNAUTHORIZED && attempt === 0) {
         forgetAccessToken(this.#paths, grant.credential.refresh_token)
         continue
       }
-      return maskValue(readReply(reply, known), known) as T
+      return maskValue(readReply(reply, known), known, options.saved) as T
     }
   }
 

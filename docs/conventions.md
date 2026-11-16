@@ -701,6 +701,11 @@ and every entry point checks them the same way.
   The message carries Google's own text, masked, since it often names the
   API to enable or the permission to grant.
 
+- **A value a tool writes to a file, never to a result, is masked for the
+  label's own secrets only**, since shape masking would corrupt file content
+  such as base64. The tool names those top-level keys of the reply; every
+  other value is masked in full.
+
 ## What the tools never return
 
 - **Credentials, by any tool.** A token or a secret cannot be taken back once
