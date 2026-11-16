@@ -9,7 +9,7 @@ describe("COMMENTS_ROUTES", () => {
     for (const route of Object.values(COMMENTS_ROUTES)) expect(HOSTS).toContain(route.host)
   })
 
-  test("the reads are GETs on read scopes, and the writes are exactly the three POSTs: no DELETE, no PATCH", () => {
+  test("the reads are GETs on read scopes, and the writes are exactly the listed POSTs, PATCHes and DELETEs", () => {
     const reads = [COMMENTS_ROUTES.file, COMMENTS_ROUTES.comments, COMMENTS_ROUTES.spreadsheet, COMMENTS_ROUTES.comment]
     for (const route of reads) expect(route.method).toBe("GET")
     const writes = Object.entries(COMMENTS_ROUTES)
@@ -19,6 +19,10 @@ describe("COMMENTS_ROUTES", () => {
       ["commentCreate", "POST"],
       ["replyCreate", "POST"],
       ["batchUpdate", "POST"],
+      ["commentUpdate", "PATCH"],
+      ["replyUpdate", "PATCH"],
+      ["commentDelete", "DELETE"],
+      ["replyDelete", "DELETE"],
     ])
   })
 
@@ -33,6 +37,14 @@ describe("COMMENTS_ROUTES", () => {
     expect(COMMENTS_ROUTES.commentCreate.scopes).toEqual([DRIVE_FILE_SCOPE])
     expect(COMMENTS_ROUTES.replyCreate.scopes).toEqual([DRIVE_FILE_SCOPE])
     expect(COMMENTS_ROUTES.batchUpdate.scopes).toEqual([SHEETS_WRITE_SCOPE])
+    for (const route of [
+      COMMENTS_ROUTES.commentUpdate,
+      COMMENTS_ROUTES.replyUpdate,
+      COMMENTS_ROUTES.commentDelete,
+      COMMENTS_ROUTES.replyDelete,
+    ]) {
+      expect(route.scopes).toEqual([DRIVE_FILE_SCOPE])
+    }
   })
 
   test("the URLs, the ids encoded", () => {
@@ -51,6 +63,12 @@ describe("COMMENTS_ROUTES", () => {
     )
     expect(routeUrl(COMMENTS_ROUTES.replyCreate, { file_id: "f", comment_id: "c-1" }).pathname).toBe(
       "/drive/v3/files/f/comments/c-1/replies",
+    )
+    expect(routeUrl(COMMENTS_ROUTES.replyUpdate, { file_id: "f", comment_id: "c-1", reply_id: "r.2" }).pathname).toBe(
+      "/drive/v3/files/f/comments/c-1/replies/r.2",
+    )
+    expect(routeUrl(COMMENTS_ROUTES.commentDelete, { file_id: "f", comment_id: "c-1" }).pathname).toBe(
+      "/drive/v3/files/f/comments/c-1",
     )
     expect(routeUrl(COMMENTS_ROUTES.batchUpdate, { spreadsheet_id: "a_B-1" }).toString()).toBe(
       "https://sheets.googleapis.com/v4/spreadsheets/a_B-1:batchUpdate",

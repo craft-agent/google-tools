@@ -42,11 +42,39 @@ export const COMMENTS_ROUTES = {
     path: `${FILES_PATH}/{file_id}/comments/{comment_id}/replies`,
     scopes: [DRIVE_FILE_SCOPE],
   },
-  /** `spreadsheets.batchUpdate` with one `insertComment` or `addCommentReply` request. */
+  /** `spreadsheets.batchUpdate` with one comment request: `insertComment`, `addCommentReply`, `updateCommentPost`, `deleteComment` or `deleteCommentReply`. */
   batchUpdate: {
     method: "POST",
     host: SHEETS_HOST,
     path: "/v4/spreadsheets/{spreadsheet_id}:batchUpdate",
     scopes: [SHEETS_WRITE_SCOPE],
+  },
+  /** `comments.update`: the text of a comment of a file that is not a spreadsheet. */
+  commentUpdate: {
+    method: "PATCH",
+    host: DRIVE_HOST,
+    path: `${FILES_PATH}/{file_id}/comments/{comment_id}`,
+    scopes: [DRIVE_FILE_SCOPE],
+  },
+  /** `replies.update`: the text of a reply to a comment of a file that is not a spreadsheet. */
+  replyUpdate: {
+    method: "PATCH",
+    host: DRIVE_HOST,
+    path: `${FILES_PATH}/{file_id}/comments/{comment_id}/replies/{reply_id}`,
+    scopes: [DRIVE_FILE_SCOPE],
+  },
+  /** `comments.delete`: a comment of a file that is not a spreadsheet, with its replies. */
+  commentDelete: {
+    method: "DELETE",
+    host: DRIVE_HOST,
+    path: `${FILES_PATH}/{file_id}/comments/{comment_id}`,
+    scopes: [DRIVE_FILE_SCOPE],
+  },
+  /** `replies.delete`: a reply to a comment of a file that is not a spreadsheet. */
+  replyDelete: {
+    method: "DELETE",
+    host: DRIVE_HOST,
+    path: `${FILES_PATH}/{file_id}/comments/{comment_id}/replies/{reply_id}`,
+    scopes: [DRIVE_FILE_SCOPE],
   },
 } as const satisfies Record<string, Route>

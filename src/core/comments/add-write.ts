@@ -1,24 +1,16 @@
 import { z } from "zod"
-import { ToolError, isToolError } from "../errors"
 import { parseReply } from "../sheets/reply"
 import type { CommentsAddResult } from "./add-args"
 import type { CommentPlan } from "./add-plan"
 import { COMMENTS_ROUTES } from "./routes"
-
-/** The state of a batch whose comment changes all went through. */
-const ALL_SAVED = "ALL_SAVED"
-
-/** The state a batch is taken to be in when its answer names none. */
-const UNREPORTED_STATE = "COMMENT_UPDATE_STATE_UNSPECIFIED"
-
-/** The most characters of the state Google reported that an error repeats. */
-const MAX_STATE_LENGTH = 60
+import { commentRefusal, requireSaved } from "./write-guards"
 
 /** The `fields` of a created comment or reply: only its id is used. */
 const CREATED_FIELDS = "id"
 
-const HTTP_FORBIDDEN = 403
-const HTTP_NOT_FOUND = 404
+/** Why the comment was not added when Google refused it on a file these tools did not create. */
+const ADD_REFUSED =
+  "Google refused the comment: these tools can comment only on spreadsheets and on the files they created (drive.file), and nothing was added."
 
 /** `spreadsheets.batchUpdate`'s answer to one comment request; each part is optional, since the comment may be saved all the same. */
 const batchReply = z.object({
@@ -39,23 +31,6 @@ const createdReply = z.object({ id: z.string().optional() })
 
 /** What a write of a comment gives back: the thread's id (for a new one) and the reply's id, each when Google reported it. */
 type Written = { commentId?: string | undefined; replyId?: string | undefined }
-
-/**
- * The `forbidden` error for a create Google refused with a 403 or a 404 on a
- * file the plan had read: drive.file lets these tools comment only on the
- * files they created, and Google words the rest as either. A rate limit and
- * any other failure give `undefined`.
- */
-function commentRefusal(error: unknown): ToolError | undefined {
-  if (!isToolError(error) || error.code === "rate_limited") return undefined
-  const status = error.details?.status
-  if (status !== HTTP_FORBIDDEN && status !== HTTP_NOT_FOUND) return undefined
-  return new ToolError(
-    "forbidden",
-    "Google refused the comment: these tools can comment only on spreadsheets and on the files they created (drive.file), and nothing was added.",
-    { cause: error, details: { status } },
-  )
-}
 
 /** The one request of a spreadsheet's comment: a new comment on its cell, or a reply to its thread. */
 function sheetRequest({ cell, thread, text, assignee }: CommentPlan): Record<string, unknown> {
@@ -86,13 +61,7 @@ async function writeSheetComment(plan: CommentPlan): Promise<Written> {
     }),
     "the comment",
   )
-  const state = reply.commentUpdateState ?? UNREPORTED_STATE
-  if (state !== ALL_SAVED) {
-    throw new ToolError(
-      "upstream_error",
-      `Google did not report the comment as saved (comment update state ${state.slice(0, MAX_STATE_LENGTH)}). It may or may not be there: read the file's comments before trying again.`,
-    )
-  }
+  requireSaved(reply.commentUpdateState, "the comment", "It may or may not be there")
   const first = reply.replies?.[0]
   return {
     commentId: first?.insertComment?.commentThread?.commentId,
@@ -120,7 +89,7 @@ async function writeDriveComment({ client, file, thread, text }: CommentPlan): P
     )
     return thread === null ? { commentId: created.id } : { replyId: created.id }
   } catch (error) {
-    throw commentRefusal(error) ?? error
+    throw commentRefusal(error, ADD_REFUSED) ?? error
   }
 }
 

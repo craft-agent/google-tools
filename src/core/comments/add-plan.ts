@@ -7,7 +7,7 @@ import { columnLetters, quoteTab } from "../sheets/a1"
 import { resolveRange } from "../sheets/grid"
 import { readTabs, shownRange } from "../sheets/tabs"
 import type { ToolContext } from "../tool"
-import { MAX_SPREADSHEET_COMMENT_BYTES, type CommentsAddArgs } from "./add-args"
+import type { CommentsAddArgs } from "./add-args"
 import { readDriveComment } from "./drive"
 import { readCommentFile, type CommentFile } from "./file"
 import { commentFileId, commentId } from "./ids"
@@ -16,15 +16,7 @@ import { COMMENTS_ROUTES } from "./routes"
 import { COMMENTS_TOOLSET } from "./scopes"
 import type { CommentThread } from "./schemas"
 import { readSpreadsheetComments } from "./sheets"
-
-/** What a comment write names its work as when a call has no runtime. */
-const COMMENT_WRITES = "Comment writes"
-
-/** Any one of the writes, which a label must hold one of before the file is read; the write the file's kind needs is checked after. */
-const SOME_WRITE: Route = {
-  ...COMMENTS_ROUTES.batchUpdate,
-  scopes: [...COMMENTS_ROUTES.batchUpdate.scopes, ...COMMENTS_ROUTES.commentCreate.scopes],
-}
+import { COMMENT_WRITES, SOME_WRITE, requireSpreadsheetLength } from "./write-guards"
 
 /** Why Google emails an address. */
 export type EmailRole = "assignee" | "mentioned"
@@ -130,12 +122,7 @@ async function sheetPlacement(
       "Give exactly one of `cell` (a new comment on one cell, like `Plan!B2`) and `comment_id` (a reply to a thread).",
     )
   }
-  const bytes = Buffer.byteLength(args.text)
-  if (bytes > MAX_SPREADSHEET_COMMENT_BYTES) {
-    throw refuse(
-      `The comment is ${bytes} bytes in UTF-8; a spreadsheet's comment is at most ${MAX_SPREADSHEET_COMMENT_BYTES} bytes.`,
-    )
-  }
+  requireSpreadsheetLength(args.text)
   if (args.cell !== undefined) return { cell: await resolveCell(client, file.fileId, args.cell), thread: null }
   const thread = await findThread(client, file.fileId, replyTo!)
   if (args.assignee !== undefined && thread.assignee === null) {
