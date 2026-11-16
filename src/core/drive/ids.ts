@@ -4,7 +4,7 @@ import { ToolError } from "../errors"
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,200}$/
 
 /** The alias for the root of My Drive, which only a folder argument takes. */
-const ROOT_FOLDER = "root"
+export const ROOT_FOLDER = "root"
 
 /** How much of a refused value an error repeats. */
 const MAX_SHOWN_LENGTH = 100

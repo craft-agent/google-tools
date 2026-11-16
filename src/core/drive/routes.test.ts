@@ -1,16 +1,27 @@
 import { describe, expect, test } from "bun:test"
 import { HOSTS, routeUrl } from "../google/routes"
 import { DRIVE_ROUTES } from "./routes"
-import { DRIVE_READ_SCOPE } from "./scopes"
+import { DRIVE_FILE_SCOPE, DRIVE_READ_SCOPE } from "./scopes"
+
+const { uploadStart, uploadChunk, ...READ_ROUTES } = DRIVE_ROUTES
 
 describe("DRIVE_ROUTES", () => {
-  test("every route is a GET on the Drive host which only the drive.readonly scope allows", () => {
-    for (const route of Object.values(DRIVE_ROUTES)) {
+  test("every read route is a GET on the Drive host which only the drive.readonly scope allows", () => {
+    for (const route of Object.values(READ_ROUTES)) {
       expect(HOSTS).toContain(route.host)
       expect(route.host).toBe("www.googleapis.com")
       expect(route.method).toBe("GET")
       expect(route.scopes).toEqual([DRIVE_READ_SCOPE])
     }
+  })
+
+  test("the upload routes start a session with a POST and send its chunks with a PUT, which only drive.file allows", () => {
+    expect(uploadStart).toMatchObject({ method: "POST", host: "www.googleapis.com", scopes: [DRIVE_FILE_SCOPE] })
+    expect(uploadChunk).toMatchObject({ method: "PUT", host: "www.googleapis.com", scopes: [DRIVE_FILE_SCOPE] })
+    expect(uploadChunk.path).toBe(uploadStart.path)
+    expect(routeUrl(uploadStart, {}, { uploadType: "resumable" }).toString()).toBe(
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
+    )
   })
 
   test("the URLs, the ids encoded", () => {

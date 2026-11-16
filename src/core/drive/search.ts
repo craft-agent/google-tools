@@ -24,7 +24,7 @@ const listReply = z.object({
 })
 
 /** `text` as a Drive query writes it inside single quotes: the backslash and the quote escaped. */
-function quoted(text: string): string {
+export function quoted(text: string): string {
   return `'${text.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`
 }
 

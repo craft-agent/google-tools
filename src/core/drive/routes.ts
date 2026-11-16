@@ -1,9 +1,11 @@
 import type { Route } from "../google/routes"
-import { DRIVE_READ_SCOPE } from "./scopes"
+import { DRIVE_FILE_SCOPE, DRIVE_READ_SCOPE } from "./scopes"
 
 const DRIVE_HOST = "www.googleapis.com"
 
 const FILES_PATH = "/drive/v3/files"
+
+const UPLOAD_FILES_PATH = "/upload/drive/v3/files"
 
 /** The scopes that read Drive: `drives.list` accepts only the drive and drive.readonly scopes, so every read takes the one. */
 const READ_SCOPES = [DRIVE_READ_SCOPE] as const
@@ -17,4 +19,8 @@ export const DRIVE_ROUTES = {
   export: { method: "GET", host: DRIVE_HOST, path: `${FILES_PATH}/{file_id}/export`, scopes: READ_SCOPES },
   permissions: { method: "GET", host: DRIVE_HOST, path: `${FILES_PATH}/{file_id}/permissions`, scopes: READ_SCOPES },
   drives: { method: "GET", host: DRIVE_HOST, path: "/drive/v3/drives", scopes: READ_SCOPES },
+  /** Opens a resumable upload (`uploadType=resumable`), which creates a file when its last byte lands. */
+  uploadStart: { method: "POST", host: DRIVE_HOST, path: UPLOAD_FILES_PATH, scopes: [DRIVE_FILE_SCOPE] },
+  /** Sends the bytes of an upload to the session address `uploadStart` answered with. */
+  uploadChunk: { method: "PUT", host: DRIVE_HOST, path: UPLOAD_FILES_PATH, scopes: [DRIVE_FILE_SCOPE] },
 } as const satisfies Record<string, Route>

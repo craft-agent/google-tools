@@ -51,7 +51,7 @@ export async function fetchFile<S extends z.ZodType>(
 }
 
 /** The size Drive wrote, in bytes; `undefined` when it wrote none or not a whole number. */
-export function sizeOf(file: FileReply): number | undefined {
+export function sizeOf(file: Pick<FileReply, "size">): number | undefined {
   if (file.size === undefined) return undefined
   const size = Number(file.size)
   return Number.isSafeInteger(size) ? size : undefined

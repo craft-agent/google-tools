@@ -41,7 +41,7 @@ const detailReply = fileReply.extend({
 })
 
 /** What the file read adds to the view that a listing leaves out. */
-type Sharing = { access: AccessEntry[] | null; note?: string; permissions: Permission[] | null }
+export type Sharing = { access: AccessEntry[] | null; note?: string; permissions: Permission[] | null }
 
 /** Whether a failure is Google refusing to show the sharing, which Drive words as a 403 whatever its reason; a rate limit is not. */
 function isSharingRefusal(error: unknown): boolean {
@@ -53,7 +53,7 @@ function isSharingRefusal(error: unknown): boolean {
  * first page is Google showing the sharing only to those who can share the
  * file, so it is no failure: the list is `null`, with a note saying so.
  */
-async function readSharing(client: GoogleClient, fileId: string): Promise<Sharing> {
+export async function readSharing(client: GoogleClient, fileId: string): Promise<Sharing> {
   const permissions: Permission[] = []
   let pageToken: string | undefined
   for (let page = 1; page <= MAX_PERMISSION_PAGES; page++) {
