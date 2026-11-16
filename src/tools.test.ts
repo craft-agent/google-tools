@@ -54,6 +54,15 @@ describe("the Drive read", () => {
   })
 })
 
+describe("the comments read", () => {
+  test("is a read tool of the comments toolset, which is on by default", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_comments_read")
+    expect(spec).toMatchObject({ toolset: "comments", class: "read" })
+    expect(PROJECT.defaultToolsets).toContain("comments")
+    expect(annotations(spec!)).toMatchObject({ readOnlyHint: true, openWorldHint: true })
+  })
+})
+
 describe("the Drive writes", () => {
   test("google_drive_upload is an add tool of the drive toolset, not destructive, with its intent, describer, targets and bounds", () => {
     const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_drive_upload")!
