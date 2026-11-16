@@ -41,7 +41,7 @@ function sharedFolder(id: string): ToolError {
 }
 
 /** The pin of a folder: a digest of its id, the shared drive it is in, its trash state and its permissions' ids, roles and types. */
-function folderPin(
+export function folderPin(
   id: string,
   driveId: string | undefined,
   trashed: boolean,

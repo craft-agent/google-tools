@@ -2,28 +2,15 @@ import { createHash } from "node:crypto"
 import { sizeFact } from "../facts"
 import { canonicalJson } from "../pin"
 import type { CallDescription, CallFact } from "../tool"
+import { FOLDER_PIN, existingFact, folderName } from "./destination-facts"
 import type { UploadEncryption, UploadPlan } from "./upload-plan"
 import { DRIVE_WORDS } from "./words"
-
-/** What the headline calls the top of My Drive. */
-const MY_DRIVE = "My Drive"
 
 /** The pin that holds the SHA-256 of the file's content. */
 const CONTENT_PIN = "content"
 
-/** The pin that holds the digest of the folder's id, drive, trash state and permissions. */
-const FOLDER_PIN = "folder"
-
 /** The pin that holds the digest of the sorted recipient list of an encrypted file. */
 const RECIPIENTS_PIN = "recipients"
-
-/** The `Already there` fact: how many files of the same name the folder holds; the upload adds another and never replaces one. */
-function existingFact(count: number): CallFact {
-  return {
-    label: DRIVE_WORDS.alreadyThere,
-    value: { text: count === 1 ? DRIVE_WORDS.alreadyOne : DRIVE_WORDS.alreadyMany, values: { count } },
-  }
-}
 
 /** The `Encrypted` fact: how many recipients the file is encrypted to with age, or `no` for a file outside the encryption directories; none when no encryption directory is set. */
 function encryptedFacts(encryption: UploadEncryption): CallFact[] {
@@ -52,7 +39,7 @@ function recipientsPin(recipients: readonly string[]): string {
 export function describeUpload(plan: UploadPlan): CallDescription {
   const { file, name, mimeType, encryption, destination, existing } = plan
   return {
-    headline: { text: DRIVE_WORDS.upload, values: { name, folder: destination.name ?? MY_DRIVE } },
+    headline: { text: DRIVE_WORDS.upload, values: { name, folder: folderName(destination) } },
     facts: [
       { label: DRIVE_WORDS.from, value: file.path },
       ...encryptedFacts(encryption),
