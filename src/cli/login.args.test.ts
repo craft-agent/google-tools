@@ -27,7 +27,9 @@ describe("login arguments", () => {
     const run = await login(["--client", await writeClientFile(await tempDir())], stateDir)
 
     expect(run.code).toBe(EXIT_USAGE)
-    expect(run.stderr).toContain("Option --toolsets is required; known toolsets: account, sheets, gmail, drive.")
+    expect(run.stderr).toContain(
+      "Option --toolsets is required; known toolsets: account, sheets, gmail, drive, comments.",
+    )
     expect(await readdir(stateDir)).toEqual([])
   })
 

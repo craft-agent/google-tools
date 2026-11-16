@@ -1,3 +1,4 @@
+import { COMMENTS_TOOLSET } from "../comments/scopes"
 import { DRIVE_FILE_SCOPE, DRIVE_READ_SCOPE, DRIVE_TOOLSET } from "../drive/scopes"
 import { ToolError } from "../errors"
 import {
@@ -25,6 +26,7 @@ export const TOOLSET_SCOPES: Readonly<Record<string, ToolsetScopes>> = {
   [SHEETS_TOOLSET]: { read: [SHEETS_READ_SCOPE, DRIVE_METADATA_READ_SCOPE], write: [SHEETS_WRITE_SCOPE] },
   [GMAIL_TOOLSET]: { read: [GMAIL_READ_SCOPE], write: [GMAIL_SEND_SCOPE, GMAIL_COMPOSE_SCOPE, GMAIL_MODIFY_SCOPE] },
   [DRIVE_TOOLSET]: { read: [DRIVE_READ_SCOPE], write: [DRIVE_FILE_SCOPE] },
+  [COMMENTS_TOOLSET]: { read: [SHEETS_READ_SCOPE, DRIVE_READ_SCOPE], write: [SHEETS_WRITE_SCOPE, DRIVE_FILE_SCOPE] },
 }
 
 /** What every login asks for besides its toolsets' scopes, so the label records the account's address. */
