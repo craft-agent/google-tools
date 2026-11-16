@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { CREDENTIAL, DRIVE_SCOPE, TOKEN_URL, USERINFO_URL, VARIABLE, toolError } from "../google/client.fixtures"
+import { CREDENTIAL, TOKEN_URL, USERINFO_URL, VARIABLE, toolError } from "../google/client.fixtures"
 import type { FakeHandler } from "../google/fake-google.testing"
 import { EMAIL_SCOPE, OPENID_SCOPE } from "../google/routes"
+import { DRIVE_METADATA_READ_SCOPE } from "../sheets/scopes"
 import { CLI, EMAIL_NOW, cleanUp, fixture, freshTokens, tokenHandler, userinfoHandler } from "./read.testing"
 
 beforeEach(freshTokens)
@@ -87,9 +88,9 @@ describe("google_account_read check", () => {
 
   test("a label without the identity scopes fails before Google is called", async () => {
     const h = await fixture()
-    await h.label("work", { ...CREDENTIAL, scopes: [DRIVE_SCOPE] })
+    await h.label("work", { ...CREDENTIAL, scopes: [DRIVE_METADATA_READ_SCOPE] })
     const { check } = await h.read(CHECK)
-    expect(check).toMatchObject({ ok: false, toolsets: [], scopes: [DRIVE_SCOPE] })
+    expect(check).toMatchObject({ ok: false, toolsets: [], scopes: [DRIVE_METADATA_READ_SCOPE] })
     expect(check?.problem?.message).toContain("was not logged in with a scope this call needs")
     expect(check?.fix).toStartWith(`${CLI} login --account work --toolsets account `)
     expect(h.requests).toEqual([])

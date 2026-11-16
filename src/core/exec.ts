@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process"
+import type { Writable } from "node:stream"
 
 /** How long a child that was sent SIGTERM may keep running before it is sent SIGKILL. */
 const KILL_GRACE_MS = 2000
@@ -9,8 +10,13 @@ export type ExecOptions = {
   cwd?: string
   /** The child's whole environment; nothing is merged in from this process. */
   env: Record<string, string>
-  /** Text written to the child's stdin; without it stdin is not connected. */
-  stdin?: string
+  /**
+   * What is written to the child's stdin, which is then closed: text, or bytes
+   * pulled from an iterable as the child takes them in, so a large input is
+   * never held whole. An iterable that throws stops the child and rejects with
+   * its error. Without it stdin is not connected.
+   */
+  stdin?: string | AsyncIterable<Uint8Array>
   /** Stops the child (SIGTERM, then SIGKILL) and rejects with an `AbortError` when it aborts. */
   signal?: AbortSignal
   /** Stops the child (SIGTERM, then SIGKILL) after this many milliseconds. */
@@ -35,6 +41,35 @@ export function abortError(signal: AbortSignal): Error {
   const error = new Error("The operation was aborted", { cause: reason })
   error.name = "AbortError"
   return error
+}
+
+/** Resolves when `sink` can take more, or has closed (a child that exited), which it never recovers from. */
+function drained(sink: Writable): Promise<void> {
+  return new Promise((resolve) => {
+    if (sink.destroyed) return resolve()
+    const done = () => {
+      sink.off("drain", done)
+      sink.off("close", done)
+      resolve()
+    }
+    sink.once("drain", done)
+    sink.once("close", done)
+  })
+}
+
+/**
+ * Writes what `source` yields to `sink`, one chunk at a time and waiting for
+ * the sink to drain between them, then ends it. It stops, closing `source`,
+ * as soon as `stopped()` says so or the sink is gone (the child exited without
+ * reading it all); the sink's own `EPIPE` is the child's business, not an error here.
+ * Rejects only with an error of `source`.
+ */
+async function pipeTo(source: AsyncIterable<Uint8Array>, sink: Writable, stopped: () => boolean): Promise<void> {
+  for await (const chunk of source) {
+    if (stopped() || sink.destroyed) return
+    if (!sink.write(chunk)) await drained(sink)
+  }
+  if (!stopped() && !sink.destroyed) sink.end()
 }
 
 /**
@@ -70,11 +105,9 @@ export function exec(argv: string[], options: ExecOptions): Promise<ExecResult> 
     let stderr = ""
     child.stdout?.setEncoding("utf8").on("data", (chunk: string) => (stdout += chunk))
     child.stderr?.setEncoding("utf8").on("data", (chunk: string) => (stderr += chunk))
-    if (options.stdin !== undefined) {
-      // A child that exits without reading its stdin must not crash this process with EPIPE.
-      child.stdin?.on("error", () => {})
-      child.stdin?.end(options.stdin)
-    }
+    // A child that exits without reading its stdin must not crash this process with EPIPE.
+    child.stdin?.on("error", () => {})
+    if (typeof options.stdin === "string") child.stdin?.end(options.stdin)
 
     let settled = false
     let timedOut = false
@@ -91,6 +124,7 @@ export function exec(argv: string[], options: ExecOptions): Promise<ExecResult> 
       signal?.removeEventListener("abort", onAbort)
       child.stdout?.destroy()
       child.stderr?.destroy()
+      child.stdin?.destroy()
       outcome()
     }
 
@@ -138,5 +172,12 @@ export function exec(argv: string[], options: ExecOptions): Promise<ExecResult> 
       exitedWith ??= { code, killedBy }
       finish()
     })
+
+    if (options.stdin !== undefined && typeof options.stdin !== "string" && child.stdin) {
+      pipeTo(options.stdin, child.stdin, () => settled).catch((error: unknown) => {
+        stop()
+        settle(() => reject(error))
+      })
+    }
   })
 }

@@ -1,7 +1,8 @@
 import { maskText } from "../google/mask"
 import { htmlToText } from "./html-text"
 import { decodeData, headerOf, type FullMessage, type GmailPart } from "./payload"
-import { UNKNOWN_MIME_TYPE, type AttachmentEntry, type MessageView } from "./schemas"
+import { UNKNOWN_MIME_TYPE } from "../files/mime-type"
+import type { AttachmentEntry, MessageView } from "./schemas"
 
 const PLAIN_TEXT = "text/plain"
 const HTML = "text/html"

@@ -45,6 +45,72 @@ describe("the Gmail read", () => {
   })
 })
 
+describe("the Drive read", () => {
+  test("is a read tool of the drive toolset, which is on by default", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_drive_read")
+    expect(spec).toMatchObject({ toolset: "drive", class: "read" })
+    expect(PROJECT.defaultToolsets).toContain("drive")
+    expect(annotations(spec!)).toMatchObject({ readOnlyHint: true, openWorldHint: true })
+  })
+})
+
+describe("the Drive writes", () => {
+  test("google_drive_upload is an add tool of the drive toolset, not destructive, with its intent, describer, targets and bounds", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_drive_upload")!
+    expect(spec).toMatchObject({ toolset: "drive", class: "add" })
+    expect(annotations(spec)).toMatchObject({ readOnlyHint: false, destructiveHint: false, openWorldHint: true })
+    expect(spec.intent).toStartWith("About to ")
+    expect(spec.describe).toBeDefined()
+    expect(spec.targets).toBeDefined()
+    expect(Object.keys(spec.bounds ?? {})).toEqual(["bytes"])
+    expect(spec.measure).toBeDefined()
+  })
+
+  const FILE_WRITES = [
+    ["google_drive_folder_create", "add", false],
+    ["google_drive_copy", "add", false],
+    ["google_drive_rename", "idempotent", false],
+    ["google_drive_move", "idempotent", false],
+    ["google_drive_trash", "overwrite", true],
+    ["google_drive_restore", "idempotent", false],
+  ] as const
+
+  test.each(FILE_WRITES)(
+    "%s is a %s tool of the drive toolset with the destructive hint %p",
+    (id, writeClass, destructive) => {
+      const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+      expect(spec).toMatchObject({ toolset: "drive", class: writeClass })
+      expect(annotations(spec)).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: destructive,
+        openWorldHint: true,
+      })
+    },
+  )
+
+  test.each(FILE_WRITES)("%s states its intent, describes its call and resolves its targets", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(spec.intent).toStartWith("About to ")
+    expect(spec.describe).toBeDefined()
+    expect(spec.targets).toBeDefined()
+  })
+
+  test("only the trash is destructive among the tools that keep Drive in order", () => {
+    const destructive = FILE_WRITES.map(([id]) => id).filter(
+      (id) => annotations(ALL_TOOLS.find((candidate) => candidate.id === id)!).destructiveHint,
+    )
+    expect(destructive).toEqual(["google_drive_trash"])
+  })
+
+  test("the trash and the restore bound the number of items", () => {
+    for (const id of ["google_drive_trash", "google_drive_restore"]) {
+      const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+      expect(Object.keys(spec.bounds ?? {})).toEqual(["items"])
+      expect(spec.measure).toBeDefined()
+    }
+  })
+})
+
 describe("the Gmail writes", () => {
   const WRITES = [
     ["google_gmail_send", "administrative", true],

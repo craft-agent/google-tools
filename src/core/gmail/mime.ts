@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer"
 import { randomBytes } from "node:crypto"
 import { ToolError } from "../errors"
 import { htmlToText } from "./html-text"
-import { attachmentType } from "./mime-type"
+import { fileType } from "../files/mime-type"
 
 const CRLF = "\r\n"
 
@@ -173,7 +173,7 @@ function dispositionHeader(name: string): string {
 
 function attachmentPart({ name, bytes }: MimeAttachment): string {
   return [
-    `Content-Type: ${attachmentType(name)}`,
+    `Content-Type: ${fileType(name)}`,
     dispositionHeader(name),
     "Content-Transfer-Encoding: base64",
     "",

@@ -1,6 +1,6 @@
 import { ToolError } from "../errors"
 import { cancelledError } from "./cancelled"
-import { failedReplyError, isRedirect, isSuccess, requestFailure, type HttpReply, type Transport } from "./fetch"
+import { failedReplyError, isRedirect, isSuccess, requestFailure, type Transport } from "./fetch"
 import { maskText } from "./mask"
 
 const HTTP_UNAUTHORIZED = 401
@@ -20,6 +20,8 @@ export type DownloadSink = {
   accept: string
   /** The most bytes taken; a longer body is `invalid_argument`. */
   maxBytes: number
+  /** What the `invalid_argument` of a body over `maxBytes` says; left out, it says the export is over the limit and to snapshot a smaller range. */
+  limitMessage?: string
   /** Receives the body chunk by chunk, in order. */
   write: (chunk: Uint8Array) => Promise<void>
 }
@@ -70,8 +72,7 @@ export async function sendDownload(
       return UNAUTHORIZED
     }
     if (!isSuccess(response.status)) {
-      const reply: HttpReply = { status: response.status, text: await response.text() }
-      throw failedReplyError(reply, known)
+      throw failedReplyError({ status: response.status, text: await response.text() }, known)
     }
     const contentType = mediaType(response.headers.get("content-type"))
     if (!contentType.startsWith(sink.accept)) {
@@ -89,7 +90,8 @@ export async function sendDownload(
         await reader.cancel().catch(() => {})
         throw new ToolError(
           "invalid_argument",
-          `The export is over ${Math.floor(sink.maxBytes / BYTES_PER_MIB)} MiB; snapshot a smaller range.`,
+          sink.limitMessage ??
+            `The export is over ${Math.floor(sink.maxBytes / BYTES_PER_MIB)} MiB; snapshot a smaller range.`,
         )
       }
       writing = true

@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { symlink } from "node:fs/promises"
 import { join } from "node:path"
-import { CREDENTIAL, DRIVE_SCOPE, VARIABLE, toolError } from "../google/client.fixtures"
+import { CREDENTIAL, VARIABLE, toolError } from "../google/client.fixtures"
 import { EMAIL_SCOPE, OPENID_SCOPE } from "../google/routes"
+import { DRIVE_METADATA_READ_SCOPE } from "../sheets/scopes"
 import { invoke } from "../tool"
 import { googleAccountRead } from "./read"
 import { CLI, cleanUp, fixture, freshTokens } from "./read.testing"
@@ -60,9 +61,9 @@ describe("google_account_read list", () => {
 
   test("the toolsets follow the scopes: no identity scopes cover no toolset", async () => {
     const h = await fixture()
-    await h.label("work", { ...CREDENTIAL, scopes: [DRIVE_SCOPE] })
+    await h.label("work", { ...CREDENTIAL, scopes: [DRIVE_METADATA_READ_SCOPE] })
     const { accounts } = await h.read(LIST)
-    expect(accounts?.[0]).toMatchObject({ scopes: [DRIVE_SCOPE], toolsets: [], read_only_toolsets: [] })
+    expect(accounts?.[0]).toMatchObject({ scopes: [DRIVE_METADATA_READ_SCOPE], toolsets: [], read_only_toolsets: [] })
   })
 
   test("a label with no credential names the login command, and the OAuth client it needs", async () => {

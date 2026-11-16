@@ -98,6 +98,21 @@ describe("GoogleClient.download", () => {
     expect(written).toBeLessThanOrEqual(MIB)
   })
 
+  test("a body over maxBytes says what limitMessage says, when it is given", async () => {
+    const google = fakeGoogle([tokenHandler, exportReply({ bytes: new Uint8Array(MIB + 1), headers: PDF })])
+    const client = new GoogleClient({ paths, variable: VARIABLE, env: {}, fetch: google.fetch })
+    const over = client.download(EXPORT_ROUTE, {
+      params: { id: "abc" },
+      maxBytes: MIB,
+      limitMessage: "The file is over 1 MiB, which download does not save.",
+      accept: "application/pdf",
+      write: async () => {},
+    })
+    const error = await toolError(over)
+    expect(error.code).toBe("invalid_argument")
+    expect(error.message).toBe("The file is over 1 MiB, which download does not save.")
+  })
+
   test("a content type other than the accepted one is upstream_error naming the type only", async () => {
     const { download, chunks } = clientOver([
       tokenHandler,

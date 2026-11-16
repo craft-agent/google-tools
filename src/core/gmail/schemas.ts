@@ -20,9 +20,6 @@ export const MAX_THREAD_BODY_CHARACTERS = 60_000
 export const MAX_ATTACHMENT_MIB = 25
 export const MAX_ATTACHMENT_BYTES = MAX_ATTACHMENT_MIB * 1024 * 1024
 
-/** What a part with no type is called. */
-export const UNKNOWN_MIME_TYPE = "application/octet-stream"
-
 /** How a message body was made: its text parts, its HTML parts turned into text, or there was none. */
 export const BODY_FORMATS = ["text", "html_as_text", "none"] as const
 

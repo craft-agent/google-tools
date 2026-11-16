@@ -1,5 +1,13 @@
 import type { ToolSpec } from "./core"
 import { googleAccountRead } from "./core/account/read"
+import { googleDriveCopy } from "./core/drive/copy"
+import { googleDriveFolderCreate } from "./core/drive/folder-create"
+import { googleDriveMove } from "./core/drive/move"
+import { googleDriveRead } from "./core/drive/read"
+import { googleDriveRename } from "./core/drive/rename"
+import { googleDriveRestore } from "./core/drive/restore"
+import { googleDriveTrash } from "./core/drive/trash"
+import { googleDriveUpload } from "./core/drive/upload"
 import { googleGmailDraftCreate } from "./core/gmail/draft-create"
 import { googleGmailDraftDelete } from "./core/gmail/draft-delete"
 import { googleGmailDraftEdit } from "./core/gmail/draft-edit"
@@ -42,4 +50,12 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleGmailLabel,
   googleGmailLabelCreate,
   googleGmailTrash,
+  googleDriveRead,
+  googleDriveUpload,
+  googleDriveFolderCreate,
+  googleDriveCopy,
+  googleDriveRename,
+  googleDriveMove,
+  googleDriveTrash,
+  googleDriveRestore,
 ]
