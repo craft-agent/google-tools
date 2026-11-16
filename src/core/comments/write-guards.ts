@@ -2,6 +2,7 @@ import { ToolError, isToolError } from "../errors"
 import type { Route } from "../google/routes"
 import { MAX_SPREADSHEET_COMMENT_BYTES } from "./add-args"
 import { COMMENTS_ROUTES } from "./routes"
+import type { ThreadPost } from "./thread"
 
 /** What a comment write names its work as when a call has no runtime. */
 export const COMMENT_WRITES = "Comment writes"
@@ -47,6 +48,16 @@ export function requireSaved(state: string | undefined, subject: string, doubt: 
     "upstream_error",
     `Google did not report ${subject} as saved (comment update state ${reported.slice(0, MAX_STATE_LENGTH)}). ${doubt}: read the file's comments before trying again.`,
   )
+}
+
+/** Fails a post the account did not write as `forbidden`; `verb` is what the call would do to it (`edit`, `delete`). */
+export function requireOwnPost(post: Pick<ThreadPost, "me" | "author">, verb: string): void {
+  if (!post.me) {
+    throw new ToolError(
+      "forbidden",
+      `Only the author can ${verb} a post; this one was written by ${post.author ?? "someone else"}.`,
+    )
+  }
 }
 
 /**

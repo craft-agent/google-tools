@@ -4,7 +4,7 @@ import { gridRangeA1 } from "../sheets/a1"
 import { parseReply } from "../sheets/reply"
 import { COMMENTS_ROUTES } from "./routes"
 import type { CommentReply, CommentThread } from "./schemas"
-import { clipText } from "./thread"
+import { clipText, type LocatedThread, type ThreadPost } from "./thread"
 
 const SPREADSHEET_FIELDS = "comments,sheets(properties(sheetId,title),commentAnchors)"
 
@@ -101,14 +101,23 @@ function toReply(post: Post): CommentReply {
   }
 }
 
-/** The thread as the read returns it; `undefined` for one whose first post was deleted. A thread with no anchor, or one the reply does not list, has no cell. */
+function statusOf(thread: Thread): CommentThread["status"] {
+  return thread.status === "RESOLVED" ? "resolved" : "open"
+}
+
+/** The cell of the thread; a thread with no anchor, or one the reply does not list, has none. */
+function cellOf(thread: Thread, cells: ReadonlyMap<string, string>): string | null {
+  return thread.anchorId === undefined ? null : (cells.get(thread.anchorId) ?? null)
+}
+
+/** The thread as the read returns it; `undefined` for one whose first post was deleted. */
 function toThread(thread: Thread, cells: ReadonlyMap<string, string>): CommentThread | undefined {
   const head = thread.headPost
   if (head === undefined || head.deleted === true) return undefined
   return {
     comment_id: thread.commentId,
-    status: thread.status === "RESOLVED" ? "resolved" : "open",
-    at: thread.anchorId === undefined ? null : (cells.get(thread.anchorId) ?? null),
+    status: statusOf(thread),
+    at: cellOf(thread, cells),
     quote: thread.plainTextQuote || null,
     author: head.author?.displayName || null,
     me: head.author?.me ?? false,
@@ -117,6 +126,32 @@ function toThread(thread: Thread, cells: ReadonlyMap<string, string>): CommentTh
     assignee: head.assigneeEmail || null,
     replies: (thread.replies ?? []).filter((post) => post.deleted !== true).map(toReply),
   }
+}
+
+function toPost(post: Post): ThreadPost {
+  return {
+    postId: post.postId,
+    author: post.author?.displayName || null,
+    me: post.author?.me ?? false,
+    text: post.content ?? "",
+    action: replyAction(post.commentAction),
+    assignee: post.assigneeEmail || null,
+  }
+}
+
+async function readSpreadsheet(
+  client: GoogleClient,
+  spreadsheetId: string,
+  ranges: readonly string[] | undefined,
+): Promise<SpreadsheetReply> {
+  return parseReply(
+    spreadsheetReply,
+    await client.request(COMMENTS_ROUTES.spreadsheet, {
+      params: { spreadsheet_id: spreadsheetId },
+      query: { fields: SPREADSHEET_FIELDS, commentsViewMode: COMMENTS_INCLUDED, ranges },
+    }),
+    "a spreadsheet's comments",
+  )
 }
 
 /**
@@ -130,14 +165,30 @@ export async function readSpreadsheetComments(
   spreadsheetId: string,
   ranges: readonly string[] | undefined,
 ): Promise<CommentThread[]> {
-  const reply = parseReply(
-    spreadsheetReply,
-    await client.request(COMMENTS_ROUTES.spreadsheet, {
-      params: { spreadsheet_id: spreadsheetId },
-      query: { fields: SPREADSHEET_FIELDS, commentsViewMode: COMMENTS_INCLUDED, ranges },
-    }),
-    "a spreadsheet's comments",
-  )
+  const reply = await readSpreadsheet(client, spreadsheetId, ranges)
   const cells = anchorCells(reply.sheets)
   return (reply.comments ?? []).flatMap((thread) => toThread(thread, cells) ?? [])
+}
+
+/**
+ * The thread `commentId` of the spreadsheet `spreadsheetId` with its posts as
+ * Google has them, whole; `undefined` when it has none or its first post was
+ * deleted. The replies that were deleted are left out.
+ */
+export async function findSpreadsheetThread(
+  client: GoogleClient,
+  spreadsheetId: string,
+  commentId: string,
+): Promise<LocatedThread | undefined> {
+  const reply = await readSpreadsheet(client, spreadsheetId, undefined)
+  const thread = (reply.comments ?? []).find((candidate) => candidate.commentId === commentId)
+  const head = thread?.headPost
+  if (thread === undefined || head === undefined || head.deleted === true) return undefined
+  return {
+    commentId,
+    status: statusOf(thread),
+    at: cellOf(thread, anchorCells(reply.sheets)),
+    head: toPost(head),
+    replies: (thread.replies ?? []).filter((post) => post.deleted !== true).map(toPost),
+  }
 }

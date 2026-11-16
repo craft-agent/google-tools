@@ -1,10 +1,7 @@
-import { cut } from "../describe"
 import type { CallDescription, CallFact, CallHeadline } from "../tool"
 import type { CommentPlan, Emailed, RepliedThread } from "./add-plan"
+import { authoredStart, fileName } from "./thread-facts"
 import { COMMENTS_WORDS } from "./words"
-
-/** How many characters of the replied thread's text the prompt shows. */
-const MAX_THREAD_CHARACTERS = 80
 
 /** The pins that hold what the prompt shows of the thread replied to and of the tab commented on. */
 const THREAD_TEXT_PIN = "thread_text"
@@ -23,12 +20,11 @@ function emailedFact(emailed: readonly Emailed[]): CallFact {
 
 /** The `Replying to` fact: the thread's author and the start of its text, on one line. */
 function repliedFact({ author, text }: RepliedThread): CallFact {
-  const start = cut(text.replace(/\s+/g, " ").trim(), MAX_THREAD_CHARACTERS)
-  return { label: COMMENTS_WORDS.replyingTo, value: author === null ? start : `${author}: ${start}` }
+  return { label: COMMENTS_WORDS.replyingTo, value: authoredStart(author, text) }
 }
 
 function headlineOf({ file, cell, thread }: CommentPlan): CallHeadline {
-  const name = file.name || file.fileId
+  const name = fileName(file)
   if (cell !== null) return { text: COMMENTS_WORDS.commentAt, values: { file: name, cell: cell.at } }
   return { text: thread === null ? COMMENTS_WORDS.comment : COMMENTS_WORDS.reply, values: { file: name } }
 }
