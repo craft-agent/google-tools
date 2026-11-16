@@ -27,6 +27,7 @@ export const EMAIL_SCOPE = "https://www.googleapis.com/auth/userinfo.email"
 export const HOSTS: readonly string[] = [
   "accounts.google.com",
   "docs.google.com",
+  "gmail.googleapis.com",
   "oauth2.googleapis.com",
   "openidconnect.googleapis.com",
   "sheets.googleapis.com",
