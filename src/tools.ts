@@ -1,5 +1,6 @@
 import type { ToolSpec } from "./core"
 import { googleAccountRead } from "./core/account/read"
+import { googleGmailRead } from "./core/gmail/read"
 import { googleSheetsAdd } from "./core/sheets/add"
 import { googleSheetsAppend } from "./core/sheets/append"
 import { googleSheetsClear } from "./core/sheets/clear"
@@ -26,4 +27,5 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleSheetsRestructure,
   googleSheetsTransform,
   googleSheetsProtect,
+  googleGmailRead,
 ]

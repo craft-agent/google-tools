@@ -6,7 +6,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { PLUGIN_NAME } from "./package-name.mjs"
-import { ACCOUNT_READ, SHEETS_READ } from "./smoke-shared.mjs"
+import { ACCOUNT_READ, GMAIL_READ, SHEETS_READ } from "./smoke-shared.mjs"
 
 const SERVER = fileURLToPath(new URL("../dist/mcp.js", import.meta.url))
 const EXIT_USAGE = 2
@@ -40,6 +40,12 @@ async function listTools() {
       throw new Error(`Expected ${SHEETS_READ} to be listed with readOnlyHint, got ${JSON.stringify(sheetsRead)}`)
     }
     console.log(`The MCP server lists ${SHEETS_READ} with readOnlyHint.`)
+
+    const gmailRead = tools.find((tool) => tool.name === GMAIL_READ)
+    if (gmailRead?.annotations?.readOnlyHint !== true) {
+      throw new Error(`Expected ${GMAIL_READ} to be listed with readOnlyHint, got ${JSON.stringify(gmailRead)}`)
+    }
+    console.log(`The MCP server lists ${GMAIL_READ} with readOnlyHint.`)
 
     const result = await client.callTool({ name: UNKNOWN_TOOL })
     const [block] = result.content
