@@ -773,10 +773,13 @@ and every entry point checks them the same way.
   A file is named `<stem>-<UTC timestamp>`, and `-2`, `-3`… is added rather
   than overwriting one. It is opened without following links, with mode 600,
   since an export holds the person's content.
-- **An upload reads only under directories a setting names**, opened without
-  following links and refused for a hard-linked file, so a link placed in an
-  allowed directory cannot carry a file from elsewhere to Google. Its setting
-  is settled with the first tool that uploads.
+- **An upload reads only under directories a setting names.** The setting is
+  `upload_dirs`, empty by default, so a tool reads no file until a person names
+  where from. Each named directory is judged by real path. A file is opened
+  without following links, must be a regular file with one link, and must lie,
+  by real path, inside one of them and outside the state and install
+  directories, so a link placed in an allowed directory cannot carry a file
+  from elsewhere to Google.
 
 ## Text a tool reads
 
