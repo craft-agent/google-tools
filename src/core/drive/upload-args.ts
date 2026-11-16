@@ -51,7 +51,7 @@ export const driveUploadInput = z.strictObject({
     .regex(MIME_TYPE_PATTERN, "A media type is `type/subtype`, such as `application/pdf`.")
     .optional()
     .describe(
-      "The file's media type (`application/pdf`); left out, taken from the file's extension, else `application/octet-stream`.",
+      "The file's media type (`application/pdf`); left out, taken from the file's extension, else `application/octet-stream`. Refused for a file under an encrypt_dirs directory, which goes up as `application/octet-stream`.",
     ),
 })
 
@@ -62,6 +62,15 @@ export const driveUploadOutput = z.object({
   size: z.number().int().describe("Its size in bytes."),
   folder_id: z.string().describe("The id of the folder it is in; for My Drive, the id of its top folder."),
   web_view_link: z.string().nullable().describe("A link that opens it for a person who may open it; null if none."),
+  encrypted: z
+    .object({
+      with: z.literal("age").describe("What encrypted it."),
+      recipients: z.number().int().describe("How many public keys it is encrypted to."),
+    })
+    .optional()
+    .describe(
+      "Present only when the file went up encrypted (it is under an encrypt_dirs directory); its size and type are the ciphertext's.",
+    ),
 })
 
 export type DriveUploadArgs = z.output<typeof driveUploadInput>

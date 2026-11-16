@@ -783,6 +783,20 @@ and every entry point checks them the same way.
   by real path, inside one of them and outside the state and install
   directories, so a link placed in an allowed directory cannot carry a file
   from elsewhere to Google.
+- **A file under an encryption directory goes up only encrypted.** The setting
+  is `encrypt_dirs`, empty by default, with `age_recipients` naming the age
+  public keys (X25519, `age1…`) to encrypt to. A file whose real path lies
+  under a directory `encrypt_dirs` names goes up encrypted with age to those
+  recipients, named `.age` and typed `application/octet-stream` (a type would
+  say what it is); it must still pass every `upload_dirs` rule, since
+  `encrypt_dirs` widens nothing. The comparison of a file's real path with
+  those directories ignores case and Unicode normalization, since a
+  case-insensitive filesystem would otherwise let a differently spelled path
+  go up in the clear; it errs toward encrypting. Nothing is sent when
+  encrypting cannot be done (no recipient, age missing or failing, the
+  plaintext changing while it is encrypted), not even the start of the
+  upload session. The package holds no secret key and offers no decryption:
+  that is the person's, with age.
 
 ## Text a tool reads
 
