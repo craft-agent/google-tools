@@ -1,7 +1,9 @@
 import { extname } from "node:path"
-import { UNKNOWN_MIME_TYPE } from "./schemas"
 
-/** The media types of the file extensions an attachment commonly has; any other is sent as `UNKNOWN_MIME_TYPE`. */
+/** What a file or a part with no known type is called. */
+export const UNKNOWN_MIME_TYPE = "application/octet-stream"
+
+/** The media types of the file extensions a file commonly has; any other is `UNKNOWN_MIME_TYPE`. */
 const TYPES_BY_EXTENSION: Readonly<Record<string, string>> = {
   ".csv": "text/csv",
   ".doc": "application/msword",
@@ -28,8 +30,8 @@ const TYPES_BY_EXTENSION: Readonly<Record<string, string>> = {
   ".zip": "application/zip",
 }
 
-/** The media type of an attachment named `name`, by its extension (any case), else `application/octet-stream`. */
-export function attachmentType(name: string): string {
+/** The media type of a file named `name`, by its extension (any case), else `application/octet-stream`. */
+export function fileType(name: string): string {
   const extension = extname(name).toLowerCase()
   return Object.hasOwn(TYPES_BY_EXTENSION, extension) ? TYPES_BY_EXTENSION[extension]! : UNKNOWN_MIME_TYPE
 }
