@@ -22,7 +22,7 @@ describe("GMAIL_ROUTES", () => {
   test("the draft reads are GETs which the compose scope allows besides the read ones", () => {
     for (const route of [GMAIL_ROUTES.drafts, GMAIL_ROUTES.draft]) {
       expect(route.method).toBe("GET")
-      expect(route.scopes).toEqual([GMAIL_READ_SCOPE, GMAIL_MODIFY_SCOPE, GMAIL_COMPOSE_SCOPE])
+      expect(route.scopes).toEqual([GMAIL_READ_SCOPE, GMAIL_COMPOSE_SCOPE, GMAIL_MODIFY_SCOPE])
     }
   })
 

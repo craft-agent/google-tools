@@ -11,8 +11,8 @@ const READ_SCOPES = [GMAIL_READ_SCOPE, GMAIL_MODIFY_SCOPE] as const
 /** The scopes that send mail: the send one, and the two that also compose or change it. */
 const SEND_SCOPES = [GMAIL_SEND_SCOPE, GMAIL_COMPOSE_SCOPE, GMAIL_MODIFY_SCOPE] as const
 
-/** The scopes that read drafts: the read ones, and the compose one, which also reads the drafts it makes. */
-const DRAFT_READ_SCOPES = [...READ_SCOPES, GMAIL_COMPOSE_SCOPE] as const
+/** The scopes that read drafts, narrowest first: the read one, the compose one, which also reads the drafts it makes, and the modify one. */
+const DRAFT_READ_SCOPES = [GMAIL_READ_SCOPE, GMAIL_COMPOSE_SCOPE, GMAIL_MODIFY_SCOPE] as const
 
 /** The scopes that change drafts and send one: the compose scope and the modify one; the send scope reaches no draft. */
 const DRAFT_WRITE_SCOPES = [GMAIL_COMPOSE_SCOPE, GMAIL_MODIFY_SCOPE] as const
@@ -20,7 +20,7 @@ const DRAFT_WRITE_SCOPES = [GMAIL_COMPOSE_SCOPE, GMAIL_MODIFY_SCOPE] as const
 /** The scopes that change labels and the trash: the modify scope alone; the compose and send scopes reach neither. */
 const MODIFY_SCOPES = [GMAIL_MODIFY_SCOPE] as const
 
-/** The calls the Gmail tools may make, each with every scope that allows it. */
+/** The calls the Gmail tools may make, each with every scope that allows it, narrowest first. */
 export const GMAIL_ROUTES = {
   messages: { method: "GET", host: GMAIL_HOST, path: `${MAILBOX_PATH}/messages`, scopes: READ_SCOPES },
   message: { method: "GET", host: GMAIL_HOST, path: `${MAILBOX_PATH}/messages/{message_id}`, scopes: READ_SCOPES },

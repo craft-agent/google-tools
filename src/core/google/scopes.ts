@@ -56,11 +56,20 @@ export function grantedToolsets(
   return covered
 }
 
-/** The toolsets of `TOOLSET_SCOPES`, in its order, that have a read or write scope among `scopes`. */
+/**
+ * The toolsets of `TOOLSET_SCOPES`, in its order, that hold the first of
+ * `scopes` that any toolset holds, as a read or a write scope; none when no
+ * toolset holds any. A route lists its scopes narrowest first, so this names
+ * the toolsets that give the narrowest grant, never every one that would also do.
+ */
 export function toolsetsFor(scopes: readonly string[]): string[] {
-  return Object.entries(TOOLSET_SCOPES)
-    .filter(([, { read, write }]) => [...read, ...write].some((scope) => scopes.includes(scope)))
-    .map(([name]) => name)
+  for (const scope of scopes) {
+    const holders = Object.entries(TOOLSET_SCOPES)
+      .filter(([, { read, write }]) => [...read, ...write].includes(scope))
+      .map(([name]) => name)
+    if (holders.length > 0) return holders
+  }
+  return []
 }
 
 /** Whether a call that any one of `scopes` allows needs a write scope: none of them is a read scope of a toolset or an identity scope. */

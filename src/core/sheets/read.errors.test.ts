@@ -39,11 +39,10 @@ describe("google_sheets_read: the label's scopes", () => {
       expect(error).toMatchObject({ code: "unauthenticated" })
       expect(error.message).toContain("was not logged in with a scope this call needs")
       expect(error.message).toContain("Ask a person to log it in again with: ")
-      expect(error.message).toContain("login --account work --toolsets account,sheets")
-      expect(error.message).toContain("--state-dir")
+      expect(error.message).toContain("login --account work --toolsets account,sheets --state-dir")
       expect(error.message).not.toContain("--read-only")
       const fix = String(error.details?.fix)
-      expect(fix).toContain("login --account work --toolsets account,sheets")
+      expect(fix).toContain("login --account work --toolsets account,sheets --state-dir")
       expect(error.message.endsWith(fix)).toBe(true)
       expect(h.requests).toEqual([])
     },
@@ -57,6 +56,19 @@ describe("google_sheets_read: the label's scopes", () => {
       details: { account: "work", needs: expect.arrayContaining([DRIVE_METADATA_READ_SCOPE]) },
     })
     expect(h.requests).toEqual([])
+  })
+
+  test("list's fix asks for the sheets toolset's metadata scope, never the drive toolset's content scope", async () => {
+    const h = await fixture([], CREDENTIAL)
+
+    const error = await toolError(h.read({ method: "list" }))
+
+    expect(String(error.details?.fix)).toMatch(/ login --account work --toolsets account,sheets --state-dir /)
+    expect(error.details?.needs).toEqual([
+      DRIVE_METADATA_READ_SCOPE,
+      "https://www.googleapis.com/auth/drive.readonly",
+      "https://www.googleapis.com/auth/drive",
+    ])
   })
 
   test("view and values need no Drive scope", async () => {

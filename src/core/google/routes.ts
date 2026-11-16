@@ -34,7 +34,7 @@ export const HOSTS: readonly string[] = [
   "www.googleapis.com",
 ]
 
-/** The OAuth endpoints. The authorize page is opened by the person and the token and revoke calls take no access token; userinfo accepts a token holding `openid` or `email`. */
+/** The OAuth endpoints. The authorize page is opened by the person and the token and revoke calls take no access token; userinfo accepts a token holding `openid` or `email`, the two being equally narrow. */
 export const OAUTH_ROUTES = {
   authorize: { method: "GET", host: "accounts.google.com", path: "/o/oauth2/v2/auth", scopes: [] },
   token: { method: "POST", host: "oauth2.googleapis.com", path: "/token", scopes: [] },

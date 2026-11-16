@@ -58,11 +58,14 @@ describe("loginScopes", () => {
     expect(loginScopes([], false)).toEqual([OPENID_SCOPE, EMAIL_SCOPE].sort())
   })
 
-  test("toolsetsFor names the toolsets that hold a scope, in the table's order", () => {
+  test("toolsetsFor names the toolsets that hold the first scope any toolset holds, in the table's order", () => {
     addToolset("notes", { read: [NOTES_READ], write: [NOTES_WRITE] })
     addToolset("files", { read: [FILES_READ], write: [] })
+    addToolset("archive", { read: [], write: [NOTES_WRITE] })
 
-    expect(toolsetsFor([FILES_READ, NOTES_WRITE])).toEqual(["notes", "files"])
+    expect(toolsetsFor([FILES_READ, NOTES_WRITE])).toEqual(["files"])
+    expect(toolsetsFor([NOTES_WRITE, FILES_READ])).toEqual(["notes", "archive"])
+    expect(toolsetsFor(["https://www.example.test/auth/none", NOTES_READ, FILES_READ])).toEqual(["notes"])
     expect(toolsetsFor([NOTES_READ])).toEqual(["notes"])
     expect(toolsetsFor([OPENID_SCOPE, "https://www.example.test/auth/none"])).toEqual([])
     expect(toolsetsFor([])).toEqual([])
