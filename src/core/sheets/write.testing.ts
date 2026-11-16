@@ -2,19 +2,25 @@ import { CREDENTIAL } from "../google/client.fixtures"
 import type { Credential } from "../google/credentials"
 import type { FakeHandler, FakeRequest } from "../google/fake-google.testing"
 import { invoke, type ToolSpec } from "../tool"
+import { googleSheetsAdd } from "./add"
 import { googleSheetsAppend } from "./append"
 import { googleSheetsClear } from "./clear"
 import { googleSheetsCreate } from "./create"
 import { googleSheetsEdit } from "./edit"
+import { googleSheetsFormat } from "./format"
+import { googleSheetsProtect } from "./protect"
 import { BATCH_GET_URL, SPREADSHEET_URL, answer, callOf, fixture } from "./read.testing"
+import { googleSheetsRestructure } from "./restructure"
 import { SHEETS_WRITE_SCOPE } from "./scopes"
 import { googleSheetsTabAdd } from "./tab-add"
+import { googleSheetsTransform } from "./transform"
 
 /** Fixtures the Sheets write tests share, on top of the read fixtures: a label logged in to write, and a spreadsheet of three tabs. */
 
 export const UPDATE_URL = `${SPREADSHEET_URL}/values:batchUpdate`
 export const CLEAR_URL = `${SPREADSHEET_URL}/values:batchClear`
 export const BATCH_UPDATE_URL = `${SPREADSHEET_URL}:batchUpdate`
+export const METADATA_SEARCH_URL = `${SPREADSHEET_URL}/developerMetadata:search`
 export const CREATE_URL = "https://sheets.googleapis.com/v4/spreadsheets"
 
 /** The URL of the append route for `range`, encoded as the client encodes it. */
@@ -59,9 +65,14 @@ export function valuesHandler(rows: (range: string, render: string) => unknown[]
   }
 }
 
-/** The requests that are not reads of the spreadsheet or its values: the writes the fake received. */
+/** The requests that are not reads of the spreadsheet, its values or its developer metadata: the writes the fake received. */
 export function writesOf(requests: FakeRequest[]): FakeRequest[] {
-  return requests.filter((request) => request.method === "POST" && request.url.hostname === "sheets.googleapis.com")
+  return requests.filter(
+    (request) =>
+      request.method === "POST" &&
+      request.url.hostname === "sheets.googleapis.com" &&
+      callOf(request) !== `POST ${METADATA_SEARCH_URL}`,
+  )
 }
 
 /** The tools wired to a fake Google that answers `handlers`, for a label logged in to read and write. */
@@ -79,6 +90,11 @@ export async function writeFixture(
     clear: (args: unknown) => run(googleSheetsClear, args),
     create: (args: unknown) => run(googleSheetsCreate, args),
     tabAdd: (args: unknown) => run(googleSheetsTabAdd, args),
+    format: (args: unknown) => run(googleSheetsFormat, args),
+    add: (args: unknown) => run(googleSheetsAdd, args),
+    restructure: (args: unknown) => run(googleSheetsRestructure, args),
+    transform: (args: unknown) => run(googleSheetsTransform, args),
+    protect: (args: unknown) => run(googleSheetsProtect, args),
     /** `METHOD origin+path` of each request the fake received, the token refresh left out. */
     names: () => h.calls().map(callOf),
   }

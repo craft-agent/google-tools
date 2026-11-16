@@ -4,12 +4,11 @@ import { defineTool, type CallDescription, type CallFact, type ToolContext } fro
 import { parseReply } from "./reply"
 import { SHEETS_ROUTES } from "./routes"
 import { SHEETS_TOOLSET } from "./scopes"
-import { accountArg, spreadsheetArg } from "./schemas"
+import { MAX_TAB_TITLE_LENGTH, accountArg, spreadsheetArg } from "./schemas"
 import { openSpreadsheet, type OpenSpreadsheet } from "./tabs"
 import { resolveSpreadsheetTargets } from "./targets"
 import { SHEETS_WORDS } from "./words"
 
-const MAX_TITLE_LENGTH = 100
 const MAX_ROWS = 100000
 const MAX_COLUMNS = 18278
 
@@ -20,7 +19,7 @@ const DEFAULT_COLUMNS = 26
 export const sheetsTabAddInput = z.strictObject({
   account: accountArg,
   spreadsheet: spreadsheetArg,
-  title: z.string().min(1).max(MAX_TITLE_LENGTH).describe("The new tab's title; no tab may have it already."),
+  title: z.string().min(1).max(MAX_TAB_TITLE_LENGTH).describe("The new tab's title; no tab may have it already."),
   index: z
     .number()
     .int()

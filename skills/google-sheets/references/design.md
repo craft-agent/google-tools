@@ -7,42 +7,50 @@ from breaking the other come first. Sources: Google's Sheets help and API
 guides, ICAEW's 20 principles for good spreadsheet practice (2024), and
 Wickham's "Tidy Data".
 
-Creating a spreadsheet, adding a tab and writing values are done with the
-Sheets tools. Formatting (dropdowns, checkboxes, protections, filter views,
-conditional formatting, freezing) is applied with tools not in this package
-yet: give it to the person as a proposal to apply by hand.
+Every rule below can be applied with the Sheets tools; the operation is named
+beside it. Propose first, and apply only what the person agrees to.
+`create`, `tab_add` and `append`/`edit` make the spreadsheet, the tabs and the
+values; `format`, `add`, `restructure`, `transform` and `protect` take
+`operations` that land together or not at all.
 
 ## Rules for every sheet
 
 - **One header row, one record per row.** No merged cells, blank spacer rows,
   repeated headers or subtotal rows inside data. Filters, sorts, pivots and
   API reads all assume a plain rectangle. Put decoration on presentation tabs.
+  (`restructure` `merge`; `format` `unmerge`.)
 - **A stable text ID column, first and frozen.** Never derive identity from
   the row number, `ROW()`, sort order or a name that can change. Sorting and
-  inserting move rows; an ID stays with its record.
+  inserting move rows; an ID stays with its record. (`format` `freeze`; a
+  `metadata` mark on rows finds a row after a sort.)
 - **Typed columns.** One meaning and one type per column. Phones, ids, postal
   codes and barcodes are text (write them with `raw`), because leading zeros
   and `+` disappear otherwise. Dates are real dates. Status is a single-choice
-  dropdown, not free text and not a multi-select chip.
+  dropdown, not free text and not a multi-select chip. (`add` `validate` with
+  `ONE_OF_LIST`; `format` `number_format`; `transform` `trim` cleans text.)
 - **Checkboxes only for yes/no.** An unchecked box cannot mean both "not
   done" and "does not apply". Give "not applicable" its own column or status.
+  (`add` `validate` with `BOOLEAN`.)
 - **Inputs apart from formulas.** Keep calculated columns out of the columns
   people and agents write, and protect them. A pasted value silently replaces
-  a formula.
+  a formula. (`protect` `protect`.)
 - **Document the columns.** A `README` (or legend) tab lists each column's
   meaning, type, allowed values, what blank means, who writes it, the time
   zone and the units. People and agents read the same contract.
 - **Set locale and time zone before data goes in.** They decide how dates and
   numbers are read for everyone. Changing them later re-reads the whole file.
+  (`restructure` `spreadsheet_settings`.)
 - **Protect structure, not secrets.** Protect headers, IDs, formulas and
   option lists with real editor limits; a warning-only protection blocks
   nothing. Protected or hidden cells are still readable and exportable.
+  (`protect` with `editors`; read the editors it leaves back to the person.)
 - **Personal views over shared sorting.** Give filter views ("my queue",
   "needs approval") instead of sorting or filtering the shared view. Sort
-  whole rows only, never one column.
+  whole rows only, never one column. (`add` `filter_view`; `transform`
+  `sort` over the whole block.)
 - **Conditional formatting shows problems.** Duplicate IDs, missing required
   fields, overdue dates, contradictions such as "sent" without a date. Colour
-  is a signal, never the stored state.
+  is a signal, never the stored state. (`add` `conditional`.)
 - **Name a version before bulk changes.** The person can return to it; an
   agent cannot.
 - **Native table or plain range.** A table suits a human-facing tracker or
@@ -50,7 +58,8 @@ yet: give it to the person as a proposal to apply by hand.
   views); append to it with `table`. Column types only warn on bad input, so
   validate your own writes. A file another system reads as CSV gets a plain
   `Export` tab instead. Chart, pivot and conditional-format ranges cannot use
-  table references, so give them explicit ranges.
+  table references, so give them explicit ranges. (`add` `table`;
+  `restructure` `table_update`, `table_delete`.)
 
 ## A. Outreach and sales ledger
 
@@ -65,8 +74,9 @@ yet: give it to the person as a proposal to apply by hand.
   and status and sent dates by the sender. Write only your own columns, check
   the key and the target cells with `expect`, and read back. Duplicate-send
   prevention needs a single sender, not a cell check.
-- **Views:** freeze the header and the id and name columns. Add filter views
-  for "to send", "needs review" and "follow-up due".
+- **Views:** freeze the header and the id and name columns (`format`
+  `freeze`). Add filter views for "to send", "needs review" and "follow-up
+  due" (`add` `filter_view`).
 - **Summary:** `COUNTIFS` on a separate tab. Keep "leads contacted" apart
   from "messages sent"; they count different things.
 
@@ -81,9 +91,10 @@ yet: give it to the person as a proposal to apply by hand.
 - **Completion:** done items ÷ applicable items, never ticks ÷ all rows.
   Show `N/A` when nothing applies. Derive "complete" from the ticks, or keep
   a separate manual status such as "blocked", never both editable.
-- **Protect** ids, item definitions and the `Progress` formulas; leave owner,
-  ticks, dates and notes editable.
-- **Highlight** overdue applicable items, blocked items and missing owners.
+- **Protect** ids, item definitions and the `Progress` formulas (`protect`);
+  leave owner, ticks, dates and notes editable.
+- **Highlight** overdue applicable items, blocked items and missing owners
+  (`add` `conditional`).
 
 ## C. Report source and dashboard
 
@@ -93,8 +104,9 @@ yet: give it to the person as a proposal to apply by hand.
 - **Columns:** event id, date and time, category from a list, measures with
   units, where the row came from.
 - **Totals:** `COUNTIFS` for a few fixed figures, `QUERY` for repeatable
-  grouped tables, pivots for exploring. Periods run from the start date up to,
-  not including, the next start; state the week start and the time zone.
+  grouped tables, pivots for exploring (`add` `pivot`, `chart`). Periods run
+  from the start date up to, not including, the next start; state the week
+  start and the time zone.
 - **Refresh:** mark a refresh with an id and a status so readers do not see
   half-replaced data.
 

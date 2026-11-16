@@ -43,6 +43,11 @@ describe("the Sheets writes", () => {
     ["google_sheets_clear", "overwrite", true],
     ["google_sheets_create", "add", false],
     ["google_sheets_tab_add", "add", false],
+    ["google_sheets_format", "idempotent", false],
+    ["google_sheets_add", "add", false],
+    ["google_sheets_restructure", "administrative", true],
+    ["google_sheets_transform", "administrative", true],
+    ["google_sheets_protect", "administrative", true],
   ] as const
 
   test.each(WRITES)(
@@ -103,6 +108,43 @@ describe("the Sheets writes", () => {
     const create = find("google_sheets_create")
     expect(create.measure!(parsed(create, { title: "T", tabs: ["a", "b"] }), { cwd: "/" })).toEqual({ tabs: 2 })
     expect(create.measure!(parsed(create, { title: "T" }), { cwd: "/" })).toEqual({ tabs: 0 })
+    const format = find("google_sheets_format")
+    const operations = [
+      { op: "hide", ranges: ["A:A", "C:C"] },
+      { op: "unmerge", range: "A1:B2" },
+      { op: "freeze", rows: 1 },
+    ]
+    expect(format.measure!(parsed(format, { spreadsheet, operations }), { cwd: "/" })).toEqual({
+      operations: 3,
+      ranges: 3,
+    })
+    const add = find("google_sheets_add")
+    const additions = [
+      { op: "insert", range: "Plan!3:4" },
+      { op: "tab_duplicate", tab: "Plan" },
+    ]
+    expect(add.measure!(parsed(add, { spreadsheet, operations: additions }), { cwd: "/" })).toEqual({
+      operations: 2,
+      ranges: 1,
+    })
+    const restructure = find("google_sheets_restructure")
+    const changes = [
+      { op: "delete", ranges: ["Plan!3:4", "Plan!8:8"] },
+      { op: "tab_rename", tab: "Plan", title: "New" },
+    ]
+    const measureOf = (operations: unknown[]) =>
+      restructure.measure!(parsed(restructure, { spreadsheet, operations }), { cwd: "/" })
+    expect(measureOf(changes)).toEqual({ operations: 2, ranges: 2, deletes_tabs: false })
+    expect(measureOf([{ op: "tab_delete", tab: "Plan" }])).toEqual({ operations: 1, ranges: 0, deletes_tabs: true })
+    const protect = find("google_sheets_protect")
+    const protections = [
+      { op: "protect", range: "Plan", editors: ["a@example.test", "b@example.test", "a@example.test"] },
+      { op: "protect_delete", protection: 7 },
+    ]
+    expect(protect.measure!(parsed(protect, { spreadsheet, operations: protections }), { cwd: "/" })).toEqual({
+      operations: 2,
+      editors: 2,
+    })
   })
 })
 

@@ -181,23 +181,36 @@ result carries the one command to run.
 
 ### Sheets (`sheets`)
 
-On by default. Finds, reads and writes the cell values of Google spreadsheets.
+On by default. Finds, reads and writes Google spreadsheets: their values,
+formatting, structure and protections.
 
-| Tool                    | What it does                                                                                                                                                     | Class     |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| `google_sheets_read`    | `list`: spreadsheets by name. `view`: a spreadsheet's tabs. `values`: cells of A1 ranges. `snapshot`: a tab or block exported as a PDF and rendered to PNG files | read      |
-| `google_sheets_create`  | create a spreadsheet, with named tabs if asked                                                                                                                   | add       |
-| `google_sheets_tab_add` | add a tab to a spreadsheet                                                                                                                                       | add       |
-| `google_sheets_append`  | add rows below a range's data, or to a native table                                                                                                              | add       |
-| `google_sheets_edit`    | overwrite the cells of A1 ranges                                                                                                                                 | overwrite |
-| `google_sheets_clear`   | empty the values of A1 ranges                                                                                                                                    | overwrite |
+| Tool                        | What it does                                                                                                                                                                                                                                                                                                                                          | Class             |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| `google_sheets_read`        | `list`: spreadsheets by name. `view`: a spreadsheet's tabs. `values`: cells of A1 ranges. `snapshot`: a tab or block exported as a PDF and rendered to PNG files. `format`: cell formats and sizes. `structure`: merges, groups, tables, rules, filters, views, charts and protections (and pivots on request). `metadata`: developer metadata by key | read              |
+| `google_sheets_create`      | create a spreadsheet, with named tabs if asked                                                                                                                                                                                                                                                                                                        | add               |
+| `google_sheets_tab_add`     | add a tab to a spreadsheet                                                                                                                                                                                                                                                                                                                            | add               |
+| `google_sheets_append`      | add rows below a range's data, or to a native table                                                                                                                                                                                                                                                                                                   | add               |
+| `google_sheets_edit`        | overwrite the cells of A1 ranges                                                                                                                                                                                                                                                                                                                      | overwrite         |
+| `google_sheets_clear`       | empty the values of A1 ranges                                                                                                                                                                                                                                                                                                                         | overwrite         |
+| `google_sheets_format`      | cell formats, borders, sizes, hide, group, unmerge, freeze, tab colour, visibility, position and gridlines                                                                                                                                                                                                                                            | idempotent change |
+| `google_sheets_add`         | insert rows and columns, duplicate a tab, add a table, conditional rule, validation, filter, filter view, chart, pivot or developer metadata                                                                                                                                                                                                          | add               |
+| `google_sheets_restructure` | delete or move rows and columns, merge, delete or rename tabs, rename the spreadsheet, set its locale and time zone, change or delete tables, rules, validation, filters, views, charts, pivots and metadata                                                                                                                                          | administrative    |
+| `google_sheets_transform`   | sort, find and replace, copy, cut, dedupe, trim, split text, autofill, notes, rich text                                                                                                                                                                                                                                                               | administrative    |
+| `google_sheets_protect`     | add, change or delete protected ranges                                                                                                                                                                                                                                                                                                                | administrative    |
 
 The toolset asks for `spreadsheets.readonly` and `drive.metadata.readonly` to
 read, and `spreadsheets` to write; `--read-only` leaves the write scope out.
-`edit` and `clear` take `expect`, up to 200 cells and the values they must show
-now. If any differs the call writes nothing and fails as `stale`, naming the
-cells. Both return `before`, the replaced cells, to give back to `edit` as an
-undo. Formatting, charts and protections are not offered.
+`format`, `add`, `restructure`, `transform` and `protect` take a list of
+`operations`, each an `op` from the tool's own vocabulary, sent as one
+`spreadsheets.batchUpdate`, so all of them land or none does.
+`edit`, `clear`, `restructure` and `transform` take `expect`: up to 200
+cells and the values they must show now, or a cell and the developer-metadata
+key (and value) its row must carry, so a row is found by its mark wherever
+sorting moved it. If any differs the call writes nothing and fails as `stale`,
+naming the cells. These four return `before`, the replaced cells, to give back
+to `edit` as an undo. `protect` lists every editor each protection leaves.
+Named ranges as ranges, slicers, banded ranges and data sources are not
+offered.
 
 ### Grants (`grants`)
 

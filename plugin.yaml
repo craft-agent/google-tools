@@ -8,12 +8,17 @@ provides_tools:
   - google_grant_create
   - google_grant_read
   - google_grant_revoke
+  - google_sheets_add
   - google_sheets_append
   - google_sheets_clear
   - google_sheets_create
   - google_sheets_edit
+  - google_sheets_format
+  - google_sheets_protect
   - google_sheets_read
+  - google_sheets_restructure
   - google_sheets_tab_add
+  - google_sheets_transform
 provides_hooks:
   - pre_tool_call
 config_schema:

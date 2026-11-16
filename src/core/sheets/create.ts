@@ -5,12 +5,10 @@ import { defineTool, type CallDescription, type ToolContext } from "../tool"
 import { parseReply } from "./reply"
 import { SHEETS_ROUTES } from "./routes"
 import { SHEETS_TOOLSET } from "./scopes"
-import { accountArg } from "./schemas"
+import { MAX_SPREADSHEET_TITLE_LENGTH, MAX_TAB_TITLE_LENGTH, accountArg } from "./schemas"
 import { resolveSpreadsheetTargets } from "./targets"
 import { SHEETS_WORDS } from "./words"
 
-const MAX_TITLE_LENGTH = 200
-const MAX_TAB_TITLE_LENGTH = 100
 const MAX_TABS = 50
 
 /** What stands in for the id of a spreadsheet that does not exist yet, in the call's target. */
@@ -20,7 +18,7 @@ const CREATE_FIELDS = "spreadsheetId,spreadsheetUrl,properties.title,sheets.prop
 
 export const sheetsCreateInput = z.strictObject({
   account: accountArg,
-  title: z.string().min(1).max(MAX_TITLE_LENGTH).describe("The new spreadsheet's title."),
+  title: z.string().min(1).max(MAX_SPREADSHEET_TITLE_LENGTH).describe("The new spreadsheet's title."),
   tabs: z
     .array(z.string().trim().min(1).max(MAX_TAB_TITLE_LENGTH))
     .min(1)

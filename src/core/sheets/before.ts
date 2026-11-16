@@ -39,9 +39,21 @@ export type Before = {
   digest: string
 }
 
+/** Whether the cell at zero-based `row` and `column` of a range, counted from its top-left cell, survives the write, so it is not counted as replaced. */
+export type Keeps = (row: number, column: number) => boolean
+
 /** Whether a cell Google returned holds something: an empty string is a cell with nothing in it. */
 function isOccupied(cell: unknown): boolean {
   return cell !== undefined && cell !== null && cell !== ""
+}
+
+/** How many cells of the rows hold something and do not survive the write. */
+function occupiedCells(rows: readonly (readonly unknown[])[], keeps: Keeps | undefined): number {
+  return rows.reduce(
+    (total, row, rowIndex) =>
+      total + row.filter((cell, column) => isOccupied(cell) && !keeps?.(rowIndex, column)).length,
+    0,
+  )
 }
 
 /** A row as a write takes it: Google leaves an empty row empty, and a row of cells holds at least one. */
@@ -54,15 +66,23 @@ function writable(row: Cell[]): Cell[] {
  * the values to hand back (the same budget as the read tool's `values`; `null`
  * when a range was cut or a text clipped, since a copy that is not whole must
  * not be mistaken for one), how many cells are occupied and a digest of
- * everything read. The prompt and the run both read with this function.
+ * everything read. The prompt and the run both read with this function. A
+ * range's `keeps` (by position in `ranges`) names the cells the write leaves
+ * as they are, which are read but not counted as occupied; no range asks Google
+ * for nothing.
  */
-export async function readBefore(client: GoogleClient, id: string, ranges: readonly string[]): Promise<Before> {
-  const fetched = await fetchValueRanges(client, id, ranges, "formula")
+export async function readBefore(
+  client: GoogleClient,
+  id: string,
+  ranges: readonly string[],
+  keeps: readonly (Keeps | undefined)[] = [],
+): Promise<Before> {
+  const fetched = ranges.length === 0 ? [] : await fetchValueRanges(client, id, ranges, "formula")
   const read = budgeted(fetched)
   const whole = read.every((range) => !range.truncated && range.clipped_cells === 0)
   return {
     ranges: whole ? read.map(({ range, values }) => ({ range, values: values.map(writable) })) : null,
-    occupied: fetched.reduce((total, { values }) => total + values.flat().filter(isOccupied).length, 0),
+    occupied: fetched.reduce((total, { values }, position) => total + occupiedCells(values, keeps[position]), 0),
     digest: createHash("sha256").update(canonicalJson(fetched)).digest("hex"),
   }
 }
