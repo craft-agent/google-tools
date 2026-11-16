@@ -1,6 +1,6 @@
 import type { Translations } from "../words"
 
-/** The English headline templates, fact labels and value templates the Drive describers use. */
+/** The English headline templates, fact labels, value templates and text labels the Drive describers use. */
 export const DRIVE_WORDS = {
   upload: "About to upload {name} to {folder}",
   from: "From",
@@ -12,15 +12,32 @@ export const DRIVE_WORDS = {
   alreadyThere: "Already there",
   alreadyOne: "{count} file named so",
   alreadyMany: "{count} files named so",
+  folderCreate: "About to create the folder {name} in {folder}",
+  copy: "About to copy a file to {folder}",
+  source: "Source",
+  rename: "About to rename {old} to {new}",
+  move: "About to move {name} to {folder}",
+  moveAlready: "{name} is already in {folder}",
+  trashOne: "About to move {name} to the trash",
+  trashMany: "About to move {count} items to the trash",
+  restoreOne: "About to restore {name} from the trash",
+  restoreMany: "About to restore {count} items from the trash",
+  count: "Count",
+  countOne: "{count} item",
+  countMany: "{count} items",
+  deletedAfter: "Deleted after",
+  days: "{days} days",
+  shared: "Shared",
+  items: "Items",
 } as const
 
-/** The translations of the Drive tools' words: their titles, intents, headline templates, fact labels and value templates. */
+/** The translations of the Drive tools' words: their titles, intents, headline templates, fact labels, value templates and text labels. */
 export const DRIVE_TRANSLATIONS: Translations = {
   ja: {
     "Upload to Drive": "Drive にアップロードする",
     "About to upload a file to Drive": "ファイルを Drive にアップロードしようとしています",
     [DRIVE_WORDS.upload]: "{name} を {folder} にアップロードしようとしています",
-    [DRIVE_WORDS.from]: "元のファイル",
+    [DRIVE_WORDS.from]: "元の場所",
     [DRIVE_WORDS.type]: "種類",
     [DRIVE_WORDS.encrypted]: "暗号化",
     [DRIVE_WORDS.encryptedOne]: "する (age、宛先 {count} 件)",
@@ -29,5 +46,34 @@ export const DRIVE_TRANSLATIONS: Translations = {
     [DRIVE_WORDS.alreadyThere]: "同じ名前のファイル",
     [DRIVE_WORDS.alreadyOne]: "{count} 件あります",
     [DRIVE_WORDS.alreadyMany]: "{count} 件あります",
+    "Create Drive folder": "Drive のフォルダを作成する",
+    "About to create a Drive folder": "Drive のフォルダを作成しようとしています",
+    [DRIVE_WORDS.folderCreate]: "フォルダ {name} を {folder} に作成しようとしています",
+    "Copy Drive file": "Drive のファイルをコピーする",
+    "About to copy a Drive file": "Drive のファイルをコピーしようとしています",
+    [DRIVE_WORDS.copy]: "ファイルを {folder} にコピーしようとしています",
+    [DRIVE_WORDS.source]: "コピー元",
+    "Rename Drive file": "Drive のファイルの名前を変更する",
+    "About to rename a Drive file": "Drive のファイルの名前を変更しようとしています",
+    [DRIVE_WORDS.rename]: "{old} の名前を {new} に変更しようとしています",
+    "Move Drive file": "Drive のファイルを移動する",
+    "About to move a Drive file": "Drive のファイルを移動しようとしています",
+    [DRIVE_WORDS.move]: "{name} を {folder} に移動しようとしています",
+    [DRIVE_WORDS.moveAlready]: "{name} はすでに {folder} にあります",
+    "Trash Drive files": "Drive のファイルをゴミ箱に移動する",
+    "About to move Drive files to the trash": "Drive のファイルをゴミ箱に移動しようとしています",
+    [DRIVE_WORDS.trashOne]: "{name} をゴミ箱に移動しようとしています",
+    [DRIVE_WORDS.trashMany]: "{count} 件をゴミ箱に移動しようとしています",
+    "Restore Drive files": "Drive のファイルをゴミ箱から戻す",
+    "About to restore Drive files from the trash": "Drive のファイルをゴミ箱から戻そうとしています",
+    [DRIVE_WORDS.restoreOne]: "{name} をゴミ箱から戻そうとしています",
+    [DRIVE_WORDS.restoreMany]: "{count} 件をゴミ箱から戻そうとしています",
+    [DRIVE_WORDS.count]: "件数",
+    [DRIVE_WORDS.countOne]: "{count} 件",
+    [DRIVE_WORDS.countMany]: "{count} 件",
+    [DRIVE_WORDS.deletedAfter]: "完全に削除されるまで",
+    [DRIVE_WORDS.days]: "{days} 日",
+    [DRIVE_WORDS.shared]: "共有されているもの",
+    [DRIVE_WORDS.items]: "項目",
   },
 }
