@@ -1,4 +1,4 @@
-import { DRIVE_READ_SCOPE } from "../drive/scopes"
+import { DRIVE_FILE_SCOPE, DRIVE_READ_SCOPE } from "../drive/scopes"
 import type { Route } from "../google/routes"
 import { SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE } from "../sheets/scopes"
 
@@ -20,5 +20,33 @@ export const COMMENTS_ROUTES = {
     host: SHEETS_HOST,
     path: "/v4/spreadsheets/{spreadsheet_id}",
     scopes: [SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE],
+  },
+  /** `comments.get`: one comment of a file that is not a spreadsheet, to check it before a reply. */
+  comment: {
+    method: "GET",
+    host: DRIVE_HOST,
+    path: `${FILES_PATH}/{file_id}/comments/{comment_id}`,
+    scopes: [DRIVE_READ_SCOPE],
+  },
+  /** `comments.create`: a new comment on a file that is not a spreadsheet. */
+  commentCreate: {
+    method: "POST",
+    host: DRIVE_HOST,
+    path: `${FILES_PATH}/{file_id}/comments`,
+    scopes: [DRIVE_FILE_SCOPE],
+  },
+  /** `replies.create`: a reply to a comment of a file that is not a spreadsheet. */
+  replyCreate: {
+    method: "POST",
+    host: DRIVE_HOST,
+    path: `${FILES_PATH}/{file_id}/comments/{comment_id}/replies`,
+    scopes: [DRIVE_FILE_SCOPE],
+  },
+  /** `spreadsheets.batchUpdate` with one `insertComment` or `addCommentReply` request. */
+  batchUpdate: {
+    method: "POST",
+    host: SHEETS_HOST,
+    path: "/v4/spreadsheets/{spreadsheet_id}:batchUpdate",
+    scopes: [SHEETS_WRITE_SCOPE],
   },
 } as const satisfies Record<string, Route>

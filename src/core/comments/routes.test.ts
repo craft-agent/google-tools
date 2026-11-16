@@ -1,21 +1,38 @@
 import { describe, expect, test } from "bun:test"
-import { DRIVE_READ_SCOPE } from "../drive/scopes"
+import { DRIVE_FILE_SCOPE, DRIVE_READ_SCOPE } from "../drive/scopes"
 import { HOSTS, routeUrl } from "../google/routes"
 import { SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE } from "../sheets/scopes"
 import { COMMENTS_ROUTES } from "./routes"
 
 describe("COMMENTS_ROUTES", () => {
-  test("every route is a GET on a host the package may reach", () => {
-    for (const route of Object.values(COMMENTS_ROUTES)) {
-      expect(HOSTS).toContain(route.host)
-      expect(route.method).toBe("GET")
-    }
+  test("every route is on a host the package may reach", () => {
+    for (const route of Object.values(COMMENTS_ROUTES)) expect(HOSTS).toContain(route.host)
   })
 
-  test("the Drive routes take drive.readonly, the spreadsheet route the Sheets scopes, narrowest first", () => {
+  test("the reads are GETs on read scopes, and the writes are exactly the three POSTs: no DELETE, no PATCH", () => {
+    const reads = [COMMENTS_ROUTES.file, COMMENTS_ROUTES.comments, COMMENTS_ROUTES.spreadsheet, COMMENTS_ROUTES.comment]
+    for (const route of reads) expect(route.method).toBe("GET")
+    const writes = Object.entries(COMMENTS_ROUTES)
+      .filter(([, route]) => route.method !== "GET")
+      .map(([name, route]) => [name, route.method])
+    expect(writes).toEqual([
+      ["commentCreate", "POST"],
+      ["replyCreate", "POST"],
+      ["batchUpdate", "POST"],
+    ])
+  })
+
+  test("the Drive reads take drive.readonly, the spreadsheet read the Sheets scopes, narrowest first", () => {
     expect(COMMENTS_ROUTES.file.scopes).toEqual([DRIVE_READ_SCOPE])
     expect(COMMENTS_ROUTES.comments.scopes).toEqual([DRIVE_READ_SCOPE])
+    expect(COMMENTS_ROUTES.comment.scopes).toEqual([DRIVE_READ_SCOPE])
     expect(COMMENTS_ROUTES.spreadsheet.scopes).toEqual([SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE])
+  })
+
+  test("the writes take drive.file for a Drive file and the Sheets write scope for a spreadsheet", () => {
+    expect(COMMENTS_ROUTES.commentCreate.scopes).toEqual([DRIVE_FILE_SCOPE])
+    expect(COMMENTS_ROUTES.replyCreate.scopes).toEqual([DRIVE_FILE_SCOPE])
+    expect(COMMENTS_ROUTES.batchUpdate.scopes).toEqual([SHEETS_WRITE_SCOPE])
   })
 
   test("the URLs, the ids encoded", () => {
@@ -29,6 +46,15 @@ describe("COMMENTS_ROUTES", () => {
       "https://sheets.googleapis.com/v4/spreadsheets/a_B-1",
     )
     expect(routeUrl(COMMENTS_ROUTES.comments, { file_id: "a b" }).pathname).toBe("/drive/v3/files/a%20b/comments")
+    expect(routeUrl(COMMENTS_ROUTES.comment, { file_id: "f", comment_id: "c-1" }).toString()).toBe(
+      "https://www.googleapis.com/drive/v3/files/f/comments/c-1",
+    )
+    expect(routeUrl(COMMENTS_ROUTES.replyCreate, { file_id: "f", comment_id: "c-1" }).pathname).toBe(
+      "/drive/v3/files/f/comments/c-1/replies",
+    )
+    expect(routeUrl(COMMENTS_ROUTES.batchUpdate, { spreadsheet_id: "a_B-1" }).toString()).toBe(
+      "https://sheets.googleapis.com/v4/spreadsheets/a_B-1:batchUpdate",
+    )
   })
 
   test("an id with a slash or a dot segment cannot be a path parameter", () => {

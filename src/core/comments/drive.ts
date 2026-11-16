@@ -9,6 +9,8 @@ const AUTHOR_FIELDS = "author(displayName,me)"
 
 const REPLY_FIELDS = `id,${AUTHOR_FIELDS},content,createdTime,modifiedTime,deleted,action,assigneeEmailAddress`
 
+const ONE_COMMENT_FIELDS = `id,${AUTHOR_FIELDS},content,resolved,deleted`
+
 const COMMENT_FIELDS = `comments(id,${AUTHOR_FIELDS},content,createdTime,modifiedTime,resolved,deleted,quotedFileContent(value),assigneeEmailAddress,replies(${REPLY_FIELDS})),nextPageToken`
 
 /** What a comment and a reply to it share. */
@@ -24,20 +26,18 @@ const entryReply = z.object({
 
 const replyReply = entryReply.extend({ action: z.string().optional() })
 
+const commentReply = entryReply.extend({
+  resolved: z.boolean().optional(),
+  quotedFileContent: z.object({ value: z.string().optional() }).optional(),
+  replies: z.array(replyReply).optional(),
+})
+
 const listReply = z.object({
-  comments: z
-    .array(
-      entryReply.extend({
-        resolved: z.boolean().optional(),
-        quotedFileContent: z.object({ value: z.string().optional() }).optional(),
-        replies: z.array(replyReply).optional(),
-      }),
-    )
-    .optional(),
+  comments: z.array(commentReply).optional(),
   nextPageToken: z.string().optional(),
 })
 
-type Comment = NonNullable<z.output<typeof listReply>["comments"]>[number]
+type Comment = z.output<typeof commentReply>
 
 /** The threads a file's comments gave, in Google's order, and whether the read stopped with pages left. */
 export type FoundThreads = { threads: CommentThread[]; incomplete: boolean }
@@ -97,4 +97,25 @@ export async function readDriveComments(client: GoogleClient, fileId: string): P
     if (pageToken === undefined) return { threads, incomplete: false }
   }
   return { threads, incomplete: true }
+}
+
+/**
+ * The comment `commentId` of the file `fileId` as a thread without its replies,
+ * or `undefined` when it was deleted. A comment Google does not have is the
+ * client's `not_found`.
+ */
+export async function readDriveComment(
+  client: GoogleClient,
+  fileId: string,
+  commentId: string,
+): Promise<CommentThread | undefined> {
+  const comment = parseReply(
+    commentReply,
+    await client.request(COMMENTS_ROUTES.comment, {
+      params: { file_id: fileId, comment_id: commentId },
+      query: { fields: ONE_COMMENT_FIELDS },
+    }),
+    "a comment",
+  )
+  return comment.deleted === true ? undefined : toThread(comment)
 }
