@@ -78,7 +78,10 @@ describe("the comments writes", () => {
     expect(spec.targets).toBeDefined()
   })
 
-  const CHANGES = [["google_comments_status", "idempotent", false]] as const
+  const CHANGES = [
+    ["google_comments_status", "idempotent", false],
+    ["google_comments_edit", "overwrite", true],
+  ] as const
 
   test.each(CHANGES)(
     "%s is a %s tool of the comments toolset with the destructive hint %p",

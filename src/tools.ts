@@ -1,6 +1,7 @@
 import type { ToolSpec } from "./core"
 import { googleAccountRead } from "./core/account/read"
 import { googleCommentsAdd } from "./core/comments/add"
+import { googleCommentsEdit } from "./core/comments/edit"
 import { googleCommentsRead } from "./core/comments/read"
 import { googleCommentsStatus } from "./core/comments/status"
 import { googleDriveCopy } from "./core/drive/copy"
@@ -64,4 +65,5 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleCommentsRead,
   googleCommentsAdd,
   googleCommentsStatus,
+  googleCommentsEdit,
 ]
