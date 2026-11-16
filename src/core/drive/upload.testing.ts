@@ -135,6 +135,10 @@ export async function uploadFixture(
     credential?: Credential | null
     files?: Record<string, string | Uint8Array>
     uploadDirs?: (uploadDir: string, stateDir: string) => string[]
+    /** The package's other settings (`encrypt_dirs`, `age_recipients`), given the upload directory. */
+    settings?: (uploadDir: string) => Record<string, readonly string[]>
+    /** The runtime's environment, which names where programs such as `age` are looked for. */
+    env?: Record<string, string>
     chunkBytes?: number
     session?: SessionOptions
   } = {},
@@ -143,12 +147,19 @@ export async function uploadFixture(
   const h = await fixture(
     [...(options.handlers ?? []), ...rootHandlers, ...session.handlers],
     options.credential === undefined ? UPLOAD_CREDENTIAL : options.credential,
+    options.env,
   )
   const uploadDir = join(await realpath(await mkdtemp(join(tmpdir(), "drive-upload-"))), "outbox")
   made.push(uploadDir)
   await mkdir(uploadDir)
   for (const [name, content] of Object.entries(options.files ?? {})) await writeFile(join(uploadDir, name), content)
-  const ctx = { ...h.ctx, options: { upload_dirs: options.uploadDirs?.(uploadDir, h.stateDir) ?? [uploadDir] } }
+  const ctx = {
+    ...h.ctx,
+    options: {
+      upload_dirs: options.uploadDirs?.(uploadDir, h.stateDir) ?? [uploadDir],
+      ...options.settings?.(uploadDir),
+    },
+  }
   const tool = driveUploadTool({ chunkBytes: options.chunkBytes ?? SMALL_CHUNK })
   return {
     ...h,
