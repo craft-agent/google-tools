@@ -26,7 +26,7 @@ export const UNKNOWN_MIME_TYPE = "application/octet-stream"
 /** How a message body was made: its text parts, its HTML parts turned into text, or there was none. */
 export const BODY_FORMATS = ["text", "html_as_text", "none"] as const
 
-const accountArg = z
+export const accountArg = z
   .string()
   .optional()
   .describe(

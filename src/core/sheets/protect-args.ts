@@ -1,21 +1,19 @@
 import { z } from "zod"
+import { EMAIL_PATTERN, MAX_EMAIL_LENGTH } from "../email"
 import { rangeText } from "./operation-ranges"
 
 /** The most addresses one editor list of a call holds. */
 export const MAX_EDITORS = 10
 
-const MAX_EMAIL_LENGTH = 100
 const MAX_LABEL_LENGTH = 200
 const MAX_EXCEPTED_RANGES = 50
-
-const EMAIL = /^[^@\s,;<>"']{1,64}@[^@\s,;<>"']+\.[^@\s,;<>"']{2,}$/
 
 const emailArg = z
   .string()
   .trim()
   .toLowerCase()
   .max(MAX_EMAIL_LENGTH)
-  .regex(EMAIL, "An editor is an email address, such as `name@example.com`.")
+  .regex(EMAIL_PATTERN, "An editor is an email address, such as `name@example.com`.")
 
 /** Up to `MAX_EDITORS` addresses; a repeated address counts once. */
 export const editorList = z.array(emailArg).max(MAX_EDITORS)
