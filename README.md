@@ -240,6 +240,42 @@ none can be attached until a person names one. Bodies are clipped (20,000
 characters for a message, 60,000 for a thread) and the result says so.
 Permanent deletion, filters, forwarding and mailbox settings are not offered.
 
+### Drive (`drive`)
+
+On by default. Finds, reads, downloads and exports files, shows who can reach
+a file, uploads files from the machine, and keeps in order what the tools made:
+folders, copies, names, places and the trash.
+
+| Tool                         | What it does                                                                                                                                                                                     | Class             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------- |
+| `google_drive_read`          | `search`: files by words or a Drive query. `file`: one file with who can reach it. `drives`: the shared drives. `download`: save a file, or a Google file exported, under the download directory | read              |
+| `google_drive_upload`        | upload one file from an upload directory to My Drive or a folder only the account reaches                                                                                                        | add               |
+| `google_drive_folder_create` | create a folder                                                                                                                                                                                  | add               |
+| `google_drive_copy`          | copy one file                                                                                                                                                                                    | add               |
+| `google_drive_rename`        | give a file or folder a new name                                                                                                                                                                 | idempotent change |
+| `google_drive_move`          | move a file or folder to another folder                                                                                                                                                          | idempotent change |
+| `google_drive_trash`         | move files or folders to the trash                                                                                                                                                               | overwrite         |
+| `google_drive_restore`       | take files or folders out of the trash                                                                                                                                                           | idempotent change |
+
+The toolset asks for `drive.readonly` to read and `drive.file` to write;
+`--read-only` asks only for `drive.readonly`. `drive.file` reaches only the
+files and folders these tools created, or a person opened with them: Google
+refuses a write to any other, and the tool reports it as `forbidden`.
+Nothing is put into or taken out of a shared place: the destination of an
+upload, a new folder, a copy or a move must be a folder the account owns and
+no one else reaches (not in a shared drive, no permission beyond the owner's),
+since an item put in a folder takes its permissions, and an item in a shared
+folder or shared drive is not moved out. Uploads are read only from the
+directories of the `upload_dirs` [setting](#settings), empty by default.
+A file under a directory of `encrypt_dirs` goes up only encrypted with
+[age](https://github.com/FiloSottile/age) to the public keys of
+`age_recipients` (age must be installed), named `.age`; the package holds no
+secret key and never decrypts. Downloads are saved up to 2 GiB; a Google
+Docs, Sheets, Slides, Drawings or Apps Script file is exported (Google exports
+up to 10 MB, and not Vids). Trashed items are deleted by Drive after 30 days;
+`google_drive_restore` undoes it. Changing who can reach a file, deleting for
+good, revisions and managing shared drives are not offered.
+
 ### Grants (`grants`)
 
 Off by default. Delegates bounded writes for jobs where no person can answer.
@@ -456,21 +492,23 @@ with; see [Settings](#settings) before changing the job's variables.
 Every entry point takes the same settings. A flag wins over its environment
 variable, and an option or setting wins over the variable too.
 
-| Setting           | Flag              | Variable                     | Meaning                                                                                                                                                                                                                                 |
-| ----------------- | ----------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `toolsets`        | `--toolsets`      | `GOOGLE_TOOLS_TOOLSETS`      | the toolsets that are on, or `all`; default those `src/project.ts` names                                                                                                                                                                |
-| `read_only`       | `--read-only`     | `GOOGLE_TOOLS_READ_ONLY`     | registers no tool that writes; wins over every other setting                                                                                                                                                                            |
-| `unattended`      | `--unattended`    | `GOOGLE_TOOLS_UNATTENDED`    | no person can answer: a write runs only under a grant that covers it; off by default                                                                                                                                                    |
-| `grants_dir`      | `--grants-dir`    | `GOOGLE_TOOLS_GRANTS_DIR`    | where grants and their use are kept; default `$XDG_STATE_HOME/google-tools/grants`, else `~/.local/state/google-tools/grants`                                                                                                           |
-| `state_dir`       | `--state-dir`     | `GOOGLE_TOOLS_STATE_DIR`     | where each label keeps its credential and lock; default `$XDG_STATE_HOME/google-tools`, else `~/.local/state/google-tools`                                                                                                              |
-| `download_dir`    | `--download-dir`  | `GOOGLE_TOOLS_DOWNLOAD_DIR`  | where tools write files they download or export, such as sheet snapshots; default `~/Downloads/google-tools`. Never inside the state directory or the tools' install directory, never through a link, never over an existing file       |
-| `upload_dirs`     | `--upload-dirs`   | `GOOGLE_TOOLS_UPLOAD_DIRS`   | directories tools may attach files from, such as a mail's attachments; empty by default, so no file is read. A file must lie inside one by real path, be a regular file with one link, and be outside the state and install directories |
-| `tools`           | `--tools`         | `GOOGLE_TOOLS_TOOLS`         | single tools to add by ID, whatever their toolset                                                                                                                                                                                       |
-| `exclude_tools`   | `--exclude-tools` | `GOOGLE_TOOLS_EXCLUDE_TOOLS` | single tools to remove by ID; wins over `tools` and `toolsets`                                                                                                                                                                          |
-| `confirm`         | `--confirm`       | `GOOGLE_TOOLS_CONFIRM`       | MCP server only: `harness` (default) or `elicitation`, as the conventions say                                                                                                                                                           |
-| `language`        | `--language`      | `GOOGLE_TOOLS_LANGUAGE`      | native plugins only: the approval prompt's language, such as `ja`                                                                                                                                                                       |
-| `emoji`           | —                 | —                            | Hermes only: the emoji shown beside each toolset, by toolset name (`""` for none)                                                                                                                                                       |
-| `require_plugins` | —                 | —                            | Hermes only: the plugins that must be loaded; while one is not, every write is refused before it is approved                                                                                                                            |
+| Setting           | Flag               | Variable                      | Meaning                                                                                                                                                                                                                                 |
+| ----------------- | ------------------ | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `toolsets`        | `--toolsets`       | `GOOGLE_TOOLS_TOOLSETS`       | the toolsets that are on, or `all`; default those `src/project.ts` names                                                                                                                                                                |
+| `read_only`       | `--read-only`      | `GOOGLE_TOOLS_READ_ONLY`      | registers no tool that writes; wins over every other setting                                                                                                                                                                            |
+| `unattended`      | `--unattended`     | `GOOGLE_TOOLS_UNATTENDED`     | no person can answer: a write runs only under a grant that covers it; off by default                                                                                                                                                    |
+| `grants_dir`      | `--grants-dir`     | `GOOGLE_TOOLS_GRANTS_DIR`     | where grants and their use are kept; default `$XDG_STATE_HOME/google-tools/grants`, else `~/.local/state/google-tools/grants`                                                                                                           |
+| `state_dir`       | `--state-dir`      | `GOOGLE_TOOLS_STATE_DIR`      | where each label keeps its credential and lock; default `$XDG_STATE_HOME/google-tools`, else `~/.local/state/google-tools`                                                                                                              |
+| `download_dir`    | `--download-dir`   | `GOOGLE_TOOLS_DOWNLOAD_DIR`   | where tools write files they download or export, such as sheet snapshots; default `~/Downloads/google-tools`. Never inside the state directory or the tools' install directory, never through a link, never over an existing file       |
+| `upload_dirs`     | `--upload-dirs`    | `GOOGLE_TOOLS_UPLOAD_DIRS`    | directories tools may attach files from, such as a mail's attachments; empty by default, so no file is read. A file must lie inside one by real path, be a regular file with one link, and be outside the state and install directories |
+| `encrypt_dirs`    | `--encrypt-dirs`   | `GOOGLE_TOOLS_ENCRYPT_DIRS`   | directories whose files go up only encrypted with age, such as to Drive; empty by default. A file there must also lie in an `upload_dirs` directory, since this widens nothing; matching ignores case                                   |
+| `age_recipients`  | `--age-recipients` | `GOOGLE_TOOLS_AGE_RECIPIENTS` | the age public keys (`age1…`) that files under `encrypt_dirs` are encrypted to; needs age installed. The package holds no secret key and never decrypts                                                                                 |
+| `tools`           | `--tools`          | `GOOGLE_TOOLS_TOOLS`          | single tools to add by ID, whatever their toolset                                                                                                                                                                                       |
+| `exclude_tools`   | `--exclude-tools`  | `GOOGLE_TOOLS_EXCLUDE_TOOLS`  | single tools to remove by ID; wins over `tools` and `toolsets`                                                                                                                                                                          |
+| `confirm`         | `--confirm`        | `GOOGLE_TOOLS_CONFIRM`        | MCP server only: `harness` (default) or `elicitation`, as the conventions say                                                                                                                                                           |
+| `language`        | `--language`       | `GOOGLE_TOOLS_LANGUAGE`       | native plugins only: the approval prompt's language, such as `ja`                                                                                                                                                                       |
+| `emoji`           | —                  | —                             | Hermes only: the emoji shown beside each toolset, by toolset name (`""` for none)                                                                                                                                                       |
+| `require_plugins` | —                  | —                             | Hermes only: the plugins that must be loaded; while one is not, every write is refused before it is approved                                                                                                                            |
 
 `GOOGLE_TOOLS_GRANT_KEY` is a variable only, never a flag or a plugin
 option. Use at least 32 characters, for example from `openssl rand -hex 32`,
