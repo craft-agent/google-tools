@@ -17,6 +17,9 @@ const DRAFT_READ_SCOPES = [...READ_SCOPES, GMAIL_COMPOSE_SCOPE] as const
 /** The scopes that change drafts and send one: the compose scope and the modify one; the send scope reaches no draft. */
 const DRAFT_WRITE_SCOPES = [GMAIL_COMPOSE_SCOPE, GMAIL_MODIFY_SCOPE] as const
 
+/** The scopes that change labels and the trash: the modify scope alone; the compose and send scopes reach neither. */
+const MODIFY_SCOPES = [GMAIL_MODIFY_SCOPE] as const
+
 /** The calls the Gmail tools may make, each with every scope that allows it. */
 export const GMAIL_ROUTES = {
   messages: { method: "GET", host: GMAIL_HOST, path: `${MAILBOX_PATH}/messages`, scopes: READ_SCOPES },
@@ -54,4 +57,41 @@ export const GMAIL_ROUTES = {
     scopes: DRAFT_WRITE_SCOPES,
   },
   draftSend: { method: "POST", host: GMAIL_HOST, path: `${MAILBOX_PATH}/drafts/send`, scopes: DRAFT_WRITE_SCOPES },
+  labelCreate: { method: "POST", host: GMAIL_HOST, path: `${MAILBOX_PATH}/labels`, scopes: MODIFY_SCOPES },
+  messagesBatchModify: {
+    method: "POST",
+    host: GMAIL_HOST,
+    path: `${MAILBOX_PATH}/messages/batchModify`,
+    scopes: MODIFY_SCOPES,
+  },
+  threadModify: {
+    method: "POST",
+    host: GMAIL_HOST,
+    path: `${MAILBOX_PATH}/threads/{thread_id}/modify`,
+    scopes: MODIFY_SCOPES,
+  },
+  messageTrash: {
+    method: "POST",
+    host: GMAIL_HOST,
+    path: `${MAILBOX_PATH}/messages/{message_id}/trash`,
+    scopes: MODIFY_SCOPES,
+  },
+  messageUntrash: {
+    method: "POST",
+    host: GMAIL_HOST,
+    path: `${MAILBOX_PATH}/messages/{message_id}/untrash`,
+    scopes: MODIFY_SCOPES,
+  },
+  threadTrash: {
+    method: "POST",
+    host: GMAIL_HOST,
+    path: `${MAILBOX_PATH}/threads/{thread_id}/trash`,
+    scopes: MODIFY_SCOPES,
+  },
+  threadUntrash: {
+    method: "POST",
+    host: GMAIL_HOST,
+    path: `${MAILBOX_PATH}/threads/{thread_id}/untrash`,
+    scopes: MODIFY_SCOPES,
+  },
 } as const satisfies Record<string, Route>
