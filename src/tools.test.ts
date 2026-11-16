@@ -45,6 +45,15 @@ describe("the Gmail read", () => {
   })
 })
 
+describe("the Drive read", () => {
+  test("is a read tool of the drive toolset, which is on by default", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_drive_read")
+    expect(spec).toMatchObject({ toolset: "drive", class: "read" })
+    expect(PROJECT.defaultToolsets).toContain("drive")
+    expect(annotations(spec!)).toMatchObject({ readOnlyHint: true, openWorldHint: true })
+  })
+})
+
 describe("the Gmail writes", () => {
   const WRITES = [
     ["google_gmail_send", "administrative", true],

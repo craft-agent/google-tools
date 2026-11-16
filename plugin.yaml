@@ -5,6 +5,7 @@ manifest_version: 1
 requires_hermes: ">=0.22"
 provides_tools:
   - google_account_read
+  - google_drive_read
   - google_gmail_draft_create
   - google_gmail_draft_delete
   - google_gmail_draft_edit
