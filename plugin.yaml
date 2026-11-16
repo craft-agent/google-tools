@@ -7,6 +7,7 @@ provides_tools:
   - google_account_read
   - google_comments_add
   - google_comments_read
+  - google_comments_status
   - google_drive_copy
   - google_drive_folder_create
   - google_drive_move

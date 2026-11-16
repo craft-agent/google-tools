@@ -77,6 +77,29 @@ describe("the comments writes", () => {
     expect(spec.describe).toBeDefined()
     expect(spec.targets).toBeDefined()
   })
+
+  const CHANGES = [["google_comments_status", "idempotent", false]] as const
+
+  test.each(CHANGES)(
+    "%s is a %s tool of the comments toolset with the destructive hint %p",
+    (id, writeClass, destructive) => {
+      const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+      expect(spec).toMatchObject({ toolset: "comments", class: writeClass })
+      expect(annotations(spec)).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: destructive,
+        idempotentHint: true,
+        openWorldHint: true,
+      })
+    },
+  )
+
+  test.each(CHANGES)("%s states its intent, describes its call and resolves its targets", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(spec.intent).toStartWith("About to ")
+    expect(spec.describe).toBeDefined()
+    expect(spec.targets).toBeDefined()
+  })
 })
 
 describe("the Drive writes", () => {
