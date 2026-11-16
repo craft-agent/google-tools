@@ -45,6 +45,32 @@ describe("the Gmail read", () => {
   })
 })
 
+describe("the Gmail writes", () => {
+  const WRITES = [["google_gmail_send", "administrative", true]] as const
+
+  test.each(WRITES)(
+    "%s is a %s tool of the gmail toolset with the destructive hint %p",
+    (id, writeClass, destructive) => {
+      const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+      expect(spec).toMatchObject({ toolset: "gmail", class: writeClass })
+      expect(annotations(spec)).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: destructive,
+        openWorldHint: true,
+      })
+    },
+  )
+
+  test.each(WRITES)("%s states its intent, describes its call, resolves its targets and measures its bounds", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(spec.intent).toStartWith("About to ")
+    expect(spec.describe).toBeDefined()
+    expect(spec.targets).toBeDefined()
+    expect(Object.keys(spec.bounds ?? {})).not.toEqual([])
+    expect(spec.measure).toBeDefined()
+  })
+})
+
 describe("the Sheets writes", () => {
   const WRITES = [
     ["google_sheets_append", "add", false],
