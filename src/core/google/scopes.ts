@@ -63,8 +63,14 @@ export function grantedToolsets(
  * `scopes` that any toolset holds, as a read or a write scope; none when no
  * toolset holds any. A route lists its scopes narrowest first, so this names
  * the toolsets that give the narrowest grant, never every one that would also do.
+ * When `own`, the calling tool's toolset, holds any of `scopes`, it is the
+ * only one named instead, since toolsets may share a scope.
  */
-export function toolsetsFor(scopes: readonly string[]): string[] {
+export function toolsetsFor(scopes: readonly string[], own?: string): string[] {
+  if (own !== undefined && Object.hasOwn(TOOLSET_SCOPES, own)) {
+    const { read, write } = TOOLSET_SCOPES[own]
+    if (scopes.some((scope) => read.includes(scope) || write.includes(scope))) return [own]
+  }
   for (const scope of scopes) {
     const holders = Object.entries(TOOLSET_SCOPES)
       .filter(([, { read, write }]) => [...read, ...write].includes(scope))

@@ -85,7 +85,7 @@ export const googleGmailRead = defineTool({
     const messageId = args.message_id === undefined ? undefined : gmailId(args.message_id, "message id")
     const threadId = args.thread_id === undefined ? undefined : gmailId(args.thread_id, "thread id")
     const draftId = args.draft_id === undefined ? undefined : gmailId(args.draft_id, "draft id")
-    const { client, runtime } = await googleSession(ctx, args.account, "Gmail reads")
+    const { client, runtime } = await googleSession(ctx, args.account, "Gmail reads", GMAIL_TOOLSET)
     if (args.method === "search") return searchMessages(client, args)
     if (args.method === "message") return readMessage(client, messageId!)
     if (args.method === "thread") return readThread(client, threadId!)

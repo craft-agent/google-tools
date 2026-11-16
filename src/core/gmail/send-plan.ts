@@ -10,6 +10,7 @@ import { gmailId } from "./ids"
 import { buildMime } from "./mime"
 import { fullMessageSchema, headerOf } from "./payload"
 import { GMAIL_ROUTES } from "./routes"
+import { GMAIL_TOOLSET } from "./scopes"
 import {
   MAX_SEND_ATTACHMENT_BYTES,
   MAX_SEND_ATTACHMENT_MIB,
@@ -130,7 +131,7 @@ export async function planMail(args: MailArgs, ctx: ToolContext, route: Route, w
   }
   const replyTo = args.reply_to === undefined ? undefined : gmailId(args.reply_to, "message id")
   if (ctx.signal?.aborted) throw abortError(ctx.signal)
-  const { client, runtime, label } = await googleSession(ctx, args.account, what)
+  const { client, runtime, label } = await googleSession(ctx, args.account, what, GMAIL_TOOLSET)
   await client.requireScopes(route)
   if (replyTo !== undefined) await client.requireScopes(GMAIL_ROUTES.message)
 

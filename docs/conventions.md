@@ -632,8 +632,12 @@ and every entry point checks them the same way.
   exactly the scopes it asks for, and the new token replaces the old.
 - **A tool checks the label's scopes before calling Google.** A tool whose
   scope the label lacks fails as `unauthenticated`, naming the `login`
-  command that adds it. Asking Google first would spend a call to learn what
-  the label's own record says, and Google's answer would not name the fix.
+  command that adds it. The command asks for the calling tool's own toolset
+  when that holds a scope the call accepts, else for the narrowest toolsets
+  that do; toolsets may share a scope, and a fix should not log a label in
+  for a toolset its tools were not called from. Asking Google first would
+  spend a call to learn what the label's own record says, and Google's answer
+  would not name the fix.
 - **Each toolset names its scopes**, read and write apart, with the narrowest
   one each operation accepts; which scope a domain takes is settled with its
   tools.

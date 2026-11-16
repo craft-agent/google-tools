@@ -9,6 +9,7 @@ import { googleSession } from "../google/session"
 import type { ToolContext } from "../tool"
 import { ROOT_FOLDER, folderId } from "./ids"
 import { DRIVE_ROUTES } from "./routes"
+import { DRIVE_TOOLSET } from "./scopes"
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_NAME_LENGTH, isPlainName, type DriveUploadArgs } from "./upload-args"
 import { countSameName, readDestination, type Destination } from "./upload-destination"
 
@@ -104,7 +105,7 @@ function encryptedName(name: string): string {
 export async function planUpload(args: DriveUploadArgs, ctx: ToolContext): Promise<UploadPlan> {
   const folder = folderId(args.folder ?? ROOT_FOLDER)
   if (ctx.signal?.aborted) throw abortError(ctx.signal)
-  const { client, label, runtime } = await googleSession(ctx, args.account, "Drive uploads")
+  const { client, label, runtime } = await googleSession(ctx, args.account, "Drive uploads", DRIVE_TOOLSET)
   await client.requireScopes(DRIVE_ROUTES.uploadStart)
   await client.requireScopes(DRIVE_ROUTES.file)
 

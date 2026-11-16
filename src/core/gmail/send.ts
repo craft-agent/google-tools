@@ -77,7 +77,7 @@ function measureOf(addresses: readonly string[], accountEmail: string | null, at
 /** The address the call's account records, `null` when it records none or the account cannot be told. */
 async function accountEmailOf(args: Pick<GmailSendArgs, "account">, ctx: ToolContext): Promise<string | null> {
   try {
-    const { client } = await googleSession(ctx, args.account, "Gmail sending")
+    const { client } = await googleSession(ctx, args.account, "Gmail sending", GMAIL_TOOLSET)
     return await client.accountEmail()
   } catch (error) {
     if (isAbortError(error) || ctx.signal?.aborted) throw error

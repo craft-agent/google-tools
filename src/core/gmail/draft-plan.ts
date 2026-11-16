@@ -8,6 +8,7 @@ import { fetchDraft } from "./drafts"
 import { gmailId } from "./ids"
 import { headerOf } from "./payload"
 import { GMAIL_ROUTES } from "./routes"
+import { GMAIL_TOOLSET } from "./scopes"
 import { planMail, singleLine, type MailPlan } from "./send-plan"
 
 /** What the draft tools name their work as when a call has no runtime. */
@@ -69,7 +70,7 @@ export async function planDraftEdit(args: GmailDraftEditArgs, ctx: ToolContext):
 export async function planDraftDelete(args: GmailDraftDeleteArgs, ctx: ToolContext): Promise<DraftDeletePlan> {
   const draftId = gmailId(args.draft_id, "draft id")
   if (ctx.signal?.aborted) throw abortError(ctx.signal)
-  const { client, label } = await googleSession(ctx, args.account, DRAFTS_WORK)
+  const { client, label } = await googleSession(ctx, args.account, DRAFTS_WORK, GMAIL_TOOLSET)
   await client.requireScopes(GMAIL_ROUTES.draftDelete)
   return { client, label, current: await readCurrentDraft(client, draftId) }
 }

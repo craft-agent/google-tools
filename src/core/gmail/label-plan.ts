@@ -8,6 +8,7 @@ import { resolveLabel, type ResolvedLabel } from "./label-names"
 import { readLabels } from "./labels"
 import { selectMail, type MailSelection } from "./mail-items"
 import { GMAIL_ROUTES } from "./routes"
+import { GMAIL_TOOLSET } from "./scopes"
 import type { GmailLabel } from "./schemas"
 
 /** What the label tools name their work as when a call has no runtime. */
@@ -43,7 +44,7 @@ export async function planLabel(args: GmailLabelArgs, ctx: ToolContext): Promise
     throw new ToolError("invalid_argument", "Give at least one of `add_labels`, `remove_labels` and `untrash`.")
   }
   if (ctx.signal?.aborted) throw abortError(ctx.signal)
-  const { client, label } = await googleSession(ctx, args.account, LABELS_WORK)
+  const { client, label } = await googleSession(ctx, args.account, LABELS_WORK, GMAIL_TOOLSET)
   await client.requireScopes(
     selection.kind === "messages" ? GMAIL_ROUTES.messagesBatchModify : GMAIL_ROUTES.threadModify,
   )

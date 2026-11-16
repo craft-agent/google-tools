@@ -8,6 +8,7 @@ import type { ToolContext } from "../tool"
 import { splitRange, type GridBounds } from "./a1"
 import { parseReply } from "./reply"
 import { SHEETS_ROUTES } from "./routes"
+import { SHEETS_TOOLSET } from "./scopes"
 import { spreadsheetId } from "./spreadsheet-id"
 
 const TABS_FIELDS = "properties(title),sheets(properties(sheetId,title,index,hidden)"
@@ -109,7 +110,7 @@ export async function openSpreadsheet(
 ): Promise<OpenSpreadsheet> {
   if (ctx.signal?.aborted) throw abortError(ctx.signal)
   const id = spreadsheetId(args.spreadsheet)
-  const { client, label } = await googleSession(ctx, args.account, "Sheets writes")
+  const { client, label } = await googleSession(ctx, args.account, "Sheets writes", SHEETS_TOOLSET)
   await client.requireScopes(write)
   return { client, label, id, ...(await readTabs(client, id, tables)) }
 }

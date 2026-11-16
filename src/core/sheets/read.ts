@@ -91,7 +91,7 @@ export const googleSheetsRead = defineTool({
     if (ctx.signal?.aborted) throw abortError(ctx.signal)
     checkArguments(args)
     const id = args.spreadsheet === undefined ? undefined : spreadsheetId(args.spreadsheet)
-    const { client, runtime } = await googleSession(ctx, args.account, "Sheets reads")
+    const { client, runtime } = await googleSession(ctx, args.account, "Sheets reads", SHEETS_TOOLSET)
     if (args.method === "list") return listSpreadsheets(client, args)
     if (args.method === "view") return viewSpreadsheet(client, id!)
     if (args.method === "snapshot") return snapshotSpreadsheet(client, runtime, ctx, id!, args)

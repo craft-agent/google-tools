@@ -35,7 +35,7 @@ type LabelCreatePlan = { client: GoogleClient; colors: LabelColors | undefined }
 async function planLabelCreate(args: GmailLabelCreateArgs, ctx: ToolContext): Promise<LabelCreatePlan> {
   const colors = labelColors(args)
   if (ctx.signal?.aborted) throw abortError(ctx.signal)
-  const { client } = await googleSession(ctx, args.account, LABELS_WORK)
+  const { client } = await googleSession(ctx, args.account, LABELS_WORK, GMAIL_TOOLSET)
   await client.requireScopes(GMAIL_ROUTES.labelCreate)
   const taken = (await readLabels(client)).labels.find((label) => label.name.toLowerCase() === args.name.toLowerCase())
   if (taken) {
@@ -90,7 +90,7 @@ export const googleGmailLabelCreate = defineTool({
   input: gmailLabelCreateInput,
   output: gmailLabelCreateOutput,
   async targets(args, ctx) {
-    const { label } = await googleSession(ctx, args.account, LABELS_WORK)
+    const { label } = await googleSession(ctx, args.account, LABELS_WORK, GMAIL_TOOLSET)
     return [`${label}/labels/${NEW_LABEL}`]
   },
   async describe(args, ctx) {

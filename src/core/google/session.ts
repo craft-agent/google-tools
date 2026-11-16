@@ -16,7 +16,8 @@ export type GoogleSession = {
 /**
  * The `login` command that gives the label the scopes a call needs: the
  * toolsets it already holds plus those `needs` belong to, and only reading
- * unless `needs` can be met by writing alone.
+ * unless `needs` can be met by writing alone. `toolset` is the calling tool's
+ * own, which `toolsetsFor` prefers.
  */
 function missingScopeCommand(
   runtime: ToolRuntime,
@@ -24,9 +25,10 @@ function missingScopeCommand(
   label: string,
   needs: readonly string[],
   credential: Credential,
+  toolset: string,
 ): string {
   const granted = grantedToolsets(credential.scopes)
-  const wanted = new Set([...granted.toolsets, ...toolsetsFor(needs)])
+  const wanted = new Set([...granted.toolsets, ...toolsetsFor(needs, toolset)])
   return loginCommand(runtime, stateDir, {
     label,
     toolsets: Object.keys(TOOLSET_SCOPES).filter((name) => wanted.has(name)),
@@ -40,13 +42,16 @@ function missingScopeCommand(
  * calls Google as it; when the label lacks a route's scopes, the client's error
  * names the `login` command that adds them. `subject` says what needs the
  * runtime when the call has none (`internal_error`: "<subject> require a
- * runtime and an absolute state directory."). The credential is read by the
- * client's first request, so nothing here contacts Google.
+ * runtime and an absolute state directory."). `toolset` is the calling tool's
+ * own toolset, which the missing-scope fix asks for when it holds a scope the
+ * call accepts. The credential is read by the client's first request, so
+ * nothing here contacts Google.
  */
 export async function googleSession(
   ctx: { runtime?: ToolRuntime; stateDir?: string; signal?: AbortSignal },
   account: string | undefined,
   subject: string,
+  toolset: string,
 ): Promise<GoogleSession> {
   const { runtime, stateDir } = requireRuntime(ctx, subject)
   const paths = await pickLabel(stateDir, account)
@@ -57,7 +62,8 @@ export async function googleSession(
     fetch: runtime.fetch,
     now: runtime.now,
     signal: ctx.signal,
-    missingScopeFix: (needs, credential) => missingScopeCommand(runtime, stateDir, paths.label, needs, credential),
+    missingScopeFix: (needs, credential) =>
+      missingScopeCommand(runtime, stateDir, paths.label, needs, credential, toolset),
   })
   return { runtime, stateDir, label: paths.label, client }
 }
