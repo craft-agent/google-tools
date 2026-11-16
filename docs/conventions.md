@@ -554,7 +554,10 @@ and every entry point checks them the same way.
   an explicit environment: what the program needs to find itself and
   authenticate is passed through, and nothing else, so a stray variable
   cannot redirect a call. Prompts and colors are switched off, so nothing
-  waits on a person and output parses the same everywhere.
+  waits on a person and output parses the same everywhere. A program's
+  standard input is text or a stream the runner pulls from as the program takes
+  it in, so a large file is never held whole; a program that exits without
+  reading it all is that program's failure, never a crash of the process.
 - **Every variable the tools read besides the settings is named in
   `toolVariables` in `src/project.ts`**, whether a tool reads it itself or
   passes it through to a program. Codex gives a plugin's server only a few
