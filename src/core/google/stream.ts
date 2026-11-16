@@ -1,6 +1,6 @@
 import { ToolError } from "../errors"
 import { cancelledError } from "./cancelled"
-import { failedReplyError, isRedirect, isSuccess, requestFailure, type HttpReply, type Transport } from "./fetch"
+import { failedReplyError, isRedirect, isSuccess, requestFailure, type Transport } from "./fetch"
 import { maskText } from "./mask"
 
 const HTTP_UNAUTHORIZED = 401
@@ -72,8 +72,7 @@ export async function sendDownload(
       return UNAUTHORIZED
     }
     if (!isSuccess(response.status)) {
-      const reply: HttpReply = { status: response.status, text: await response.text() }
-      throw failedReplyError(reply, known)
+      throw failedReplyError({ status: response.status, text: await response.text() }, known)
     }
     const contentType = mediaType(response.headers.get("content-type"))
     if (!contentType.startsWith(sink.accept)) {

@@ -26,10 +26,11 @@ export type Transport = {
   signal?: AbortSignal
 }
 
-/** An answer that was not a redirect: its status and its whole body. */
+/** An answer that was not a redirect, or a status the caller let through: its status, its whole body and its headers. */
 export type HttpReply = {
   status: number
   text: string
+  headers: Headers
 }
 
 /** Whether `status` is a redirect, which the client never follows. */
@@ -76,13 +77,16 @@ export function requestFailure(
  * `redirect: "manual"`, is stopped by the time limit and by `transport.signal`,
  * and fails as `upstream_error`: a redirect, which is never followed; a time
  * limit passed; a cancellation ("The call was cancelled."); a network failure,
- * whose message is masked with `known` and shown without its cause.
+ * whose message is masked with `known` and shown without its cause. A redirect
+ * status listed in `through` is no redirect: it is read like any other answer,
+ * which a resumable upload's `308` needs.
  */
 export async function sendRequest(
   transport: Transport,
   url: string,
   init: RequestInit,
   known: readonly string[],
+  through: readonly number[] = [],
 ): Promise<HttpReply> {
   const { timeoutMs, signal: callerSignal } = transport
   if (callerSignal?.aborted) throw cancelledError()
@@ -92,25 +96,25 @@ export async function sendRequest(
   let reply: HttpReply
   try {
     const response = await transport.fetch(url, { ...init, redirect: "manual", signal })
-    if (isRedirect(response.status)) {
+    if (isRedirect(response.status) && !through.includes(response.status)) {
       await response.body?.cancel()
-      reply = { status: response.status, text: "" }
+      reply = { status: response.status, text: "", headers: response.headers }
     } else {
-      reply = { status: response.status, text: await response.text() }
+      reply = { status: response.status, text: await response.text(), headers: response.headers }
     }
   } catch (error) {
     throw requestFailure(error, transport, timeout.signal.aborted, known)
   } finally {
     clearTimeout(timer)
   }
-  if (isRedirect(reply.status)) {
+  if (isRedirect(reply.status) && !through.includes(reply.status)) {
     throw new ToolError("upstream_error", `${SUBJECT} answered with a redirect, which is never followed`)
   }
   return reply
 }
 
 /** The error `googleError` maps the failure `reply` to, masked with `known`. */
-export function failedReplyError(reply: HttpReply, known: readonly string[]): unknown {
+export function failedReplyError(reply: Pick<HttpReply, "status" | "text">, known: readonly string[]): unknown {
   return maskError(googleError(reply.status, parseBody(reply.text), SUBJECT), known)
 }
 
@@ -120,7 +124,7 @@ export function failedReplyError(reply: HttpReply, known: readonly string[]): un
  * successful body that is not JSON throws `upstream_error`. A success body is
  * returned as it is: masking it is the caller's.
  */
-export function readReply(reply: HttpReply, known: readonly string[]): unknown {
+export function readReply(reply: Pick<HttpReply, "status" | "text">, known: readonly string[]): unknown {
   const body = parseBody(reply.text)
   if (!isSuccess(reply.status)) throw failedReplyError(reply, known)
   if (body === undefined) {
