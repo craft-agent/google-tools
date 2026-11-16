@@ -3,6 +3,9 @@ import { boundaryAmong } from "./mime"
 
 const CRLF = "\r\n"
 
+/** How long Google may take to take in a mail with the most attachments a mail may carry, as a send or as a draft. */
+export const UPLOAD_TIMEOUT_MS = 120_000
+
 /**
  * The body of Gmail's `uploadType=multipart` call: a `multipart/related` of a
  * JSON part (`metadata`) and the mail itself as a `message/rfc822` part, with

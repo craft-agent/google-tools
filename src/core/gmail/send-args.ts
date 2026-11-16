@@ -1,7 +1,8 @@
 import { z } from "zod"
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH } from "../email"
 import { ToolError } from "../errors"
-import { accountArg } from "./schemas"
+import { gmailId } from "./ids"
+import { accountArg, draftIdArg } from "./schemas"
 
 /** The most addresses of `to`, of `cc` and of `bcc`, and of all three together. */
 export const MAX_RECIPIENTS = 100
@@ -25,12 +26,18 @@ const addressArg = z
   .regex(EMAIL_PATTERN, "An address is a plain email address, such as `name@example.com`, with no display name.")
   .regex(PRINTABLE_ASCII, "An address is plain ASCII.")
 
-const addressList = (min: number, what: string) =>
+export const addressList = (min: number, what: string) =>
   z.array(addressArg).min(min).max(MAX_RECIPIENTS).describe(`${what}: up to ${MAX_RECIPIENTS} plain addresses.`)
 
-export const gmailSendInput = z.strictObject({
-  account: accountArg,
-  to: addressList(1, "The recipients"),
+/** The text of a mail: required for a draft, left out of a send that sends a draft. */
+export const bodyArg = z
+  .string()
+  .min(1)
+  .max(MAX_SEND_BODY_CHARACTERS)
+  .describe(`The text of the mail, 1 to ${MAX_SEND_BODY_CHARACTERS} characters; HTML when \`html\` is true.`)
+
+/** The arguments of a mail beside `to` and `body`, which a send and a draft take alike. */
+export const mailArgs = {
   cc: addressList(0, "Copied recipients, who are seen by all").optional(),
   bcc: addressList(0, "Blind-copied recipients, who are seen by none of the others").optional(),
   subject: z
@@ -41,11 +48,6 @@ export const gmailSendInput = z.strictObject({
     .describe(
       "The subject; needed for a new mail. A reply without one gets `Re: ` and the subject of the mail it answers.",
     ),
-  body: z
-    .string()
-    .min(1)
-    .max(MAX_SEND_BODY_CHARACTERS)
-    .describe(`The text of the mail, 1 to ${MAX_SEND_BODY_CHARACTERS} characters; HTML when \`html\` is true.`),
   html: z
     .boolean()
     .optional()
@@ -65,6 +67,19 @@ export const gmailSendInput = z.strictObject({
     .describe(
       `Files to attach, 1 to ${MAX_SEND_ATTACHMENTS} absolute paths inside the upload directories a person set up (none by default), ${MAX_SEND_ATTACHMENT_MIB} MiB in all.`,
     ),
+}
+
+/** The arguments of a mail to send: the mail itself, or a `draft_id` to send as it is, never both. */
+export const gmailSendInput = z.strictObject({
+  account: accountArg,
+  draft_id: draftIdArg
+    .optional()
+    .describe(
+      "Sends this existing draft as it is (the `draft_id` of `google_gmail_read` method `drafts` or of a draft tool) instead of composing a mail; `to`, `cc`, `bcc`, `subject`, `body`, `html`, `reply_to` and `attachments` are then refused. The draft must hold a recipient.",
+    ),
+  to: addressList(1, "The recipients (needed unless `draft_id` is given)").optional(),
+  ...mailArgs,
+  body: bodyArg.optional().describe(`${bodyArg.description} Needed unless \`draft_id\` is given.`),
 })
 
 export const gmailSendOutput = z.object({
@@ -74,6 +89,35 @@ export const gmailSendOutput = z.object({
 })
 
 export type GmailSendArgs = z.output<typeof gmailSendInput>
+
+/** The arguments a mail is planned from, whether it is sent or kept as a draft. */
+export type MailArgs = Omit<GmailSendArgs, "draft_id" | "body"> & { body: string }
+
+/** The arguments that make up a mail, which `draft_id` excludes. */
+const MAIL_ARGUMENT_NAMES = ["to", "cc", "bcc", "subject", "body", "html", "reply_to", "attachments"] as const
+
+/**
+ * What a call to send asks for: the draft `draft_id` names (a valid id), or the
+ * mail the arguments make. Both, a draft with any mail argument, and a mail
+ * without `to` or `body` are `invalid_argument`.
+ */
+export function sendModeOf(args: GmailSendArgs): { kind: "draft"; draftId: string } | { kind: "mail"; mail: MailArgs } {
+  if (args.draft_id !== undefined) {
+    const stray = MAIL_ARGUMENT_NAMES.find((name) => args[name] !== undefined)
+    if (stray !== undefined) {
+      throw new ToolError(
+        "invalid_argument",
+        `\`draft_id\` sends the draft as it is, so \`${stray}\` cannot be given with it.`,
+      )
+    }
+    return { kind: "draft", draftId: gmailId(args.draft_id, "draft id") }
+  }
+  const { body } = args
+  if (args.to === undefined || body === undefined) {
+    throw new ToolError("invalid_argument", "A mail needs `to` and `body`; to send a draft, give its `draft_id`.")
+  }
+  return { kind: "mail", mail: { ...args, body } }
+}
 
 /** How a recipient is addressed. */
 export type RecipientRole = "to" | "cc" | "bcc"
@@ -91,7 +135,7 @@ export function domainOf(address: string): string {
  * more than `MAX_RECIPIENTS` in all, is `invalid_argument`.
  */
 export function recipientsOf(args: Pick<GmailSendArgs, "to" | "cc" | "bcc">): Recipient[] {
-  const roles = { to: args.to, cc: args.cc ?? [], bcc: args.bcc ?? [] }
+  const roles = { to: args.to ?? [], cc: args.cc ?? [], bcc: args.bcc ?? [] }
   const recipients = (Object.keys(roles) as RecipientRole[]).flatMap((role) =>
     roles[role].map((address) => ({ address, role })),
   )

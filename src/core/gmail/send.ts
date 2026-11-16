@@ -3,7 +3,8 @@ import { isAbortError } from "../errors"
 import { googleSession } from "../google/session"
 import { parseReply } from "../sheets/reply"
 import { ANY_TARGET } from "../targets"
-import { defineTool, type ToolContext } from "../tool"
+import { defineTool, type CallDescription, type ToolContext } from "../tool"
+import { describeDraftSend, planDraftSend } from "./draft-send"
 import { GMAIL_ROUTES } from "./routes"
 import { GMAIL_TOOLSET } from "./scopes"
 import {
@@ -13,14 +14,13 @@ import {
   MAX_SEND_BODY_CHARACTERS,
   gmailSendInput,
   gmailSendOutput,
+  sendModeOf,
   type GmailSendArgs,
+  type Recipient,
 } from "./send-args"
 import { describeSend, outsideDomains } from "./send-facts"
-import { planSend } from "./send-plan"
-import { relatedUpload } from "./upload-body"
-
-/** How long Google may take to take in a mail of up to `MAX_SEND_ATTACHMENT_MIB` MiB of attachments. */
-const SEND_TIMEOUT_MS = 120_000
+import { planMail } from "./send-plan"
+import { UPLOAD_TIMEOUT_MS, relatedUpload } from "./upload-body"
 
 /** What `messages.send` answers; each part is optional, since the mail is gone once it answers. */
 const sentReply = z.object({
@@ -29,8 +29,53 @@ const sentReply = z.object({
   labelIds: z.array(z.string()).optional(),
 })
 
+/** A send planned: who it reaches, what the prompt shows of it and the request that sends it. */
+type SendPlan = {
+  label: string
+  recipients: readonly Recipient[]
+  description: CallDescription
+  send(): Promise<unknown>
+}
+
+/**
+ * Plans a send of either kind: the mail the arguments make (`planMail`), or
+ * the draft `draft_id` names, read in full (`planDraftSend`). Any failure here
+ * fails the call before anything is sent.
+ */
+async function planSend(args: GmailSendArgs, ctx: ToolContext): Promise<SendPlan> {
+  const mode = sendModeOf(args)
+  if (mode.kind === "draft") {
+    const draft = await planDraftSend(args, mode.draftId, ctx)
+    return {
+      label: draft.label,
+      recipients: draft.recipients,
+      description: describeDraftSend(draft),
+      send: () =>
+        draft.client.request(GMAIL_ROUTES.draftSend, { body: { id: draft.draftId }, timeoutMs: UPLOAD_TIMEOUT_MS }),
+    }
+  }
+  const plan = await planMail(mode.mail, ctx, GMAIL_ROUTES.send, "Gmail sending")
+  return {
+    label: plan.label,
+    recipients: plan.recipients,
+    description: describeSend(plan, mode.mail.body),
+    send: () =>
+      plan.client.request(GMAIL_ROUTES.send, {
+        query: { uploadType: "multipart" },
+        content: relatedUpload(plan.original ? { threadId: plan.original.threadId } : {}, plan.mail),
+        timeoutMs: UPLOAD_TIMEOUT_MS,
+      }),
+  }
+}
+
+/** The bounds of a mail that goes to `addresses`, from the account's own address and whether it carries attachments. */
+function measureOf(addresses: readonly string[], accountEmail: string | null, attachments: boolean) {
+  const outside = outsideDomains(addresses, accountEmail)
+  return { recipients: addresses.length, outside_domain: outside === undefined || outside.length > 0, attachments }
+}
+
 /** The address the call's account records, `null` when it records none or the account cannot be told. */
-async function accountEmailOf(args: GmailSendArgs, ctx: ToolContext): Promise<string | null> {
+async function accountEmailOf(args: Pick<GmailSendArgs, "account">, ctx: ToolContext): Promise<string | null> {
   try {
     const { client } = await googleSession(ctx, args.account, "Gmail sending")
     return await client.accountEmail()
@@ -60,6 +105,7 @@ export const googleGmailSend = defineTool({
     `\`to\` takes 1 to ${MAX_RECIPIENTS} addresses, \`cc\` and \`bcc\` up to ${MAX_RECIPIENTS} each and at most ${MAX_RECIPIENTS} in all, each once; an address is plain (\`name@example.com\`), never \`Name <name@example.com>\`. A new mail needs a \`subject\`. ` +
     `\`body\` is 1 to ${MAX_SEND_BODY_CHARACTERS} characters of text, or HTML with \`html: true\` (a text version is sent beside it). ` +
     `\`attachments\` takes up to ${MAX_SEND_ATTACHMENTS} absolute paths, ${MAX_SEND_ATTACHMENT_MIB} MiB in all, and reads only files inside the upload directories a person set up (the upload_dirs setting, empty by default, so nothing can be attached until a person names a directory); a link, a hard-linked file or a file outside them is refused. ` +
+    "With `draft_id` (from `google_gmail_read` method `drafts` or a draft tool) it sends that existing draft as it is instead, and none of the arguments above may be given; the draft must hold a recipient, and the prompt shows what the draft holds now. " +
     "This reaches other people and cannot be undone, so it is asked about every time, and the prompt names every recipient, whether the mail goes outside the account's domain, how many go as copies and blind copies, the attachments and the text. " +
     "Returns the sent `message_id`, its `thread_id` and its `labels`; if the call fails or times out without a result, look in the Sent mail before sending again. " +
     "`account` is needed when several accounts are set up. " +
@@ -78,29 +124,25 @@ export const googleGmailSend = defineTool({
     attachments: { kind: "allow", description: "Whether a mail may carry attachments." },
   },
   async measure(args, ctx) {
-    const addresses = [...args.to, ...(args.cc ?? []), ...(args.bcc ?? [])]
-    const outside = outsideDomains(addresses, await accountEmailOf(args, ctx))
-    return {
-      recipients: addresses.length,
-      outside_domain: outside === undefined || outside.length > 0,
-      attachments: (args.attachments?.length ?? 0) > 0,
+    const mode = sendModeOf(args)
+    if (mode.kind === "draft") {
+      const { recipients, accountEmail, attachments } = await planDraftSend(args, mode.draftId, ctx)
+      return measureOf(
+        recipients.map(({ address }) => address),
+        accountEmail,
+        attachments.length > 0,
+      )
     }
+    const { to = [], cc = [], bcc = [], attachments = [] } = mode.mail
+    return measureOf([...to, ...cc, ...bcc], await accountEmailOf(args, ctx), attachments.length > 0)
   },
   targets: recipientTargets,
   async describe(args, ctx) {
-    return describeSend(await planSend(args, ctx), args.body)
+    return (await planSend(args, ctx)).description
   },
   async execute(args, ctx) {
     const plan = await planSend(args, ctx)
-    const reply = parseReply(
-      sentReply,
-      await plan.client.request(GMAIL_ROUTES.send, {
-        query: { uploadType: "multipart" },
-        content: relatedUpload(plan.original ? { threadId: plan.original.threadId } : {}, plan.mail),
-        timeoutMs: SEND_TIMEOUT_MS,
-      }),
-      "the sent mail",
-    )
+    const reply = parseReply(sentReply, await plan.send(), "the sent mail")
     return { message_id: reply.id ?? "", thread_id: reply.threadId ?? "", labels: reply.labelIds ?? [] }
   },
 })

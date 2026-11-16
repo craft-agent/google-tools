@@ -2,6 +2,7 @@ import { ToolError } from "../errors"
 import { abortError } from "../exec"
 import { readUpload, uploadDirsOf, type Upload } from "../files/upload"
 import type { GoogleClient } from "../google/client"
+import type { Route } from "../google/routes"
 import { googleSession } from "../google/session"
 import { parseReply } from "../sheets/reply"
 import type { ToolContext } from "../tool"
@@ -13,7 +14,7 @@ import {
   MAX_SEND_ATTACHMENT_BYTES,
   MAX_SEND_ATTACHMENT_MIB,
   recipientsOf,
-  type GmailSendArgs,
+  type MailArgs,
   type Recipient,
 } from "./send-args"
 
@@ -35,8 +36,8 @@ export type Original = {
   subject: string | null
 }
 
-/** Everything the mail is made of, read and checked: describing, targeting and sending all plan with this. */
-export type SendPlan = {
+/** Everything the mail is made of, read and checked: describing, targeting and writing it (as a send or as a draft) all plan with this. */
+export type MailPlan = {
   client: GoogleClient
   label: string
   recipients: Recipient[]
@@ -52,7 +53,7 @@ export type SendPlan = {
 }
 
 /** `text` with every run of white space, line breaks included, as one space, and trimmed. */
-function singleLine(text: string): string {
+export function singleLine(text: string): string {
   return text.replace(/\s+/g, " ").trim()
 }
 
@@ -115,28 +116,29 @@ async function readAttachments(paths: readonly string[], ctx: ToolContext): Prom
 }
 
 /**
- * Reads and checks what a call to send is made of, in this order: the
- * arguments (the recipients and the subject), the label's scopes (the send
- * route's, and the read route's for a reply), the mail replied to, the
- * attachments, and builds the mail. Any failure here fails the call before
- * anything is sent.
+ * Reads and checks what a mail is made of, in this order: the arguments (the
+ * recipients and the subject), the label's scopes (those of `route`, which
+ * takes the mail, and the read route's for a reply), the mail replied to, the
+ * attachments, and builds the mail. A send and a draft plan alike; `what` names
+ * the work for a call with no runtime. Any failure here fails the call before
+ * anything is written.
  */
-export async function planSend(args: GmailSendArgs, ctx: ToolContext): Promise<SendPlan> {
+export async function planMail(args: MailArgs, ctx: ToolContext, route: Route, what: string): Promise<MailPlan> {
   const recipients = recipientsOf(args)
   if (args.subject === undefined && args.reply_to === undefined) {
     throw new ToolError("invalid_argument", "A new mail needs a `subject`; only a reply may leave it out.")
   }
   const replyTo = args.reply_to === undefined ? undefined : gmailId(args.reply_to, "message id")
   if (ctx.signal?.aborted) throw abortError(ctx.signal)
-  const { client, runtime, label } = await googleSession(ctx, args.account, "Gmail sending")
-  await client.requireScopes(GMAIL_ROUTES.send)
+  const { client, runtime, label } = await googleSession(ctx, args.account, what)
+  await client.requireScopes(route)
   if (replyTo !== undefined) await client.requireScopes(GMAIL_ROUTES.message)
 
   const original = replyTo === undefined ? undefined : await readOriginal(client, replyTo)
   const attachments = await readAttachments(args.attachments ?? [], ctx)
   const subject = subjectOf(args.subject, original)
   const mail = buildMime({
-    to: args.to,
+    to: args.to ?? [],
     cc: args.cc ?? [],
     bcc: args.bcc ?? [],
     subject,

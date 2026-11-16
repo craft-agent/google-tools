@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto"
 import { sizeFact } from "../facts"
-import type { CallDescription, CallFact, CallValue } from "../tool"
+import type { CallDescription, CallFact, CallHeadline, CallText, CallValue } from "../tool"
 import { domainOf, type Recipient } from "./send-args"
-import type { Original, SendPlan } from "./send-plan"
+import type { MailPlan, Original } from "./send-plan"
 import { GMAIL_WORDS } from "./words"
 
 const BYTES_PER_KIB = 1024
@@ -13,6 +13,9 @@ const ATTACHMENTS_PIN = "attachments"
 
 /** The pin that holds the `Message-ID` of the mail replied to. */
 const ORIGINAL_PIN = "message_id"
+
+/** The pin that holds the id of a draft's message, which changes each time the draft is edited. */
+export const DRAFT_PIN = "draft"
 
 /**
  * The domains the mail goes to that are not the domain of the account's own
@@ -60,25 +63,62 @@ function sizeText(bytes: number): string {
   return kib < KIB_PER_MIB ? `${kib.toFixed(1)} KiB` : `${(kib / KIB_PER_MIB).toFixed(1)} MiB`
 }
 
-function attachmentsFact(attachments: SendPlan["attachments"]): CallFact {
+function attachmentsFact(attachments: MailSummary["attachments"]): CallFact {
   return {
     label: GMAIL_WORDS.attachments,
     value: attachments.map(({ name, size }) => `${name} (${sizeText(size)})`).join(", "),
   }
 }
 
-/** The headline: the subject and the first `to`, and how many more the mail goes to. */
-function headlineOf(plan: SendPlan): CallDescription["headline"] {
-  const [first] = plan.recipients
-  const values = { subject: plan.subject, recipient: first?.address ?? "" }
-  const more = plan.recipients.length - 1
+/** What the prompt shows of a mail, whether it is composed from arguments or is a draft Google holds. */
+export type MailSummary = {
+  recipients: readonly Recipient[]
+  subject: string
+  /** The address the account's credential records, `null` when it records none. */
+  accountEmail: string | null
+  /** The mail a reply answers; none for a new mail. */
+  original?: Original
+  attachments: readonly { name: string; size: number }[]
+  /** The mail's size in bytes, when it is known. */
+  size?: number
+  /** The text of the mail as written. */
+  body: string
+}
+
+/** The summary of a mail composed from arguments, whose `body` is the text the arguments gave. */
+export function summaryOf(plan: MailPlan, body: string): MailSummary {
+  const { recipients, subject, accountEmail, original, attachments } = plan
+  return { recipients, subject, accountEmail, original, attachments, size: plan.mail.length, body }
+}
+
+/**
+ * The facts every mail shows, in the order they decide: whether it goes
+ * outside the account's domain (left out while it has no recipient), how many
+ * go as copies, the mail replied to, the attachments and the size. Every
+ * recipient is a target of the call, so no fact repeats them.
+ */
+export function mailFacts(mail: MailSummary): CallFact[] {
+  return [
+    ...(mail.recipients.length > 0 ? [outsideFact(mail.recipients, mail.accountEmail)] : []),
+    ...copiesFacts(mail.recipients),
+    ...(mail.original ? [replyFact(mail.original)] : []),
+    ...(mail.attachments.length > 0 ? [attachmentsFact(mail.attachments)] : []),
+    ...(mail.size === undefined ? [] : [sizeFact(mail.size)]),
+  ]
+}
+
+/** The headline of a send: the subject and the first `to`, and how many more the mail goes to. */
+export function sendHeadline({ recipients, subject }: Pick<MailSummary, "recipients" | "subject">): CallHeadline {
+  const [first] = recipients
+  const values = { subject, recipient: first?.address ?? "" }
+  const more = recipients.length - 1
   return more === 0
     ? { text: GMAIL_WORDS.sendOne, values }
     : { text: GMAIL_WORDS.sendMany, values: { ...values, count: String(more) } }
 }
 
 /** The hidden values the call must still find unchanged: one digest of every attachment's SHA-256 (a prompt keeps few pins, and a mail may carry twenty files) and the `Message-ID` of the mail replied to. */
-function pinsOf(plan: SendPlan): Record<string, string> {
+export function pinsOf(plan: Pick<MailPlan, "attachments" | "original">): Record<string, string> {
   return {
     ...(plan.attachments.length > 0 && {
       [ATTACHMENTS_PIN]: createHash("sha256")
@@ -94,35 +134,39 @@ function pinsOf(plan: SendPlan): Record<string, string> {
  * left out when empty) and its subject, then the body as written, so the text
  * section shows who receives it in which role, blind copies included.
  */
-function messageText(plan: SendPlan, body: string): string {
+export function messageText({ recipients, subject, body }: MailSummary): CallText {
   const line = (header: string, role: Recipient["role"]) => {
-    const addresses = plan.recipients.filter((recipient) => recipient.role === role).map((r) => r.address)
+    const addresses = recipients.filter((recipient) => recipient.role === role).map((r) => r.address)
     return addresses.length > 0 ? [`${header}: ${addresses.join(", ")}`] : []
   }
-  return [...line("To", "to"), ...line("Cc", "cc"), ...line("Bcc", "bcc"), `Subject: ${plan.subject}`, "", body].join(
-    "\n",
-  )
+  const lines = [...line("To", "to"), ...line("Cc", "cc"), ...line("Bcc", "bcc"), `Subject: ${subject}`, "", body]
+  return { label: GMAIL_WORDS.message, body: lines.join("\n") }
 }
 
+/** What a description of a composed mail has beside its facts and text: the headline, facts that come first and pins of its own. */
+export type MailDescription = { headline: CallHeadline; before?: CallFact[]; pins?: Record<string, string> }
+
 /**
- * What the prompt shows of a mail: its subject and first recipient in the
- * headline, whether it goes outside the account's domain, how many go as
- * copies, the mail replied to, the attachments, its size, and the message as
- * written, its address lines first. Every recipient is a target of the call,
- * so no fact repeats them.
+ * What the prompt shows of a composed mail: the headline, any facts that come
+ * first, the facts of every mail (`mailFacts`) and the message as written, its
+ * address lines first.
  */
-export function describeSend(plan: SendPlan, body: string): CallDescription {
-  const pins = pinsOf(plan)
+export function describeMail(
+  plan: MailPlan,
+  body: string,
+  { headline, before = [], pins = {} }: MailDescription,
+): CallDescription {
+  const summary = summaryOf(plan, body)
+  const allPins = { ...pinsOf(plan), ...pins }
   return {
-    headline: headlineOf(plan),
-    facts: [
-      outsideFact(plan.recipients, plan.accountEmail),
-      ...copiesFacts(plan.recipients),
-      ...(plan.original ? [replyFact(plan.original)] : []),
-      ...(plan.attachments.length > 0 ? [attachmentsFact(plan.attachments)] : []),
-      sizeFact(plan.mail.length),
-    ],
-    text: { label: GMAIL_WORDS.message, body: messageText(plan, body) },
-    ...(Object.keys(pins).length > 0 && { pins }),
+    headline,
+    facts: [...before, ...mailFacts(summary)],
+    text: messageText(summary),
+    ...(Object.keys(allPins).length > 0 && { pins: allPins }),
   }
+}
+
+/** What the prompt shows of a mail to send: its subject and first recipient in the headline, then `describeMail`. */
+export function describeSend(plan: MailPlan, body: string): CallDescription {
+  return describeMail(plan, body, { headline: sendHeadline(plan) })
 }
