@@ -16,6 +16,8 @@ export type FakeRequest = {
   /** Header names are lower-case. */
   headers: Record<string, string>
   body: string | undefined
+  /** The body, when it is raw bytes. */
+  bytes?: Uint8Array
   /** The body, when it is form-encoded. */
   form?: Record<string, string>
   /** The body, when it is JSON. */
@@ -60,6 +62,7 @@ function describeRequest(url: string, init: RequestInit): FakeRequest {
     body,
     signal: init.signal ?? undefined,
   }
+  if (init.body instanceof Uint8Array) request.bytes = init.body
   if (body !== undefined && contentType.startsWith(FORM_CONTENT_TYPE)) {
     request.form = Object.fromEntries(new URLSearchParams(body))
   }

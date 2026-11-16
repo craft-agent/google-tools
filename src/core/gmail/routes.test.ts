@@ -1,16 +1,25 @@
 import { describe, expect, test } from "bun:test"
 import { HOSTS, routeUrl } from "../google/routes"
 import { GMAIL_ROUTES } from "./routes"
-import { GMAIL_MODIFY_SCOPE, GMAIL_READ_SCOPE } from "./scopes"
+import { GMAIL_COMPOSE_SCOPE, GMAIL_MODIFY_SCOPE, GMAIL_READ_SCOPE, GMAIL_SEND_SCOPE } from "./scopes"
 
 describe("GMAIL_ROUTES", () => {
-  test("every route is a GET on the Gmail host, which any read scope or the modify scope allows", () => {
-    for (const route of Object.values(GMAIL_ROUTES)) {
+  test("every route but send is a GET on the Gmail host, which any read scope or the modify scope allows", () => {
+    const { send: _send, ...reads } = GMAIL_ROUTES
+    for (const route of Object.values(reads)) {
       expect(route.method).toBe("GET")
       expect(HOSTS).toContain(route.host)
       expect(route.host).toBe("gmail.googleapis.com")
       expect(route.scopes).toEqual([GMAIL_READ_SCOPE, GMAIL_MODIFY_SCOPE])
     }
+  })
+
+  test("send is the media upload POST on the Gmail host, which the send, compose or modify scope allows", () => {
+    expect(GMAIL_ROUTES.send).toMatchObject({ method: "POST", host: "gmail.googleapis.com" })
+    expect(GMAIL_ROUTES.send.scopes).toEqual([GMAIL_SEND_SCOPE, GMAIL_COMPOSE_SCOPE, GMAIL_MODIFY_SCOPE])
+    expect(routeUrl(GMAIL_ROUTES.send, {}, { uploadType: "multipart" }).toString()).toBe(
+      "https://gmail.googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=multipart",
+    )
   })
 
   test("the hosts stay sorted", () => {

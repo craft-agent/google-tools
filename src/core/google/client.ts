@@ -38,6 +38,8 @@ export type RequestOptions = {
   query?: Record<string, QueryValue>
   /** Sent as JSON. */
   body?: unknown
+  /** Sent as it is with its own `Content-Type`, such as a multipart body; never together with `body`. */
+  content?: { type: string; bytes: Uint8Array }
   /** Sent beside `Authorization` and `Accept`, which these never replace. */
   headers?: Record<string, string>
   /** The time limit of this call, body included; defaults to the client's. */
@@ -108,17 +110,26 @@ export class GoogleClient {
     checkScopes(route, this.#paths.label, credential, this.#missingScopeFix)
   }
 
+  /** The address the label's credential records, `null` when it records none; the credential itself never leaves the client. */
+  async accountEmail(): Promise<string | null> {
+    return (await this.#tokens.readCredential()).credential.email
+  }
+
   /**
    * Calls one allowlisted route and returns its parsed JSON reply (an empty
    * one is `{}`), every string masked.
    *
    * The URL is built from the route (a host or path off the allowlist, or a
    * bad param, fails first), then the label's scopes are checked against the
-   * route's before any network call. A 401 forgets the cached access token and
+   * route's before any network call. A JSON `body` or raw `content` is sent
+   * as given and never logged or echoed in an error. A 401 forgets the cached access token and
    * retries once with a fresh one. A redirect is never followed; a failure
    * status throws what `googleError` maps it to.
    */
   async request<T = unknown>(route: Route, options: RequestOptions = {}): Promise<T> {
+    if (options.body !== undefined && options.content !== undefined) {
+      throw new ToolError("internal_error", "A request carries a JSON body or raw content, never both.")
+    }
     const url = routeUrl(route, options.params, options.query).toString()
     const { credential } = await this.#tokens.readCredential()
     checkScopes(route, this.#paths.label, credential, this.#missingScopeFix)
@@ -173,6 +184,10 @@ export class GoogleClient {
     if (options.body !== undefined) {
       headers.set("Content-Type", JSON_CONTENT_TYPE)
       init.body = JSON.stringify(options.body)
+    }
+    if (options.content !== undefined) {
+      headers.set("Content-Type", options.content.type)
+      init.body = options.content.bytes as BodyInit
     }
     return init
   }
