@@ -36,6 +36,63 @@ describe("the Sheets read", () => {
   })
 })
 
+describe("the Gmail read", () => {
+  test("is a read tool of the gmail toolset, which is on by default", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_gmail_read")
+    expect(spec).toMatchObject({ toolset: "gmail", class: "read" })
+    expect(PROJECT.defaultToolsets).toContain("gmail")
+    expect(annotations(spec!)).toMatchObject({ readOnlyHint: true, openWorldHint: true })
+  })
+})
+
+describe("the Gmail writes", () => {
+  const WRITES = [
+    ["google_gmail_send", "administrative", true],
+    ["google_gmail_draft_create", "add", false],
+    ["google_gmail_draft_edit", "overwrite", true],
+    ["google_gmail_draft_delete", "administrative", true],
+    ["google_gmail_label", "idempotent", false],
+    ["google_gmail_label_create", "add", false],
+    ["google_gmail_trash", "overwrite", true],
+  ] as const
+
+  /** The tools that declare no bounds: a draft delete and a label creation are one object each. */
+  const UNBOUNDED = ["google_gmail_draft_delete", "google_gmail_label_create"]
+
+  test.each(WRITES)(
+    "%s is a %s tool of the gmail toolset with the destructive hint %p",
+    (id, writeClass, destructive) => {
+      const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+      expect(spec).toMatchObject({ toolset: "gmail", class: writeClass })
+      expect(annotations(spec)).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: destructive,
+        openWorldHint: true,
+      })
+    },
+  )
+
+  test.each(WRITES)("%s states its intent, describes its call and resolves its targets", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(spec.intent).toStartWith("About to ")
+    expect(spec.describe).toBeDefined()
+    expect(spec.targets).toBeDefined()
+  })
+
+  test.each(WRITES.filter(([id]) => !UNBOUNDED.includes(id)))("%s declares bounds and measures them", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(Object.keys(spec.bounds ?? {})).not.toEqual([])
+    expect(spec.measure).toBeDefined()
+  })
+
+  test("only the trash is destructive among the label tools", () => {
+    const destructive = ["google_gmail_label", "google_gmail_label_create", "google_gmail_trash"].filter(
+      (id) => annotations(ALL_TOOLS.find((candidate) => candidate.id === id)!).destructiveHint,
+    )
+    expect(destructive).toEqual(["google_gmail_trash"])
+  })
+})
+
 describe("the Sheets writes", () => {
   const WRITES = [
     ["google_sheets_append", "add", false],

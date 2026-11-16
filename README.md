@@ -212,6 +212,34 @@ to `edit` as an undo. `protect` lists every editor each protection leaves.
 Named ranges as ranges, slicers, banded ranges and data sources are not
 offered.
 
+### Gmail (`gmail`)
+
+On by default. Finds and reads mail, sends it, keeps drafts, and keeps the
+mailbox in order with labels and the trash.
+
+| Tool                        | What it does                                                                                                                                                                                             | Class             |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| `google_gmail_read`         | `search`: messages by Gmail query. `message`, `thread`: their text and attachment lists. `labels`: the labels. `drafts`, `draft`: drafts. `attachment`: save one attachment under the download directory | read              |
+| `google_gmail_send`         | send a new mail or a reply, or an existing draft by `draft_id`                                                                                                                                           | administrative    |
+| `google_gmail_draft_create` | keep a new mail as a draft                                                                                                                                                                               | add               |
+| `google_gmail_draft_edit`   | replace the whole message of a draft                                                                                                                                                                     | overwrite         |
+| `google_gmail_draft_delete` | delete a draft for good                                                                                                                                                                                  | administrative    |
+| `google_gmail_label`        | add and remove labels on messages or threads (archive, mark read, star), or take mail out of the trash                                                                                                   | idempotent change |
+| `google_gmail_label_create` | create a label, with colours if asked                                                                                                                                                                    | add               |
+| `google_gmail_trash`        | move messages or threads to the trash                                                                                                                                                                    | overwrite         |
+
+The toolset asks for `gmail.readonly` to read, and `gmail.send`,
+`gmail.compose` and `gmail.modify` to write; `--read-only` asks only for
+`gmail.readonly`. Sending is administrative: it asks every time, and its
+prompt names every recipient, blind copies included. A
+[grant](#writes-no-one-is-there-to-approve) over `google_gmail_send` can bound
+the number of recipients, whether a mail may go outside the account's own
+domain, and whether it may carry attachments. Attachments are read only from
+the directories of the `upload_dirs` [setting](#settings), empty by default, so
+none can be attached until a person names one. Bodies are clipped (20,000
+characters for a message, 60,000 for a thread) and the result says so.
+Permanent deletion, filters, forwarding and mailbox settings are not offered.
+
 ### Grants (`grants`)
 
 Off by default. Delegates bounded writes for jobs where no person can answer.
@@ -428,20 +456,21 @@ with; see [Settings](#settings) before changing the job's variables.
 Every entry point takes the same settings. A flag wins over its environment
 variable, and an option or setting wins over the variable too.
 
-| Setting           | Flag              | Variable                     | Meaning                                                                                                                                                                                                                           |
-| ----------------- | ----------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `toolsets`        | `--toolsets`      | `GOOGLE_TOOLS_TOOLSETS`      | the toolsets that are on, or `all`; default those `src/project.ts` names                                                                                                                                                          |
-| `read_only`       | `--read-only`     | `GOOGLE_TOOLS_READ_ONLY`     | registers no tool that writes; wins over every other setting                                                                                                                                                                      |
-| `unattended`      | `--unattended`    | `GOOGLE_TOOLS_UNATTENDED`    | no person can answer: a write runs only under a grant that covers it; off by default                                                                                                                                              |
-| `grants_dir`      | `--grants-dir`    | `GOOGLE_TOOLS_GRANTS_DIR`    | where grants and their use are kept; default `$XDG_STATE_HOME/google-tools/grants`, else `~/.local/state/google-tools/grants`                                                                                                     |
-| `state_dir`       | `--state-dir`     | `GOOGLE_TOOLS_STATE_DIR`     | where each label keeps its credential and lock; default `$XDG_STATE_HOME/google-tools`, else `~/.local/state/google-tools`                                                                                                        |
-| `download_dir`    | `--download-dir`  | `GOOGLE_TOOLS_DOWNLOAD_DIR`  | where tools write files they download or export, such as sheet snapshots; default `~/Downloads/google-tools`. Never inside the state directory or the tools' install directory, never through a link, never over an existing file |
-| `tools`           | `--tools`         | `GOOGLE_TOOLS_TOOLS`         | single tools to add by ID, whatever their toolset                                                                                                                                                                                 |
-| `exclude_tools`   | `--exclude-tools` | `GOOGLE_TOOLS_EXCLUDE_TOOLS` | single tools to remove by ID; wins over `tools` and `toolsets`                                                                                                                                                                    |
-| `confirm`         | `--confirm`       | `GOOGLE_TOOLS_CONFIRM`       | MCP server only: `harness` (default) or `elicitation`, as the conventions say                                                                                                                                                     |
-| `language`        | `--language`      | `GOOGLE_TOOLS_LANGUAGE`      | native plugins only: the approval prompt's language, such as `ja`                                                                                                                                                                 |
-| `emoji`           | —                 | —                            | Hermes only: the emoji shown beside each toolset, by toolset name (`""` for none)                                                                                                                                                 |
-| `require_plugins` | —                 | —                            | Hermes only: the plugins that must be loaded; while one is not, every write is refused before it is approved                                                                                                                      |
+| Setting           | Flag              | Variable                     | Meaning                                                                                                                                                                                                                                 |
+| ----------------- | ----------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `toolsets`        | `--toolsets`      | `GOOGLE_TOOLS_TOOLSETS`      | the toolsets that are on, or `all`; default those `src/project.ts` names                                                                                                                                                                |
+| `read_only`       | `--read-only`     | `GOOGLE_TOOLS_READ_ONLY`     | registers no tool that writes; wins over every other setting                                                                                                                                                                            |
+| `unattended`      | `--unattended`    | `GOOGLE_TOOLS_UNATTENDED`    | no person can answer: a write runs only under a grant that covers it; off by default                                                                                                                                                    |
+| `grants_dir`      | `--grants-dir`    | `GOOGLE_TOOLS_GRANTS_DIR`    | where grants and their use are kept; default `$XDG_STATE_HOME/google-tools/grants`, else `~/.local/state/google-tools/grants`                                                                                                           |
+| `state_dir`       | `--state-dir`     | `GOOGLE_TOOLS_STATE_DIR`     | where each label keeps its credential and lock; default `$XDG_STATE_HOME/google-tools`, else `~/.local/state/google-tools`                                                                                                              |
+| `download_dir`    | `--download-dir`  | `GOOGLE_TOOLS_DOWNLOAD_DIR`  | where tools write files they download or export, such as sheet snapshots; default `~/Downloads/google-tools`. Never inside the state directory or the tools' install directory, never through a link, never over an existing file       |
+| `upload_dirs`     | `--upload-dirs`   | `GOOGLE_TOOLS_UPLOAD_DIRS`   | directories tools may attach files from, such as a mail's attachments; empty by default, so no file is read. A file must lie inside one by real path, be a regular file with one link, and be outside the state and install directories |
+| `tools`           | `--tools`         | `GOOGLE_TOOLS_TOOLS`         | single tools to add by ID, whatever their toolset                                                                                                                                                                                       |
+| `exclude_tools`   | `--exclude-tools` | `GOOGLE_TOOLS_EXCLUDE_TOOLS` | single tools to remove by ID; wins over `tools` and `toolsets`                                                                                                                                                                          |
+| `confirm`         | `--confirm`       | `GOOGLE_TOOLS_CONFIRM`       | MCP server only: `harness` (default) or `elicitation`, as the conventions say                                                                                                                                                           |
+| `language`        | `--language`      | `GOOGLE_TOOLS_LANGUAGE`      | native plugins only: the approval prompt's language, such as `ja`                                                                                                                                                                       |
+| `emoji`           | —                 | —                            | Hermes only: the emoji shown beside each toolset, by toolset name (`""` for none)                                                                                                                                                       |
+| `require_plugins` | —                 | —                            | Hermes only: the plugins that must be loaded; while one is not, every write is refused before it is approved                                                                                                                            |
 
 `GOOGLE_TOOLS_GRANT_KEY` is a variable only, never a flag or a plugin
 option. Use at least 32 characters, for example from `openssl rand -hex 32`,

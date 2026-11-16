@@ -65,7 +65,7 @@ async function statOrUndefined(path: string) {
 }
 
 /** The real path of `path`, or where it would be: the real path of its deepest existing ancestor with the rest appended. */
-async function resolveDeep(path: string): Promise<string> {
+export async function resolveDeep(path: string): Promise<string> {
   try {
     return await realpath(path)
   } catch (error) {
@@ -77,7 +77,7 @@ async function resolveDeep(path: string): Promise<string> {
 }
 
 /** Whether `path` is `root` or inside it; both are real paths. */
-function isInside(path: string, root: string): boolean {
+export function isInside(path: string, root: string): boolean {
   const between = relative(root, path)
   return between === "" || !(between === ".." || between.startsWith(`..${sep}`) || isAbsolute(between))
 }
