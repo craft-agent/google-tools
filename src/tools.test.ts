@@ -46,7 +46,12 @@ describe("the Gmail read", () => {
 })
 
 describe("the Gmail writes", () => {
-  const WRITES = [["google_gmail_send", "administrative", true]] as const
+  const WRITES = [
+    ["google_gmail_send", "administrative", true],
+    ["google_gmail_draft_create", "add", false],
+    ["google_gmail_draft_edit", "overwrite", true],
+    ["google_gmail_draft_delete", "administrative", true],
+  ] as const
 
   test.each(WRITES)(
     "%s is a %s tool of the gmail toolset with the destructive hint %p",
@@ -61,14 +66,21 @@ describe("the Gmail writes", () => {
     },
   )
 
-  test.each(WRITES)("%s states its intent, describes its call, resolves its targets and measures its bounds", (id) => {
+  test.each(WRITES)("%s states its intent, describes its call and resolves its targets", (id) => {
     const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
     expect(spec.intent).toStartWith("About to ")
     expect(spec.describe).toBeDefined()
     expect(spec.targets).toBeDefined()
-    expect(Object.keys(spec.bounds ?? {})).not.toEqual([])
-    expect(spec.measure).toBeDefined()
   })
+
+  test.each(WRITES.filter(([id]) => id !== "google_gmail_draft_delete"))(
+    "%s declares bounds and measures them",
+    (id) => {
+      const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+      expect(Object.keys(spec.bounds ?? {})).not.toEqual([])
+      expect(spec.measure).toBeDefined()
+    },
+  )
 })
 
 describe("the Sheets writes", () => {

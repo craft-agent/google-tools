@@ -1,5 +1,8 @@
 import type { ToolSpec } from "./core"
 import { googleAccountRead } from "./core/account/read"
+import { googleGmailDraftCreate } from "./core/gmail/draft-create"
+import { googleGmailDraftDelete } from "./core/gmail/draft-delete"
+import { googleGmailDraftEdit } from "./core/gmail/draft-edit"
 import { googleGmailRead } from "./core/gmail/read"
 import { googleGmailSend } from "./core/gmail/send"
 import { googleSheetsAdd } from "./core/sheets/add"
@@ -30,4 +33,7 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleSheetsProtect,
   googleGmailRead,
   googleGmailSend,
+  googleGmailDraftCreate,
+  googleGmailDraftEdit,
+  googleGmailDraftDelete,
 ]
