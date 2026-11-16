@@ -23,4 +23,10 @@ export const DRIVE_ROUTES = {
   uploadStart: { method: "POST", host: DRIVE_HOST, path: UPLOAD_FILES_PATH, scopes: [DRIVE_FILE_SCOPE] },
   /** Sends the bytes of an upload to the session address `uploadStart` answered with. */
   uploadChunk: { method: "PUT", host: DRIVE_HOST, path: UPLOAD_FILES_PATH, scopes: [DRIVE_FILE_SCOPE] },
+  /** `files.create` with metadata alone, which makes a folder. */
+  create: { method: "POST", host: DRIVE_HOST, path: FILES_PATH, scopes: [DRIVE_FILE_SCOPE] },
+  /** `files.copy`: a copy of one file, which a name and a parent may set. */
+  copy: { method: "POST", host: DRIVE_HOST, path: `${FILES_PATH}/{file_id}/copy`, scopes: [DRIVE_FILE_SCOPE] },
+  /** `files.update` with metadata alone: a new name, other parents, or the trash flag; never content. */
+  update: { method: "PATCH", host: DRIVE_HOST, path: `${FILES_PATH}/{file_id}`, scopes: [DRIVE_FILE_SCOPE] },
 } as const satisfies Record<string, Route>
