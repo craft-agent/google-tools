@@ -25,7 +25,10 @@ import { googleRunRead } from "./core/run/read"
 import { googleRunServiceDeploy } from "./core/run/deploy"
 import { googleRunExecutionCancel } from "./core/run/execution-cancel"
 import { googleRunJobDeploy } from "./core/run/job-deploy"
+import { googleRunJobDelete } from "./core/run/job-delete"
 import { googleRunJobRun } from "./core/run/job-run"
+import { googleRunRevisionDelete } from "./core/run/revision-delete"
+import { googleRunServiceDelete } from "./core/run/service-delete"
 import { googleRunTrafficSet } from "./core/run/traffic"
 import { googleSheetsAdd } from "./core/sheets/add"
 import { googleSheetsAppend } from "./core/sheets/append"
@@ -80,4 +83,7 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleRunJobDeploy,
   googleRunJobRun,
   googleRunExecutionCancel,
+  googleRunRevisionDelete,
+  googleRunServiceDelete,
+  googleRunJobDelete,
 ]

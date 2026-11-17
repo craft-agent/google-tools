@@ -80,7 +80,19 @@ describe("the Cloud Run writes", () => {
     "google_run_job_deploy",
     "google_run_execution_cancel",
   ]
-  const WRITES = [...OVERWRITES, "google_run_job_run"]
+  const DELETES = ["google_run_revision_delete", "google_run_service_delete", "google_run_job_delete"]
+  const WRITES = [...OVERWRITES, ...DELETES, "google_run_job_run"]
+
+  test.each(DELETES)("%s is an administrative tool of the run toolset: destructive and not idempotent", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(spec).toMatchObject({ toolset: "run", class: "administrative" })
+    expect(annotations(spec)).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    })
+  })
 
   test.each(OVERWRITES)("%s is an overwrite tool of the run toolset: destructive and idempotent", (id) => {
     const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
@@ -122,7 +134,7 @@ describe("the Cloud Run writes", () => {
     },
   )
 
-  test.each(["google_run_traffic_set", "google_run_job_run", "google_run_execution_cancel"])(
+  test.each(["google_run_traffic_set", "google_run_job_run", "google_run_execution_cancel", ...DELETES])(
     "%s bounds nothing and gates nothing",
     (id) => {
       const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
