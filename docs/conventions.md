@@ -1284,10 +1284,25 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   of the new split (revisions by name, or the latest, with tags), and they
   add up to 100; it replaces the service's traffic with `updateMask=traffic`.
   The prompt shows the traffic served now beside the new split.
+- **A job deploy sends the whole job back.** `jobs.patch` takes no update
+  mask and replaces the job, so the tool reads the job and sends all of it
+  back, labels and unknown fields included, changed only where a service
+  deploy would change its container, and in the task count, parallelism,
+  retries and task timeout the call gives. The masked-credential refusal
+  covers the whole job for the same reason.
+- **Running a job does not wait for the run.** Its operation lasts as long
+  as the execution, which may be hours, so `google_run_job_run` returns once
+  Google has started it, with the execution and the operation, and the read's
+  `execution` method follows it. A run's overrides (plain variables, args,
+  task count, timeout) apply to that execution only, the job is not changed,
+  and a variable that references a secret is not overridden.
+- **Only a running execution is cancelled.** One that has finished is
+  refused, nothing sent; the prompt shows when it started and how its tasks
+  stand.
 - **A write refuses what changed after its prompt.** The prompt pins the
-  service's etag (or that it is absent), the container and the names and
-  kinds of its variables; Google's `ABORTED` or 409 on the etag is `stale`
-  too, with nothing changed.
+  service's, job's or execution's etag (or that it is absent), the container
+  and the names and kinds of its variables; Google's `ABORTED` or 409 on the
+  etag is `stale` too, with nothing changed.
 - **Reading.** Lists return up to 100 items a page (default 50) with a
   `next_page_token`. A service's read gives its traffic as set and as served,
   its latest ready and created revisions, its readiness with Google's reason,
