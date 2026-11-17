@@ -5,6 +5,11 @@ import { writeTargets } from "../targets"
 import { invoke, type ToolContext, type ToolSpec } from "../tool"
 import { runDeployInput } from "./deploy-args"
 import { deployService, googleRunServiceDeploy } from "./deploy"
+import { cancelExecution, googleRunExecutionCancel } from "./execution-cancel"
+import { runExecutionCancelInput } from "./execution-cancel-args"
+import { deployJob, googleRunJobDeploy } from "./job-deploy"
+import { runJobDeployInput } from "./job-deploy-args"
+import { googleRunJobRun } from "./job-run"
 import type { WaitOptions } from "./operation-wait"
 import {
   BASE_URL,
@@ -22,7 +27,7 @@ import { LATEST_ALLOCATION, REVISION_ALLOCATION } from "./service-view"
 import { runTrafficInput } from "./traffic-args"
 import { googleRunTrafficSet, setTraffic } from "./traffic"
 
-/** Fixtures the Cloud Run write tests share: the read fixtures with a label that may read and write, a clock a test moves, a service and its operations as Google gives them, and the two write tools bound to them. */
+/** Fixtures the Cloud Run write tests share: the read fixtures with a label that may read and write, a clock a test moves, a service and its operations as Google gives them, and the write tools bound to them (the job fixtures are in `jobs.testing.ts`). */
 
 export {
   ANNOTATION_VALUE,
@@ -51,6 +56,10 @@ export const OWN_IMAGE = "asia-northeast1-docker.pkg.dev/my-proj/apps/api:v2"
 export const SERVICE = "api"
 export const SERVICE_URL = `${SERVICES_URL}/${SERVICE}`
 export const OPERATION_ID = "op-1"
+
+/** The made-up job and execution the job tests change. */
+export const JOB = "nightly"
+export const EXECUTION = "nightly-abc12"
 
 /** The URL of an operation, and its name as Google writes it. */
 export const operationUrl = (id: string = OPERATION_ID) => `${BASE_URL}/operations/${id}`
@@ -97,9 +106,12 @@ export const apiService = (extra: Record<string, unknown> = {}) => ({
 /** An operation as a write and `operations.get` give it. */
 export const operation = (extra: Record<string, unknown> = {}) => ({ name: operationName(OPERATION_ID), ...extra })
 
+/** The `@type` prefix of the Cloud Run messages an operation holds. */
+export const TYPE_URL = "type.googleapis.com/google.cloud.run.v2"
+
 /** An operation that is done, with the service it changed as its response. */
 export const finished = (service: Record<string, unknown> = apiService()) =>
-  operation({ done: true, response: { "@type": "type.googleapis.com/google.cloud.run.v2.Service", ...service } })
+  operation({ done: true, response: { "@type": `${TYPE_URL}.Service`, ...service } })
 
 /** `GET` of the service, answering `reply`. */
 export const serviceHandler = (reply: FakeReply = { json: apiService() }): FakeHandler => respond(SERVICE_URL, reply)
@@ -145,8 +157,9 @@ function bound(spec: ToolSpec, ctx: ToolContext, defaults: Record<string, unknow
 
 /**
  * The Cloud Run fixtures with `credential` (a label that may read and write
- * unless given, `null` for none), `handlers`, a clock a test moves and the two
- * write tools bound to them for `PLACE` and the service `api`.
+ * unless given, `null` for none), `handlers`, a clock a test moves and the
+ * write tools bound to them for `PLACE`, the service `api`, the job `nightly`
+ * and its execution.
  */
 export async function writeFixture(options: { handlers?: FakeHandler[]; credential?: Credential | null } = {}) {
   const h = await fixture(
@@ -171,6 +184,23 @@ export async function writeFixture(options: { handlers?: FakeHandler[]; credenti
       /** The traffic change with its wait made short, as no argument can. */
       waiting: (args: unknown, wait: WaitOptions) =>
         setTraffic(runTrafficInput.parse({ ...place, ...(args as object) }), ctx, wait),
+    },
+    jobDeploy: {
+      ...bound(googleRunJobDeploy, ctx, { ...PLACE, job: JOB, image: OWN_IMAGE }),
+      /** The job deploy with its wait made short, as no argument can. */
+      waiting: (args: unknown, wait: WaitOptions) =>
+        deployJob(runJobDeployInput.parse({ ...PLACE, job: JOB, image: OWN_IMAGE, ...(args as object) }), ctx, wait),
+    },
+    jobRun: bound(googleRunJobRun, ctx, { ...PLACE, job: JOB }),
+    cancel: {
+      ...bound(googleRunExecutionCancel, ctx, { ...PLACE, job: JOB, execution: EXECUTION }),
+      /** The cancel with its wait made short, as no argument can. */
+      waiting: (args: unknown, wait: WaitOptions) =>
+        cancelExecution(
+          runExecutionCancelInput.parse({ ...PLACE, job: JOB, execution: EXECUTION, ...(args as object) }),
+          ctx,
+          wait,
+        ),
     },
     /** The requests that changed something. */
     writes: () => h.calls().filter((request) => request.method !== "GET"),
