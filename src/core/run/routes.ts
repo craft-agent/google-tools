@@ -37,4 +37,12 @@ export const RUN_ROUTES = {
   serviceCreate: { method: "POST", host: RUN_HOST, path: `${REGION_PATH}/services`, scopes: WRITE_SCOPES },
   /** `services.patch`: the parts of a service the update mask names. */
   servicePatch: { method: "PATCH", host: RUN_HOST, path: SERVICE_PATH, scopes: WRITE_SCOPES },
+  /** `jobs.create`: a new job, with Google's defaults for everything the call leaves out. */
+  jobCreate: { method: "POST", host: RUN_HOST, path: `${REGION_PATH}/jobs`, scopes: WRITE_SCOPES },
+  /** `jobs.patch`: the whole job, which Google replaces (it has no update mask). */
+  jobPatch: { method: "PATCH", host: RUN_HOST, path: JOB_PATH, scopes: WRITE_SCOPES },
+  /** `jobs.run`: a new execution of the job, with the overrides the call gives. */
+  jobRun: { method: "POST", host: RUN_HOST, path: `${JOB_PATH}:run`, scopes: WRITE_SCOPES },
+  /** `executions.cancel`: stops a running execution. */
+  executionCancel: { method: "POST", host: RUN_HOST, path: `${EXECUTION_PATH}:cancel`, scopes: WRITE_SCOPES },
 } as const satisfies Record<string, Route>
