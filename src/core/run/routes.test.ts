@@ -1,14 +1,26 @@
 import { describe, expect, test } from "bun:test"
 import { HOSTS, routeUrl } from "../google/routes"
 import { RUN_ROUTES } from "./routes"
-import { RUN_READ_SCOPE } from "./scopes"
+import { RUN_READ_SCOPE, RUN_SCOPE } from "./scopes"
 
 const PLACE = { project: "my-proj", region: "asia-northeast1" }
 const BASE = "https://run.googleapis.com/v2/projects/my-proj/locations/asia-northeast1"
 
-/** What a Cloud Run read never does, as the method and path that does it: no write, no IAM change, no builds, no export, no listing or deleting of operations. */
+/** The routes that write, by name: the service's create and patch, and no other. */
+const WRITES = ["serviceCreate", "servicePatch"]
+
+/** The writes as `<method> <path>`, which the one never-offered rule about writes lets through. */
+const OFFERED_WRITES = [
+  "POST /v2/projects/{project}/locations/{region}/services",
+  "PATCH /v2/projects/{project}/locations/{region}/services/{service}",
+]
+
+/** What a Cloud Run tool never does, as the method and path that does it: no write but the service's create and patch, no IAM change, no builds, no export, no listing or deleting of operations. */
 const NEVER_OFFERED = [
-  { what: "a write: this layer only reads", matches: (method: string) => method !== "GET" },
+  {
+    what: "a write other than the service's create and patch",
+    matches: (method: string, path: string) => method !== "GET" && !OFFERED_WRITES.includes(`${method} ${path}`),
+  },
   { what: "setIamPolicy", matches: (_method: string, path: string) => path.includes("setIamPolicy") },
   { what: "testIamPermissions", matches: (_method: string, path: string) => path.includes("testIamPermissions") },
   { what: "worker pools", matches: (_method: string, path: string) => path.includes("/workerPools") },
@@ -24,12 +36,25 @@ const NEVER_OFFERED = [
 ]
 
 describe("RUN_ROUTES", () => {
-  test("every route is a GET on the Cloud Run host which only the run.readonly scope allows", () => {
-    for (const route of Object.values(RUN_ROUTES)) {
+  test("every read is a GET on the Cloud Run host which only the run.readonly scope allows", () => {
+    const reads = Object.entries(RUN_ROUTES).filter(([name]) => !WRITES.includes(name))
+    expect(reads.length).toBeGreaterThan(0)
+    for (const [, route] of reads) {
       expect(HOSTS).toContain(route.host)
       expect(route.host).toBe("run.googleapis.com")
       expect(route.method).toBe("GET")
       expect(route.scopes).toEqual([RUN_READ_SCOPE])
+    }
+  })
+
+  test("the only writes are the service's create and patch, which only the run scope allows", () => {
+    const writes = Object.entries(RUN_ROUTES).filter(([, route]) => route.method !== "GET")
+    expect(writes.map(([name]) => name).sort()).toEqual([...WRITES].sort())
+    expect(RUN_ROUTES.serviceCreate.method).toBe("POST")
+    expect(RUN_ROUTES.servicePatch.method).toBe("PATCH")
+    for (const [, route] of writes) {
+      expect(route.host).toBe("run.googleapis.com")
+      expect(route.scopes).toEqual([RUN_SCOPE])
     }
   })
 
@@ -57,6 +82,12 @@ describe("RUN_ROUTES", () => {
     expect(routeUrl(RUN_ROUTES.tasks, execution).toString()).toBe(`${BASE}/jobs/nightly/executions/nightly-abc12/tasks`)
     expect(routeUrl(RUN_ROUTES.operation, { ...PLACE, operation: "op-1_A" }).toString()).toBe(
       `${BASE}/operations/op-1_A`,
+    )
+    expect(routeUrl(RUN_ROUTES.serviceCreate, PLACE, { serviceId: "api" }).toString()).toBe(
+      `${BASE}/services?serviceId=api`,
+    )
+    expect(routeUrl(RUN_ROUTES.servicePatch, service, { updateMask: "template" }).toString()).toBe(
+      `${BASE}/services/api?updateMask=template`,
     )
   })
 

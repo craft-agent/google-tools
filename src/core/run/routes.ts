@@ -1,5 +1,5 @@
 import type { Route } from "../google/routes"
-import { RUN_READ_SCOPE } from "./scopes"
+import { RUN_READ_SCOPE, RUN_SCOPE } from "./scopes"
 
 const RUN_HOST = "run.googleapis.com"
 
@@ -12,6 +12,9 @@ const EXECUTION_PATH = `${JOB_PATH}/executions/{execution}`
 
 /** The scopes that read Cloud Run: every read takes the one. */
 const READ_SCOPES = [RUN_READ_SCOPE] as const
+
+/** The scope that changes Cloud Run: every write takes the one. */
+const WRITE_SCOPES = [RUN_SCOPE] as const
 
 /** The calls the Cloud Run tools may make, each with every scope that allows it, narrowest first. */
 export const RUN_ROUTES = {
@@ -30,4 +33,8 @@ export const RUN_ROUTES = {
   tasks: { method: "GET", host: RUN_HOST, path: `${EXECUTION_PATH}/tasks`, scopes: READ_SCOPES },
   /** `operations.get`: one long-running operation, never the list of them or a deletion. */
   operation: { method: "GET", host: RUN_HOST, path: `${REGION_PATH}/operations/{operation}`, scopes: READ_SCOPES },
+  /** `services.create`: a new service, with Google's defaults for everything the call leaves out. */
+  serviceCreate: { method: "POST", host: RUN_HOST, path: `${REGION_PATH}/services`, scopes: WRITE_SCOPES },
+  /** `services.patch`: the parts of a service the update mask names. */
+  servicePatch: { method: "PATCH", host: RUN_HOST, path: SERVICE_PATH, scopes: WRITE_SCOPES },
 } as const satisfies Record<string, Route>

@@ -18,7 +18,8 @@ const PROJECT_PREFIX = "projects/"
 /** How much of a refused value an error repeats. */
 const MAX_SHOWN_LENGTH = 100
 
-function shown(value: string): string {
+/** A refused value as an error repeats it: JSON-quoted and clipped. */
+export function shown(value: string): string {
   return JSON.stringify(value.length > MAX_SHOWN_LENGTH ? `${value.slice(0, MAX_SHOWN_LENGTH)}…` : value)
 }
 

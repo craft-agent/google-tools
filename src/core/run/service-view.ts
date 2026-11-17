@@ -12,7 +12,13 @@ import {
 import { templateSettings, templateSettingsReply, templateSettingsShape } from "./template-view"
 
 /** How Google names the traffic allocation that follows the latest revision. */
-const LATEST_ALLOCATION = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+export const LATEST_ALLOCATION = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+
+/** How Google names the traffic allocation that goes to one named revision. */
+export const REVISION_ALLOCATION = "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION"
+
+/** The percents of a traffic split add up to this. */
+export const WHOLE_PERCENT = 100
 
 const INGRESS_NAMES = {
   INGRESS_TRAFFIC_ALL: "all",
