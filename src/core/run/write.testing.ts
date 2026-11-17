@@ -9,6 +9,8 @@ import { cancelExecution, googleRunExecutionCancel } from "./execution-cancel"
 import { runExecutionCancelInput } from "./execution-cancel-args"
 import { deployJob, googleRunJobDeploy } from "./job-deploy"
 import { runJobDeployInput } from "./job-deploy-args"
+import { deleteJob, googleRunJobDelete } from "./job-delete"
+import { runJobDeleteInput } from "./job-delete-args"
 import { googleRunJobRun } from "./job-run"
 import type { WaitOptions } from "./operation-wait"
 import {
@@ -22,7 +24,11 @@ import {
   respond,
   templateSettings,
 } from "./read.testing"
+import { deleteRevision, googleRunRevisionDelete } from "./revision-delete"
+import { runRevisionDeleteInput } from "./revision-delete-args"
 import { RUN_SCOPE } from "./scopes"
+import { deleteService, googleRunServiceDelete } from "./service-delete"
+import { runServiceDeleteInput } from "./service-delete-args"
 import { LATEST_ALLOCATION, REVISION_ALLOCATION } from "./service-view"
 import { runTrafficInput } from "./traffic-args"
 import { googleRunTrafficSet, setTraffic } from "./traffic"
@@ -60,6 +66,9 @@ export const OPERATION_ID = "op-1"
 /** The made-up job and execution the job tests change. */
 export const JOB = "nightly"
 export const EXECUTION = "nightly-abc12"
+
+/** The made-up revision of the service that the deletion tests delete: one no traffic reaches. */
+export const REVISION = "api-00005-old"
 
 /** The URL of an operation, and its name as Google writes it. */
 export const operationUrl = (id: string = OPERATION_ID) => `${BASE_URL}/operations/${id}`
@@ -201,6 +210,24 @@ export async function writeFixture(options: { handlers?: FakeHandler[]; credenti
           ctx,
           wait,
         ),
+    },
+    revisionDelete: {
+      ...bound(googleRunRevisionDelete, ctx, { ...place, revision: REVISION }),
+      /** The revision deletion with its wait made short, as no argument can. */
+      waiting: (args: unknown, wait: WaitOptions) =>
+        deleteRevision(runRevisionDeleteInput.parse({ ...place, revision: REVISION, ...(args as object) }), ctx, wait),
+    },
+    serviceDelete: {
+      ...bound(googleRunServiceDelete, ctx, place),
+      /** The service deletion with its wait made short, as no argument can. */
+      waiting: (args: unknown, wait: WaitOptions) =>
+        deleteService(runServiceDeleteInput.parse({ ...place, ...(args as object) }), ctx, wait),
+    },
+    jobDelete: {
+      ...bound(googleRunJobDelete, ctx, { ...PLACE, job: JOB }),
+      /** The job deletion with its wait made short, as no argument can. */
+      waiting: (args: unknown, wait: WaitOptions) =>
+        deleteJob(runJobDeleteInput.parse({ ...PLACE, job: JOB, ...(args as object) }), ctx, wait),
     },
     /** The requests that changed something. */
     writes: () => h.calls().filter((request) => request.method !== "GET"),
