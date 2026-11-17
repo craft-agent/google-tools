@@ -63,6 +63,16 @@ describe("the comments read", () => {
   })
 })
 
+describe("the Cloud Run read", () => {
+  test("is a read tool of the run toolset, which is off by default", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_run_read")
+    expect(spec).toMatchObject({ toolset: "run", class: "read" })
+    expect(PROJECT.toolsets).toContain("run")
+    expect(PROJECT.defaultToolsets).not.toContain("run")
+    expect(annotations(spec!)).toMatchObject({ readOnlyHint: true, openWorldHint: true })
+  })
+})
+
 describe("the comments writes", () => {
   test("google_comments_add is an administrative tool of the comments toolset: destructive, asked every time, with its intent, describer and targets", () => {
     const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_comments_add")!

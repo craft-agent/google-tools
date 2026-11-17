@@ -21,6 +21,7 @@ import { googleGmailLabelCreate } from "./core/gmail/label-create"
 import { googleGmailRead } from "./core/gmail/read"
 import { googleGmailSend } from "./core/gmail/send"
 import { googleGmailTrash } from "./core/gmail/trash"
+import { googleRunRead } from "./core/run/read"
 import { googleSheetsAdd } from "./core/sheets/add"
 import { googleSheetsAppend } from "./core/sheets/append"
 import { googleSheetsClear } from "./core/sheets/clear"
@@ -68,4 +69,5 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleCommentsStatus,
   googleCommentsEdit,
   googleCommentsDelete,
+  googleRunRead,
 ]

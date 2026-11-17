@@ -29,6 +29,7 @@ provides_tools:
   - google_grant_create
   - google_grant_read
   - google_grant_revoke
+  - google_run_read
   - google_sheets_add
   - google_sheets_append
   - google_sheets_clear
