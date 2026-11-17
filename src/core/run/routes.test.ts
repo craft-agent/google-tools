@@ -6,8 +6,18 @@ import { RUN_READ_SCOPE, RUN_SCOPE } from "./scopes"
 const PLACE = { project: "my-proj", region: "asia-northeast1" }
 const BASE = "https://run.googleapis.com/v2/projects/my-proj/locations/asia-northeast1"
 
-/** The routes that write, by name: the service's and the job's create and patch, running a job and cancelling an execution, and no other. */
-const WRITES = ["serviceCreate", "servicePatch", "jobCreate", "jobPatch", "jobRun", "executionCancel"]
+/** The routes that write, by name: the service's and the job's create and patch, running a job, cancelling an execution and deleting a service, a revision or a job, and no other. */
+const WRITES = [
+  "serviceCreate",
+  "servicePatch",
+  "jobCreate",
+  "jobPatch",
+  "jobRun",
+  "executionCancel",
+  "serviceDelete",
+  "revisionDelete",
+  "jobDelete",
+]
 
 /** The writes as `<method> <path>`, which the one never-offered rule about writes lets through. */
 const OFFERED_WRITES = [
@@ -17,12 +27,15 @@ const OFFERED_WRITES = [
   "PATCH /v2/projects/{project}/locations/{region}/jobs/{job}",
   "POST /v2/projects/{project}/locations/{region}/jobs/{job}:run",
   "POST /v2/projects/{project}/locations/{region}/jobs/{job}/executions/{execution}:cancel",
+  "DELETE /v2/projects/{project}/locations/{region}/services/{service}",
+  "DELETE /v2/projects/{project}/locations/{region}/services/{service}/revisions/{revision}",
+  "DELETE /v2/projects/{project}/locations/{region}/jobs/{job}",
 ]
 
-/** What a Cloud Run tool never does, as the method and path that does it: no write but the ones above, no IAM change, no builds, no export, no listing or deleting of operations. */
+/** What a Cloud Run tool never does, as the method and path that does it: no write but the ones above, so no deleting of an execution, no IAM change, no builds, no export, no listing or deleting of operations. */
 const NEVER_OFFERED = [
   {
-    what: "a write other than the service and job writes, running a job and cancelling an execution",
+    what: "a write other than the service and job writes, running a job, cancelling an execution and deleting a service, a revision or a job",
     matches: (method: string, path: string) => method !== "GET" && !OFFERED_WRITES.includes(`${method} ${path}`),
   },
   { what: "setIamPolicy", matches: (_method: string, path: string) => path.includes("setIamPolicy") },
@@ -51,7 +64,7 @@ describe("RUN_ROUTES", () => {
     }
   })
 
-  test("the only writes are the service and job writes, a job's run and an execution's cancel, which only the run scope allows", () => {
+  test("the only writes are the service and job writes, a job's run, an execution's cancel and the deletes of a service, a revision and a job, which only the run scope allows", () => {
     const writes = Object.entries(RUN_ROUTES).filter(([, route]) => route.method !== "GET")
     expect(writes.map(([name]) => name).sort()).toEqual([...WRITES].sort())
     expect(RUN_ROUTES.serviceCreate.method).toBe("POST")
@@ -60,6 +73,9 @@ describe("RUN_ROUTES", () => {
     expect(RUN_ROUTES.jobPatch.method).toBe("PATCH")
     expect(RUN_ROUTES.jobRun.method).toBe("POST")
     expect(RUN_ROUTES.executionCancel.method).toBe("POST")
+    expect(RUN_ROUTES.serviceDelete.method).toBe("DELETE")
+    expect(RUN_ROUTES.revisionDelete.method).toBe("DELETE")
+    expect(RUN_ROUTES.jobDelete.method).toBe("DELETE")
     for (const [, route] of writes) {
       expect(route.host).toBe("run.googleapis.com")
       expect(route.scopes).toEqual([RUN_SCOPE])
@@ -103,6 +119,13 @@ describe("RUN_ROUTES", () => {
     expect(routeUrl(RUN_ROUTES.executionCancel, execution).toString()).toBe(
       `${BASE}/jobs/nightly/executions/nightly-abc12:cancel`,
     )
+    expect(routeUrl(RUN_ROUTES.serviceDelete, service, { etag: '"e1"' }).toString()).toBe(
+      `${BASE}/services/api?etag=%22e1%22`,
+    )
+    expect(routeUrl(RUN_ROUTES.revisionDelete, { ...service, revision: "api-00001-abc" }).toString()).toBe(
+      `${BASE}/services/api/revisions/api-00001-abc`,
+    )
+    expect(routeUrl(RUN_ROUTES.jobDelete, job).toString()).toBe(`${BASE}/jobs/nightly`)
   })
 
   test("a value with a slash or a dot segment cannot be a path parameter", () => {

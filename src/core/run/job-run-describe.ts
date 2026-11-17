@@ -2,6 +2,7 @@ import type { CallDescription, CallFact } from "../tool"
 import { envPin } from "./container-describe"
 import { phrase } from "./facts"
 import type { JobRunPlan } from "./job-run-plan"
+import type { JobView } from "./job-view"
 import { etagPin } from "./pins"
 import { timeoutText } from "./timeout"
 import { RUN_WORDS } from "./words"
@@ -15,8 +16,7 @@ function tasksFacts({ args, before }: JobRunPlan): CallFact[] {
 }
 
 /** The `Last run` fact: the job's latest execution and whether it finished; none when the job has none. */
-function lastRunFacts({ before }: JobRunPlan): CallFact[] {
-  const latest = before.latest_execution
+export function lastRunFacts({ latest_execution: latest }: JobView): CallFact[] {
   if (latest === null) return []
   const text = latest.completion_time === null ? RUN_WORDS.lastRunRunning : RUN_WORDS.lastRunFinished
   return [{ label: RUN_WORDS.lastRun, value: { text, values: { execution: latest.execution } } }]
@@ -28,7 +28,7 @@ function facts(plan: JobRunPlan): CallFact[] {
     ...(container === null ? [] : [{ label: RUN_WORDS.image, value: container.image }]),
     ...tasksFacts(plan),
     { label: RUN_WORDS.runsAs, value: before.template.service_account ?? phrase(RUN_WORDS.defaultAccount) },
-    ...lastRunFacts(plan),
+    ...lastRunFacts(before),
   ]
 }
 

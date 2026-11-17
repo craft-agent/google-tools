@@ -13,13 +13,16 @@ function targetName({ type, revision }: Served): string {
   return revision === null ? "latest" : `latest (${revision})`
 }
 
-/** The `Now` fact: the traffic the service serves, as `rev-a 90%, rev-b 10%`. */
-function servedFact({ traffic_statuses }: ServiceView): CallFact {
-  const value =
-    traffic_statuses.length === 0
-      ? phrase(RUN_WORDS.noTraffic)
-      : traffic_statuses.map((target) => `${targetName(target)} ${target.percent}%`).join(", ")
-  return { label: RUN_WORDS.now, value }
+/** The traffic the service serves, as `rev-a 90%, rev-b 10%`. */
+export function servedTraffic({ traffic_statuses }: ServiceView): CallFact["value"] {
+  return traffic_statuses.length === 0
+    ? phrase(RUN_WORDS.noTraffic)
+    : traffic_statuses.map((target) => `${targetName(target)} ${target.percent}%`).join(", ")
+}
+
+/** The `Now` fact: the traffic the service serves. */
+function servedFact(service: ServiceView): CallFact {
+  return { label: RUN_WORDS.now, value: servedTraffic(service) }
 }
 
 /** The tags the service has now, each once: a split replaces them all. */

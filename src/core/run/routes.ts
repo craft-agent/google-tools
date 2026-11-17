@@ -45,4 +45,15 @@ export const RUN_ROUTES = {
   jobRun: { method: "POST", host: RUN_HOST, path: `${JOB_PATH}:run`, scopes: WRITE_SCOPES },
   /** `executions.cancel`: stops a running execution. */
   executionCancel: { method: "POST", host: RUN_HOST, path: `${EXECUTION_PATH}:cancel`, scopes: WRITE_SCOPES },
+  /** `services.delete`: the service with every revision, which Google cannot bring back. */
+  serviceDelete: { method: "DELETE", host: RUN_HOST, path: SERVICE_PATH, scopes: WRITE_SCOPES },
+  /** `revisions.delete`: one revision, which can no longer take traffic back. */
+  revisionDelete: {
+    method: "DELETE",
+    host: RUN_HOST,
+    path: `${SERVICE_PATH}/revisions/{revision}`,
+    scopes: WRITE_SCOPES,
+  },
+  /** `jobs.delete`: the job with its executions, which Google cannot bring back. */
+  jobDelete: { method: "DELETE", host: RUN_HOST, path: JOB_PATH, scopes: WRITE_SCOPES },
 } as const satisfies Record<string, Route>

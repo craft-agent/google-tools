@@ -27,6 +27,16 @@ export type ChangeRequest = {
   stale?: string
 }
 
+/** A deletion of the resource `route` and `params` name, sent with the etag read as the `etag` query when there is one. */
+export function deleteRequest(
+  route: Route,
+  params: Record<string, string>,
+  etag: string | null,
+  stale: string,
+): ChangeRequest {
+  return { route, params, ...(etag !== null && { query: { etag } }), body: undefined, stale }
+}
+
 /** What a plan holds to send its write and follow the operation it starts. */
 export type ChangeSession = { client: GoogleClient; runtime: ToolRuntime; place: Place }
 

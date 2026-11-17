@@ -8,6 +8,13 @@ export const projectArg = z
 /** The `region` argument of the Cloud Run tools that write. */
 export const regionArg = z.string().describe("The Cloud Run region, such as `asia-northeast1`; there is no default.")
 
+/** Whether a deletion's operation was done when the call returned. */
+export const deletedOutput = z
+  .boolean()
+  .describe(
+    "False when Google was still deleting at the deadline; follow it with `google_run_read` method `operation`.",
+  )
+
 /** The operation a write started: its id, for `google_run_read` method `operation`, and whether it had finished when the call returned. */
 export const operationOutput = z.object({
   operation: z.string().describe("The operation's id, which `google_run_read` method `operation` follows."),
