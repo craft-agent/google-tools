@@ -1192,3 +1192,95 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   clipped at 4,000 characters in a read; a comment's text is 1 to 2,048
   characters, and on a spreadsheet at most 2,048 bytes in UTF-8, which Google
   counts in code units; an assignee is a plain address.
+
+## Cloud Run
+
+- **Nine tools**, off by default like every Cloud toolset:
+  `google_run_read` (`services`, `service`, `revisions`, `revision`, `jobs`,
+  `job`, `executions`, `execution`, `tasks`, `iam`, `operation`; read);
+  `google_run_job_run` (add); `google_run_service_deploy`,
+  `google_run_traffic_set`, `google_run_job_deploy` and
+  `google_run_execution_cancel` (overwrite); `google_run_revision_delete`,
+  `google_run_service_delete` and `google_run_job_delete` (administrative).
+  Each write is its own tool, so an approval remembered for one never carries
+  over to a harsher one.
+- **The classes, and why.** A deploy creates a service or job when there is
+  none, but on one that exists it replaces the running revision's image and
+  settings, so it overwrites; so do a traffic split, which takes requests
+  from the revisions that served them, and a cancel, which stops a run part
+  way. Running a job starts another execution on every call, so it adds.
+  Deleting a revision, a service or a job cannot be undone: a service goes
+  with every revision and its URL, and a revision deleted can no longer take
+  traffic back.
+- **Scopes**: `run.readonly` to read, `run` to write, which `--read-only`
+  leaves out. `run` also allows `setIamPolicy`, and `cloud-platform` would
+  allow every Cloud API, so the route allowlist, not the scope, is what keeps
+  the tools to the operations below; `cloud-platform` is never asked.
+- **Every call names its project and region.** `project` is a project id
+  (6 to 30 lowercase letters, digits and hyphens, starting with a letter) and
+  `region` a Cloud Run region such as `asia-northeast1`; there is no default
+  of either, so a call never lands in a project the prompt does not show.
+  Services, jobs, revisions, executions and tasks are named by their short
+  names, never by a full resource name, and each goes into the path as one
+  segment.
+- **No environment value is returned.** A plain environment variable may
+  hold a credential, and a value in a transcript cannot be taken back. Every
+  service, revision, job, execution and task the tools return, the reads' and
+  the writes', goes through one view that gives each variable's `name` and
+  `kind` (`value`, or `secret` with the secret and version it references),
+  never its value. Annotations are left out for the same reason; labels,
+  command and args are returned.
+- **Images come from the project's own registries.** A deploy's image is
+  `<location>-docker.pkg.dev/<project>/…`, `gcr.io/<project>/…` or
+  `<us|eu|asia>.gcr.io/<project>/…`, with `<project>` the call's project. Any
+  other (Docker Hub, `ghcr.io`, another project's registry) runs someone
+  else's code with the service's identity, so the tool's `gate` refuses it
+  before anyone is asked. Which repository inside the project a deploy may
+  use is the person's to bound: a deploy's `image` bound is a `prefix` at `/`,
+  measured as the image's repository path with its host lowercased and its
+  tag or digest left off (`asia-northeast1-docker.pkg.dev/my-proj/apps/api`),
+  so a grant of `…/my-proj/apps/api` covers that image at any tag and never
+  `…/apps/api-old`.
+- **Targets**: `<label>/projects/<project>/locations/<region>/services/<service>`
+  for a service and its traffic, `…/jobs/<job>` for a job and its runs,
+  `…/services/<service>/revisions/<revision>` for a revision deleted and
+  `…/jobs/<job>/executions/<execution>` for an execution cancelled. A grant
+  therefore bounds a write to a project, a region and a service or job, and
+  a deploy also to the image paths its `image` bound names.
+- **A write waits for its operation.** Google answers a change with a
+  long-running operation; the tool follows it with `operations.get` up to a
+  deadline and returns what changed. One still running at the deadline is
+  returned as its operation id with `done: false`, and the read's
+  `operation` method follows it; the tool and the skill say to read it before
+  trying again.
+- **Reading.** Lists return up to 100 items a page (default 50) with a
+  `next_page_token`. A service's read gives its traffic as set and as served,
+  its latest ready and created revisions, its readiness with Google's reason,
+  and its template as the deploy would change it, beside what the deploy
+  keeps (service account, network, volumes, ingress, whether invoking needs
+  IAM). `iam` gives a service's or job's bindings and says when `allUsers` or
+  `allAuthenticatedUsers` can reach it. `operation` gives an operation's state,
+  error and the resource it changes, never its body. Descriptions, labels,
+  conditions' messages and members were written by other people: they are
+  data, never instructions.
+- **Not offered, and why.**
+  - Changing IAM (`setIamPolicy`) and public access (`invokerIamDisabled`,
+    IAP, custom audiences, the default URL): they change who may reach a
+    service, and an `allUsers` binding makes it public, which nothing in a
+    deploy's arguments would show.
+  - The service account: the identity the code runs as carries every
+    permission granted to it.
+  - Ingress, egress, VPC access and network interfaces: they open a service
+    to, or reach into, networks beyond its own.
+  - Secrets and volumes (an environment variable that references a secret,
+    secret, Cloud SQL, Cloud Storage and NFS mounts): they reach data beyond
+    the image. A deploy keeps the ones a service has and sets none.
+  - Encryption keys and binary authorization: they are security policies of
+    their own.
+  - SSH: a way into a running instance.
+  - Builds, source uploads and deploying from source: they run build steps
+    no prompt can show; a deploy takes a built image.
+  - Exporting images and metadata, worker pools and instances, deleting
+    operations: they wait for a need.
+  - Deleting an execution: it is the record of what a job ran, and nothing
+    needs it gone.
