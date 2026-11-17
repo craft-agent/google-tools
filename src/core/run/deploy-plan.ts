@@ -1,12 +1,13 @@
-import { ToolError, isToolError } from "../errors"
+import { ToolError } from "../errors"
 import type { ToolContext } from "../tool"
+import type { ChangeRequest, ChangeSession } from "./change"
 import type { ContainerView } from "./container-view"
 import type { RunDeployArgs } from "./deploy-args"
 import { newTemplate, updatedTemplate } from "./deploy-template"
 import { imageRepository } from "./image"
+import { readIfFound } from "./resource-state"
 import { RUN_ROUTES } from "./routes"
-import type { ChangeRequest, ChangeSession } from "./service-change"
-import { readServiceState, type ServiceState } from "./service-state"
+import { readServiceState } from "./service-state"
 import type { ServiceView } from "./service-view"
 import { checkedService } from "./target"
 import { runWriteSession } from "./write-session"
@@ -37,16 +38,6 @@ function checkInstanceRange({ min_instances, max_instances }: RunDeployArgs): vo
   }
 }
 
-/** The service as it is now, or `undefined` when it does not exist. */
-async function readExisting(session: ChangeSession, service: string): Promise<ServiceState | undefined> {
-  try {
-    return await readServiceState(session.client, session.place, service)
-  } catch (error) {
-    if (isToolError(error) && error.code === "not_found") return undefined
-    throw error
-  }
-}
-
 /**
  * Checks the arguments (the ids, the image against the project's own
  * registry, the instance range) and the label's scopes before anything is
@@ -58,9 +49,8 @@ export async function planDeploy(args: RunDeployArgs, ctx: ToolContext): Promise
   imageRepository(args.image, place.project)
   checkInstanceRange(args)
   const { client, label, runtime } = await runWriteSession(ctx, args.account, RUN_ROUTES.servicePatch)
-  const session = { client, runtime, place }
-  const base = { ...session, label, service, args }
-  const state = await readExisting(session, service)
+  const base = { client, runtime, place, label, service, args }
+  const state = await readIfFound(() => readServiceState(client, place, service))
 
   if (state === undefined) {
     const request: ChangeRequest = {

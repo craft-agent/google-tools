@@ -26,23 +26,27 @@ const operationReply = z.object({
   name: z.string().optional(),
   done: z.boolean().optional(),
   error: z.object({ code: z.number().optional(), message: z.string().optional() }).optional(),
+  metadata: z.unknown().optional(),
   response: z.unknown().optional(),
 })
 
-type OperationReply = z.infer<typeof operationReply>
+export type OperationReply = z.infer<typeof operationReply>
 
 /** A message without its final full stop, so a sentence can follow it. */
 const withoutFinalStop = (message: string) => message.replace(/\.+$/, "")
 
+/** What a person does about a change that ended in an error or named nothing to follow. */
+const READ_WHAT_IS_LEFT = "Read what it changed with google_run_read to see what was left."
+
 /** The outcome of a finished operation: its response, or `upstream_error` with Google's message when it failed. */
-function outcomeOf(operation: string, reply: OperationReply): OperationOutcome {
+export function outcomeOf(operation: string, reply: OperationReply): OperationOutcome {
   const { error } = reply
   if (error === undefined) return { operation, done: true, response: reply.response }
   const details: ErrorDetails = { operation }
   if (error.code !== undefined) details.google_code = error.code
   throw new ToolError(
     "upstream_error",
-    `Google reported the change failed: ${withoutFinalStop(error.message ?? NO_REASON)}. Read the service to see what was left.`,
+    `Google reported the change failed: ${withoutFinalStop(error.message ?? NO_REASON)}. ${READ_WHAT_IS_LEFT}`,
     { details },
   )
 }
@@ -88,6 +92,19 @@ async function poll(
   )
 }
 
+/** The operation a write started, from Google's reply to it: its id and the reply, or `upstream_error` when the reply names no operation. */
+export function startedOperation(started: unknown): { operation: string; reply: OperationReply } {
+  const reply = parseReply(operationReply, started, "the change")
+  const operation = shortName(reply.name)
+  if (operation === "") {
+    throw new ToolError(
+      "upstream_error",
+      `Google accepted the change but named no operation to follow. ${READ_WHAT_IS_LEFT}`,
+    )
+  }
+  return { operation, reply }
+}
+
 /**
  * Follows the operation a write returned (`started`, Google's reply to it): a
  * reply that is done is used as it is, else `operations.get` is asked every
@@ -105,14 +122,7 @@ export async function waitForOperation(
   signal: AbortSignal | undefined,
   { waitMs = DEFAULT_WAIT_MS, pollMs = DEFAULT_POLL_MS }: WaitOptions = {},
 ): Promise<OperationOutcome> {
-  const first = parseReply(operationReply, started, "the change")
-  const operation = shortName(first.name)
-  if (operation === "") {
-    throw new ToolError(
-      "upstream_error",
-      "Google accepted the change but named no operation to follow. Read the service to see what was left.",
-    )
-  }
+  const { operation, reply: first } = startedOperation(started)
 
   const deadline = runtime.now() + waitMs
   let reply = first

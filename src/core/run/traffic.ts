@@ -1,7 +1,8 @@
 import { defineTool, type ToolContext } from "../tool"
+import { operationReport, sendChange } from "./change"
 import type { WaitOptions } from "./operation-wait"
 import { RUN_TOOLSET } from "./scopes"
-import { changedService, sendChange } from "./service-change"
+import { changedService } from "./service-change"
 import { serviceTargets } from "./target"
 import {
   MAX_TRAFFIC_ENTRIES,
@@ -25,7 +26,7 @@ export async function setTraffic(
   return {
     service: changedService(outcome),
     before: { traffic, traffic_statuses },
-    operation: { operation: outcome.operation, done: outcome.done },
+    operation: operationReport(outcome),
   }
 }
 

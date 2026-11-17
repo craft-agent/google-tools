@@ -1,23 +1,23 @@
 import { defineTool, type ToolContext } from "../tool"
+import { beforeChange, operationReport, sendChange } from "./change"
 import { runDeployInput, runDeployOutput, type RunDeployArgs, type RunDeployResult } from "./deploy-args"
 import { describeDeploy } from "./deploy-describe"
 import { planDeploy, type DeployPlan } from "./deploy-plan"
 import { imageBound, imageRepository } from "./image"
 import type { OperationOutcome, WaitOptions } from "./operation-wait"
-import { changedService, sendChange } from "./service-change"
+import { changedService } from "./service-change"
 import { serviceTargets } from "./target"
 import { RUN_TOOLSET } from "./scopes"
 
 /** The result of a deploy: what the call did, the service once the operation is done and what it was before. */
 function deployResult(plan: DeployPlan, outcome: OperationOutcome): RunDeployResult {
   const service = changedService(outcome)
-  const { before, container } = plan
   return {
     created: plan.mode === "create",
     service,
     revision: service?.latest_created_revision ?? null,
-    before: before !== null && container !== null ? { image: container.image, template: before.template } : null,
-    operation: { operation: outcome.operation, done: outcome.done },
+    before: beforeChange(plan.before, plan.container),
+    operation: operationReport(outcome),
   }
 }
 

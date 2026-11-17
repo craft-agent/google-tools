@@ -112,18 +112,18 @@ describe("google_run_service_deploy: waiting for the operation", () => {
 
     expect(error.code).toBe("upstream_error")
     expect(error.message).toBe(
-      "Google reported the change failed: Revision failed to start. Read the service to see what was left.",
+      "Google reported the change failed: Revision failed to start. Read what it changed with google_run_read to see what was left.",
     )
     expect(error.details).toEqual({ operation: OPERATION_ID, google_code: 9 })
   })
 
-  test("a change that names no operation is an error that says to read the service", async () => {
+  test("a change that names no operation is an error that says to read what it changed", async () => {
     const h = await writeFixture({ handlers: [serviceHandler(), patchHandler({ json: { done: true } })] })
 
     const error = await toolError(h.deploy.waiting({}, FAST))
 
     expect(error.code).toBe("upstream_error")
-    expect(error.message).toContain("Read the service")
+    expect(error.message).toContain("with google_run_read to see what was left")
   })
 
   test("a cancellation while waiting is the call's cancellation, and nothing more is asked", async () => {
