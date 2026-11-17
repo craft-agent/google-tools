@@ -1299,6 +1299,16 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
 - **Only a running execution is cancelled.** One that has finished is
   refused, nothing sent; the prompt shows when it started and how its tasks
   stand.
+- **A revision is deleted only once nothing reaches it.** One that takes a
+  share of the traffic as set or as served, carries a tag, or is the latest
+  ready revision while traffic goes to the latest, is refused, nothing sent,
+  and the refusal says to move the traffic with `google_run_traffic_set`
+  first. The prompt pins the service's etag beside the revision's, so traffic
+  moved to it after the prompt makes the call `stale`.
+- **A deletion's prompt shows what goes with it.** A service's shows its URL,
+  the traffic it serves now and its latest revision, since every revision
+  goes with it; a job's shows how many executions it has and its last run,
+  since its executions go with it. Each is sent with the etag it read.
 - **A write refuses what changed after its prompt.** The prompt pins the
   service's, job's or execution's etag (or that it is absent), the container
   and the names and kinds of its variables; Google's `ABORTED` or 409 on the
