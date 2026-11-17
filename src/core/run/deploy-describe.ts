@@ -1,29 +1,16 @@
-import { createHash } from "node:crypto"
 import type { CallDescription, CallFact, CallHeadline } from "../tool"
-import type { ContainerView } from "./container-view"
+import { SETTINGS, changeLines, containerLines, containerPins, keptFacts, textOf } from "./container-describe"
 import type { DeployPlan } from "./deploy-plan"
-import { countFact, phrase } from "./facts"
+import { phrase } from "./facts"
 import { etagPin } from "./pins"
 import { WHOLE_PERCENT, type ServiceView } from "./service-view"
+import { timeoutText } from "./timeout"
 import { RUN_WORDS } from "./words"
 
-/** The pins of a deploy beside the etag: the container changed and a digest of its variables' names and kinds. */
-const CONTAINER_PIN = "container"
-const ENV_PIN = "env"
-
-/** What a line of the changes shows for a value that was not set. */
-const UNSET = "-"
-
-/** The words that begin a line of the changes, one per setting. */
-const SETTINGS = {
-  image: "image",
-  command: "command",
-  args: "args",
-  cpu: "cpu",
-  memory: "memory",
+/** The words that begin a line of the changes, one per setting only a service has. */
+const SERVICE_SETTINGS = {
   minInstances: "min instances",
   maxInstances: "max instances",
-  timeout: "timeout",
   concurrency: "concurrency",
   port: "port",
 } as const
@@ -40,20 +27,8 @@ function followsLatest({ traffic }: ServiceView): boolean {
 }
 
 /** What a deploy keeps of the service that matters to who may approve it: its identity, secrets, volumes and network. */
-function keptFacts({ template, ingress }: ServiceView): CallFact[] {
-  const secrets = template.containers.flatMap((container) => container.env).filter((env) => env.kind === "secret")
-  const facts: CallFact[] = [
-    { label: RUN_WORDS.runsAs, value: template.service_account ?? phrase(RUN_WORDS.defaultAccount) },
-  ]
-  if (secrets.length > 0) {
-    facts.push(countFact(RUN_WORDS.secretVariables, secrets.length, RUN_WORDS.variableOne, RUN_WORDS.variableMany))
-  }
-  if (template.volumes.length > 0) {
-    facts.push(countFact(RUN_WORDS.volumes, template.volumes.length, RUN_WORDS.volumeOne, RUN_WORDS.volumeMany))
-  }
-  if (template.vpc_access !== null) {
-    facts.push({ label: RUN_WORDS.vpcAccess, value: template.vpc_access.connector ?? phrase(RUN_WORDS.vpcSet) })
-  }
+function serviceKeptFacts({ template, ingress }: ServiceView): CallFact[] {
+  const facts = keptFacts(template)
   if (ingress !== null && ingress !== "all") facts.push({ label: RUN_WORDS.ingress, value: ingress })
   return facts
 }
@@ -71,14 +46,9 @@ function facts({ before, container }: DeployPlan): CallFact[] {
       value: phrase(followsLatest(before) ? RUN_WORDS.trafficLatest : RUN_WORDS.trafficKept),
     },
     { label: RUN_WORDS.imageNow, value: container.image },
-    ...keptFacts(before),
+    ...serviceKeptFacts(before),
   ]
 }
-
-const textOf = (value: string | number | null | undefined): string | null =>
-  value === null || value === undefined ? null : String(value)
-
-const listOf = (items: readonly string[]): string | null => (items.length === 0 ? null : JSON.stringify(items))
 
 /**
  * The lines of the changes, in a fixed order: the image, each variable (named,
@@ -86,38 +56,23 @@ const listOf = (items: readonly string[]): string | null => (items.length === 0 
  * reads `<old> → <new>`, with `-` for what was not set; on a new service, only
  * the new value.
  */
-function changeLines({ args, before, container }: DeployPlan): string[] {
-  const update = before !== null && container !== null
+function changeTexts({ args, before, container }: DeployPlan): string[] {
   const template = before?.template
-  const line = (setting: string, old: string | null, value: string) =>
-    update ? `${setting}: ${old ?? UNSET} → ${value}` : `${setting}: ${value}`
-  const setting = (name: string, old: string | null, value: string | number | string[] | undefined) =>
-    value === undefined ? [] : [line(name, old, Array.isArray(value) ? JSON.stringify(value) : String(value))]
+  const lines = changeLines(before !== null && container !== null)
+  const { setting } = lines
 
   return [
-    line(SETTINGS.image, textOf(container?.image), args.image),
-    ...Object.entries(args.env ?? {}).map(([name, value]) => `env ${name}: ${value === null ? "removed" : "set"}`),
-    ...setting(SETTINGS.command, listOf(container?.command ?? []), args.command),
-    ...setting(SETTINGS.args, listOf(container?.args ?? []), args.args),
-    ...setting(SETTINGS.cpu, textOf(container?.resources.cpu), args.cpu),
-    ...setting(SETTINGS.memory, textOf(container?.resources.memory), args.memory),
-    ...setting(SETTINGS.minInstances, textOf(template?.min_instances), args.min_instances),
-    ...setting(SETTINGS.maxInstances, textOf(template?.max_instances), args.max_instances),
+    ...containerLines(args, container, lines),
+    ...setting(SERVICE_SETTINGS.minInstances, textOf(template?.min_instances), args.min_instances),
+    ...setting(SERVICE_SETTINGS.maxInstances, textOf(template?.max_instances), args.max_instances),
     ...setting(
       SETTINGS.timeout,
       textOf(template?.timeout),
-      args.timeout_seconds === undefined ? undefined : `${args.timeout_seconds}s`,
+      args.timeout_seconds === undefined ? undefined : timeoutText(args.timeout_seconds),
     ),
-    ...setting(SETTINGS.concurrency, textOf(template?.concurrency), args.concurrency),
-    ...setting(SETTINGS.port, textOf(container?.ports[0]?.container_port), args.port),
+    ...setting(SERVICE_SETTINGS.concurrency, textOf(template?.concurrency), args.concurrency),
+    ...setting(SERVICE_SETTINGS.port, textOf(container?.ports[0]?.container_port), args.port),
   ]
-}
-
-/** One digest of the names and kinds of a container's variables, so a variable turned into a secret since the prompt is a change. */
-function envDigest(container: ContainerView | null): string {
-  return createHash("sha256")
-    .update((container?.env ?? []).map(({ name, kind }) => `${name}:${kind}`).join("\n"))
-    .digest("hex")
 }
 
 /**
@@ -132,11 +87,7 @@ export function describeDeploy(plan: DeployPlan): CallDescription {
   return {
     headline: headline(plan),
     facts: facts(plan),
-    text: { label: RUN_WORDS.changes, body: changeLines(plan).join("\n") },
-    pins: {
-      ...etagPin(etag),
-      [CONTAINER_PIN]: container?.name ?? args.container ?? "",
-      [ENV_PIN]: envDigest(container),
-    },
+    text: { label: RUN_WORDS.changes, body: changeTexts(plan).join("\n") },
+    pins: { ...etagPin(etag), ...containerPins(container, args.container) },
   }
 }
