@@ -8,6 +8,7 @@ import {
   GMAIL_SEND_SCOPE,
   GMAIL_TOOLSET,
 } from "../gmail/scopes"
+import { RUN_READ_SCOPE, RUN_SCOPE, RUN_TOOLSET } from "../run/scopes"
 import { DRIVE_METADATA_READ_SCOPE, SHEETS_READ_SCOPE, SHEETS_TOOLSET, SHEETS_WRITE_SCOPE } from "../sheets/scopes"
 import { EMAIL_SCOPE, OPENID_SCOPE } from "./routes"
 
@@ -27,6 +28,7 @@ export const TOOLSET_SCOPES: Readonly<Record<string, ToolsetScopes>> = {
   [GMAIL_TOOLSET]: { read: [GMAIL_READ_SCOPE], write: [GMAIL_SEND_SCOPE, GMAIL_COMPOSE_SCOPE, GMAIL_MODIFY_SCOPE] },
   [DRIVE_TOOLSET]: { read: [DRIVE_READ_SCOPE], write: [DRIVE_FILE_SCOPE] },
   [COMMENTS_TOOLSET]: { read: [SHEETS_READ_SCOPE, DRIVE_READ_SCOPE], write: [SHEETS_WRITE_SCOPE, DRIVE_FILE_SCOPE] },
+  [RUN_TOOLSET]: { read: [RUN_READ_SCOPE], write: [RUN_SCOPE] },
 }
 
 /** What every login asks for besides its toolsets' scopes, so the label records the account's address. */

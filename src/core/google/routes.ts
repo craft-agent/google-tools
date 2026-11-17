@@ -30,6 +30,7 @@ export const HOSTS: readonly string[] = [
   "gmail.googleapis.com",
   "oauth2.googleapis.com",
   "openidconnect.googleapis.com",
+  "run.googleapis.com",
   "sheets.googleapis.com",
   "www.googleapis.com",
 ]
