@@ -23,6 +23,9 @@ import { googleGmailSend } from "./core/gmail/send"
 import { googleGmailTrash } from "./core/gmail/trash"
 import { googleRunRead } from "./core/run/read"
 import { googleRunServiceDeploy } from "./core/run/deploy"
+import { googleRunExecutionCancel } from "./core/run/execution-cancel"
+import { googleRunJobDeploy } from "./core/run/job-deploy"
+import { googleRunJobRun } from "./core/run/job-run"
 import { googleRunTrafficSet } from "./core/run/traffic"
 import { googleSheetsAdd } from "./core/sheets/add"
 import { googleSheetsAppend } from "./core/sheets/append"
@@ -74,4 +77,7 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleRunRead,
   googleRunServiceDeploy,
   googleRunTrafficSet,
+  googleRunJobDeploy,
+  googleRunJobRun,
+  googleRunExecutionCancel,
 ]

@@ -74,9 +74,15 @@ describe("the Cloud Run read", () => {
 })
 
 describe("the Cloud Run writes", () => {
-  const WRITES = ["google_run_service_deploy", "google_run_traffic_set"]
+  const OVERWRITES = [
+    "google_run_service_deploy",
+    "google_run_traffic_set",
+    "google_run_job_deploy",
+    "google_run_execution_cancel",
+  ]
+  const WRITES = [...OVERWRITES, "google_run_job_run"]
 
-  test.each(WRITES)("%s is an overwrite tool of the run toolset: destructive and idempotent", (id) => {
+  test.each(OVERWRITES)("%s is an overwrite tool of the run toolset: destructive and idempotent", (id) => {
     const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
     expect(spec).toMatchObject({ toolset: "run", class: "overwrite" })
     expect(annotations(spec)).toMatchObject({
@@ -94,16 +100,36 @@ describe("the Cloud Run writes", () => {
     expect(spec.targets).toBeDefined()
   })
 
-  test("the deploy bounds its image by repository path and gates it, and the traffic change bounds nothing", () => {
-    const deploy = ALL_TOOLS.find((candidate) => candidate.id === "google_run_service_deploy")!
-    expect(Object.keys(deploy.bounds ?? {})).toEqual(["image"])
-    expect(deploy.bounds?.image).toMatchObject({ kind: "prefix", separator: "/" })
-    expect(deploy.measure).toBeDefined()
-    expect(deploy.gate).toBeDefined()
-    const traffic = ALL_TOOLS.find((candidate) => candidate.id === "google_run_traffic_set")!
-    expect(traffic.bounds).toBeUndefined()
-    expect(traffic.gate).toBeUndefined()
+  test("running a job adds an execution: not destructive and not idempotent", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_run_job_run")!
+    expect(spec).toMatchObject({ toolset: "run", class: "add" })
+    expect(annotations(spec)).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    })
   })
+
+  test.each(["google_run_service_deploy", "google_run_job_deploy"])(
+    "%s bounds its image by repository path and gates it",
+    (id) => {
+      const deploy = ALL_TOOLS.find((candidate) => candidate.id === id)!
+      expect(Object.keys(deploy.bounds ?? {})).toEqual(["image"])
+      expect(deploy.bounds?.image).toMatchObject({ kind: "prefix", separator: "/" })
+      expect(deploy.measure).toBeDefined()
+      expect(deploy.gate).toBeDefined()
+    },
+  )
+
+  test.each(["google_run_traffic_set", "google_run_job_run", "google_run_execution_cancel"])(
+    "%s bounds nothing and gates nothing",
+    (id) => {
+      const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+      expect(spec.bounds).toBeUndefined()
+      expect(spec.gate).toBeUndefined()
+    },
+  )
 })
 
 describe("the comments writes", () => {
