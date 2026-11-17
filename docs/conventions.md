@@ -1252,7 +1252,42 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   deadline and returns what changed. One still running at the deadline is
   returned as its operation id with `done: false`, and the read's
   `operation` method follows it; the tool and the skill say to read it before
-  trying again.
+  trying again. The deadline is 2 minutes, polled every 3 seconds. An
+  operation that ends in an error is `upstream_error` with Google's message.
+- **A deploy changes only what its arguments name.** On a service that
+  exists, the tool reads the service and sends its template back whole with
+  `updateMask=template` and the etag it read, changed only in the image and
+  the settings the call gives, on the one container it names (`container`,
+  needed when there are several). Everything else the template holds is sent
+  back as Google gave it, unknown fields included, so a newer setting is never
+  dropped; only the fixed revision name is removed, since a new revision needs
+  a new one. `forceNewRevision` is set, so deploying the same tag again picks
+  up the digest it points to now. The traffic is not touched: a service that
+  sends everything to the latest revision serves the new one, and one whose
+  traffic is set to revisions keeps it, which the prompt's `Traffic` fact
+  says; `google_run_traffic_set` moves it. A service that does not exist is
+  created with the image and the settings given, and Google's defaults for
+  everything else: invoking needs IAM, the default service account, ingress
+  from everywhere. The client masks anything shaped like a Google
+  credential in every reply, so a template holding one (a plain variable
+  whose value is a key, say) cannot be sent back whole; such a deploy is
+  refused, nothing sent, rather than overwrite the value with the mask.
+- **Once Google has started a change, the call never reads as if nothing
+  happened.** A poll that fails, or a cancellation while waiting, is an
+  error that names the operation and says to follow it with the read's
+  `operation` method before trying again.
+- **An environment variable that references a secret is never set or
+  removed.** A deploy that names one is refused, and the prompt shows only
+  that a plain variable is set or removed, never its value, which the call's
+  arguments already carry.
+- **A traffic split is whole.** `google_run_traffic_set` takes every entry
+  of the new split (revisions by name, or the latest, with tags), and they
+  add up to 100; it replaces the service's traffic with `updateMask=traffic`.
+  The prompt shows the traffic served now beside the new split.
+- **A write refuses what changed after its prompt.** The prompt pins the
+  service's etag (or that it is absent), the container and the names and
+  kinds of its variables; Google's `ABORTED` or 409 on the etag is `stale`
+  too, with nothing changed.
 - **Reading.** Lists return up to 100 items a page (default 50) with a
   `next_page_token`. A service's read gives its traffic as set and as served,
   its latest ready and created revisions, its readiness with Google's reason,
