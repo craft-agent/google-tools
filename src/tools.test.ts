@@ -73,6 +73,39 @@ describe("the Cloud Run read", () => {
   })
 })
 
+describe("the Cloud Run writes", () => {
+  const WRITES = ["google_run_service_deploy", "google_run_traffic_set"]
+
+  test.each(WRITES)("%s is an overwrite tool of the run toolset: destructive and idempotent", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(spec).toMatchObject({ toolset: "run", class: "overwrite" })
+    expect(annotations(spec)).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
+    })
+  })
+
+  test.each(WRITES)("%s states its intent, describes its call and resolves its targets", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(spec.intent).toStartWith("About to ")
+    expect(spec.describe).toBeDefined()
+    expect(spec.targets).toBeDefined()
+  })
+
+  test("the deploy bounds its image by repository path and gates it, and the traffic change bounds nothing", () => {
+    const deploy = ALL_TOOLS.find((candidate) => candidate.id === "google_run_service_deploy")!
+    expect(Object.keys(deploy.bounds ?? {})).toEqual(["image"])
+    expect(deploy.bounds?.image).toMatchObject({ kind: "prefix", separator: "/" })
+    expect(deploy.measure).toBeDefined()
+    expect(deploy.gate).toBeDefined()
+    const traffic = ALL_TOOLS.find((candidate) => candidate.id === "google_run_traffic_set")!
+    expect(traffic.bounds).toBeUndefined()
+    expect(traffic.gate).toBeUndefined()
+  })
+})
+
 describe("the comments writes", () => {
   test("google_comments_add is an administrative tool of the comments toolset: destructive, asked every time, with its intent, describer and targets", () => {
     const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_comments_add")!

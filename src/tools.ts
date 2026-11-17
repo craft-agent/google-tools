@@ -22,6 +22,8 @@ import { googleGmailRead } from "./core/gmail/read"
 import { googleGmailSend } from "./core/gmail/send"
 import { googleGmailTrash } from "./core/gmail/trash"
 import { googleRunRead } from "./core/run/read"
+import { googleRunServiceDeploy } from "./core/run/deploy"
+import { googleRunTrafficSet } from "./core/run/traffic"
 import { googleSheetsAdd } from "./core/sheets/add"
 import { googleSheetsAppend } from "./core/sheets/append"
 import { googleSheetsClear } from "./core/sheets/clear"
@@ -70,4 +72,6 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleCommentsEdit,
   googleCommentsDelete,
   googleRunRead,
+  googleRunServiceDeploy,
+  googleRunTrafficSet,
 ]
