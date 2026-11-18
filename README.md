@@ -329,6 +329,43 @@ only when Google reports it saved; otherwise the tool says it may or may not
 have been made. Comments on files these tools did not create, anchoring a
 comment outside a spreadsheet and assigning one there are not offered.
 
+### Cloud Run (`run`)
+
+Off by default. Reads a project's Cloud Run services and jobs, deploys them
+from the project's own images, splits traffic, runs and cancels jobs, and
+deletes revisions, services and jobs.
+
+| Tool                          | What it does                                                                                                                                                                                                                | Class          |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| `google_run_read`             | `services`, `service`: services with their traffic and settings. `revisions`, `revision`. `jobs`, `job`, `executions`, `execution`, `tasks`: jobs and their runs. `iam`: a service's or job's policy. `operation`: a change | read           |
+| `google_run_service_deploy`   | deploy an image to a service, creating it when there is none                                                                                                                                                                | overwrite      |
+| `google_run_traffic_set`      | replace a service's traffic split between its revisions and the latest, with tags                                                                                                                                           | overwrite      |
+| `google_run_job_deploy`       | deploy an image to a job, creating it when there is none                                                                                                                                                                    | overwrite      |
+| `google_run_job_run`          | start an execution of a job, with overrides of plain variables, args, task count and timeout for that run                                                                                                                   | add            |
+| `google_run_execution_cancel` | cancel an execution that is still running                                                                                                                                                                                   | overwrite      |
+| `google_run_revision_delete`  | delete a revision that no traffic or tag reaches                                                                                                                                                                            | administrative |
+| `google_run_service_delete`   | delete a service with every revision                                                                                                                                                                                        | administrative |
+| `google_run_job_delete`       | delete a job with its executions                                                                                                                                                                                            | administrative |
+
+The toolset asks for `run.readonly` to read and `run` to write; `--read-only`
+asks only for `run.readonly`, and `cloud-platform` is never asked. Every call
+names its `project` and `region`, with no default. An image must sit in the
+project's own Artifact Registry or Container Registry; any other is refused
+before anyone is asked, and a
+[grant](#writes-no-one-is-there-to-approve) over a deploy can bound the
+image's repository path (`image`, a `prefix` such as
+`asia-northeast1-docker.pkg.dev/my-proj/apps/api`). A deploy changes only the
+image and the settings its arguments name, on one container, and sends the
+rest of the service or job back as Google gave it; a new one takes Google's
+defaults, so invoking a service needs IAM. Environment values are never
+returned or shown: variables come back by name and kind, and one that
+references a secret is never set, removed or overridden. Writes wait up to two
+minutes for Google's operation and return it when it is still running; a job
+run returns once the execution has started. A revision that traffic or a tag
+still reaches is not deleted. Changing IAM or public access, the service
+account, ingress, network, secrets and volumes, building from source and
+deleting an execution are not offered.
+
 ### Grants (`grants`)
 
 Off by default. Delegates bounded writes for jobs where no person can answer.
