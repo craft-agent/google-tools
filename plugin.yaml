@@ -29,6 +29,15 @@ provides_tools:
   - google_grant_create
   - google_grant_read
   - google_grant_revoke
+  - google_run_execution_cancel
+  - google_run_job_delete
+  - google_run_job_deploy
+  - google_run_job_run
+  - google_run_read
+  - google_run_revision_delete
+  - google_run_service_delete
+  - google_run_service_deploy
+  - google_run_traffic_set
   - google_sheets_add
   - google_sheets_append
   - google_sheets_clear

@@ -63,6 +63,87 @@ describe("the comments read", () => {
   })
 })
 
+describe("the Cloud Run read", () => {
+  test("is a read tool of the run toolset, which is off by default", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_run_read")
+    expect(spec).toMatchObject({ toolset: "run", class: "read" })
+    expect(PROJECT.toolsets).toContain("run")
+    expect(PROJECT.defaultToolsets).not.toContain("run")
+    expect(annotations(spec!)).toMatchObject({ readOnlyHint: true, openWorldHint: true })
+  })
+})
+
+describe("the Cloud Run writes", () => {
+  const OVERWRITES = [
+    "google_run_service_deploy",
+    "google_run_traffic_set",
+    "google_run_job_deploy",
+    "google_run_execution_cancel",
+  ]
+  const DELETES = ["google_run_revision_delete", "google_run_service_delete", "google_run_job_delete"]
+  const WRITES = [...OVERWRITES, ...DELETES, "google_run_job_run"]
+
+  test.each(DELETES)("%s is an administrative tool of the run toolset: destructive and not idempotent", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(spec).toMatchObject({ toolset: "run", class: "administrative" })
+    expect(annotations(spec)).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    })
+  })
+
+  test.each(OVERWRITES)("%s is an overwrite tool of the run toolset: destructive and idempotent", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(spec).toMatchObject({ toolset: "run", class: "overwrite" })
+    expect(annotations(spec)).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
+    })
+  })
+
+  test.each(WRITES)("%s states its intent, describes its call and resolves its targets", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(spec.intent).toStartWith("About to ")
+    expect(spec.describe).toBeDefined()
+    expect(spec.targets).toBeDefined()
+  })
+
+  test("running a job adds an execution: not destructive and not idempotent", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_run_job_run")!
+    expect(spec).toMatchObject({ toolset: "run", class: "add" })
+    expect(annotations(spec)).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    })
+  })
+
+  test.each(["google_run_service_deploy", "google_run_job_deploy"])(
+    "%s bounds its image by repository path and gates it",
+    (id) => {
+      const deploy = ALL_TOOLS.find((candidate) => candidate.id === id)!
+      expect(Object.keys(deploy.bounds ?? {})).toEqual(["image"])
+      expect(deploy.bounds?.image).toMatchObject({ kind: "prefix", separator: "/" })
+      expect(deploy.measure).toBeDefined()
+      expect(deploy.gate).toBeDefined()
+    },
+  )
+
+  test.each(["google_run_traffic_set", "google_run_job_run", "google_run_execution_cancel", ...DELETES])(
+    "%s bounds nothing and gates nothing",
+    (id) => {
+      const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+      expect(spec.bounds).toBeUndefined()
+      expect(spec.gate).toBeUndefined()
+    },
+  )
+})
+
 describe("the comments writes", () => {
   test("google_comments_add is an administrative tool of the comments toolset: destructive, asked every time, with its intent, describer and targets", () => {
     const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_comments_add")!

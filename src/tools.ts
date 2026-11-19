@@ -21,6 +21,15 @@ import { googleGmailLabelCreate } from "./core/gmail/label-create"
 import { googleGmailRead } from "./core/gmail/read"
 import { googleGmailSend } from "./core/gmail/send"
 import { googleGmailTrash } from "./core/gmail/trash"
+import { googleRunRead } from "./core/run/read"
+import { googleRunServiceDeploy } from "./core/run/deploy"
+import { googleRunExecutionCancel } from "./core/run/execution-cancel"
+import { googleRunJobDeploy } from "./core/run/job-deploy"
+import { googleRunJobDelete } from "./core/run/job-delete"
+import { googleRunJobRun } from "./core/run/job-run"
+import { googleRunRevisionDelete } from "./core/run/revision-delete"
+import { googleRunServiceDelete } from "./core/run/service-delete"
+import { googleRunTrafficSet } from "./core/run/traffic"
 import { googleSheetsAdd } from "./core/sheets/add"
 import { googleSheetsAppend } from "./core/sheets/append"
 import { googleSheetsClear } from "./core/sheets/clear"
@@ -68,4 +77,13 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleCommentsStatus,
   googleCommentsEdit,
   googleCommentsDelete,
+  googleRunRead,
+  googleRunServiceDeploy,
+  googleRunTrafficSet,
+  googleRunJobDeploy,
+  googleRunJobRun,
+  googleRunExecutionCancel,
+  googleRunRevisionDelete,
+  googleRunServiceDelete,
+  googleRunJobDelete,
 ]
