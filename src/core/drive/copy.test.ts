@@ -23,14 +23,14 @@ afterEach(cleanUp)
 
 const COPY_URL = `${fileUrl(FILE_ID)}/copy`
 
-/** The handler that takes the copy and answers with it, named as the request names it or `Copy of Budget 2026.pdf`. */
+/** The handler that takes the copy and answers with it, named as the request names it or the source's name. */
 const copies = (parent = ROOT_ID): FakeHandler => ({
   method: "POST",
   url: COPY_URL,
   reply: (request) => ({
     json: {
       id: NEW_FILE_ID,
-      name: (request.json as { name?: string }).name ?? "Copy of Budget 2026.pdf",
+      name: (request.json as { name?: string }).name ?? "Budget 2026.pdf",
       mimeType: "application/pdf",
       parents: [parent],
       webViewLink: `https://drive.google.com/file/d/${NEW_FILE_ID}/view`,
@@ -44,12 +44,12 @@ const sharedFolder = [
 ]
 
 describe("google_drive_copy requests", () => {
-  test("leaves the name out so that Google names the copy, and puts it in the top folder", async () => {
+  test("leaves the name out so that the copy keeps the source's name, and puts it in the top folder", async () => {
     const h = await writeFixture({ handlers: [itemHandler(FILE_ID), copies()] })
     const result = await h.copy.run({ file_id: FILE_ID })
     expect(result).toEqual({
       file_id: NEW_FILE_ID,
-      name: "Copy of Budget 2026.pdf",
+      name: "Budget 2026.pdf",
       mime_type: "application/pdf",
       folder_id: ROOT_ID,
       web_view_link: `https://drive.google.com/file/d/${NEW_FILE_ID}/view`,
@@ -138,15 +138,31 @@ describe("google_drive_copy prompt", () => {
     })
   })
 
-  test("says how many files carry the given name already, and asks only when a name is given", async () => {
+  test("says how many files carry the given name already", async () => {
     const h = await writeFixture({ handlers: [itemHandler(FILE_ID), answer(FILES_URL, { files: [{ id: "a" }] })] })
-    expect((await h.copy.describe({ file_id: FILE_ID })).facts).toHaveLength(2)
-    expect(h.calls().some((call) => call.url.pathname === "/drive/v3/files")).toBe(false)
     const named = await h.copy.describe({ file_id: FILE_ID, name: "Budget" })
     expect(named.facts.at(-1)).toEqual({
       label: "Already there",
       value: { text: "{count} file named so", values: { count: 1 } },
     })
+  })
+
+  test("counts files of the source's name when no name is given", async () => {
+    const h = await writeFixture({
+      handlers: [itemHandler(FILE_ID), answer(FILES_URL, { files: [{ id: "a" }, { id: "b" }] })],
+    })
+    expect((await h.copy.describe({ file_id: FILE_ID })).facts.at(-1)).toEqual({
+      label: "Already there",
+      value: { text: "{count} files named so", values: { count: 2 } },
+    })
+    const counted = h.calls().find((call) => call.url.pathname === "/drive/v3/files")!
+    expect(counted.url.searchParams.get("q")).toContain("name = 'Budget 2026.pdf'")
+  })
+
+  test("does not count files when neither the argument nor the source gives a name", async () => {
+    const h = await writeFixture({ handlers: [itemHandler(FILE_ID, { name: undefined })] })
+    expect((await h.copy.describe({ file_id: FILE_ID })).facts).toHaveLength(2)
+    expect(h.calls().some((call) => call.url.pathname === "/drive/v3/files")).toBe(false)
   })
 
   test("the version pin changes when the source does", async () => {
