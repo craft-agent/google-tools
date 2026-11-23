@@ -704,6 +704,16 @@ and every entry point checks them the same way.
   token elsewhere), a time limit with cancellation, and Google's failures
   mapped to the error codes. A tool never calls `fetch` itself, and no Google
   command line is run.
+- **A route may name one handoff, the only redirect the client follows.**
+  Some exports answer every request, whatever the access, with a redirect to
+  a signed address on a download host, which serves the file without the
+  token. Such a route names the host pattern and path prefix it hands off
+  to; the client follows that one redirect only when its address matches
+  (`https`, no user info, no fragment), sends nothing but `Accept` to it (no
+  token, no cookie), follows no redirect from it, and masks the address in
+  every message, since the signature in it is a capability. Any other
+  redirect, or one from a route that names no handoff, is `upstream_error`
+  and nothing is fetched from it.
 - **A route left off the allowlist cannot be reached by any argument.** An
   operation a domain never offers is kept out by the allowlist, not only by
   the tool's schema, so a bug or a crafted id cannot turn a read into it.
@@ -719,7 +729,10 @@ and every entry point checks them the same way.
   | anything else                                                              | `upstream_error`  |
 
   The message carries Google's own text, masked, since it often names the
-  API to enable or the permission to grant.
+  API to enable or the permission to grant. When Google's message is generic
+  and its reply lists field violations (`google.rpc.BadRequest`, such as
+  `Unsupported region …`), their descriptions follow it, since they are what
+  says which argument was wrong.
 
 - **A value a tool writes to a file, never to a result, is masked for the
   label's own secrets only**, since shape masking would corrupt file content
@@ -921,7 +934,11 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   cut text cells, so the model never takes a cut for the whole.
 - **The snapshot's export URL is undocumented by Google**, so it is checked
   at a real install, not only against the fake. It needs only the Sheets read
-  scopes; no Drive content scope is asked for it.
+  scopes; no Drive content scope is asked for it. A real install showed that
+  it always hands the PDF off with one redirect to
+  `doc-…-sheets.googleusercontent.com/export/…`, the route's handoff (see
+  "The Google client"); the Drive export, which needs no redirect, has none
+  of the print options.
 - **Searching uses `drive.metadata.readonly`**: names and dates, a restricted
   scope that personal use needs no verification for (see "The OAuth client").
   No Drive content scope is asked.
