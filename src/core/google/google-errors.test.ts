@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test"
 import type { ErrorCode } from "../errors"
 import { googleError } from "./google-errors"
 
+const BAD_REQUEST = "type.googleapis.com/google.rpc.BadRequest"
+
 function googleBody(status: number, message: string, googleStatus?: string, reasons: string[] = []) {
   return {
     error: {
@@ -90,5 +92,77 @@ describe("googleError message and details", () => {
   test("the text is Google's own and is not masked here", () => {
     const error = googleError(400, { error: { message: "token ya29.fake-access-token-0000000000000001" } }, "Google")
     expect(error.message).toContain("ya29.fake-access-token-0000000000000001")
+  })
+})
+
+function badRequestBody(violations: unknown[], type = BAD_REQUEST) {
+  return {
+    error: {
+      code: 400,
+      message: "The request has errors",
+      status: "INVALID_ARGUMENT",
+      details: [{ "@type": type, fieldViolations: violations }],
+    },
+  }
+}
+
+describe("googleError field violations", () => {
+  test("a description follows Google's message", () => {
+    const error = googleError(400, badRequestBody([{ description: "Unsupported region mars-central1" }]), "Google")
+    expect(error.message).toBe("Google: The request has errors (Unsupported region mars-central1)")
+    expect(error.code).toBe("upstream_error")
+    expect(error.details).toEqual({ status: 400, google_status: "INVALID_ARGUMENT" })
+  })
+
+  test("a field prefixes its description", () => {
+    const body = badRequestBody([{ field: "service.region", description: "Unsupported region mars-central1" }])
+    expect(googleError(400, body, "Google").message).toBe(
+      "Google: The request has errors (service.region: Unsupported region mars-central1)",
+    )
+  })
+
+  test("violations join with a semicolon, three at most", () => {
+    const body = badRequestBody([
+      { description: "one" },
+      { description: "two" },
+      { description: "three" },
+      { description: "four" },
+    ])
+    expect(googleError(400, body, "Google").message).toBe("Google: The request has errors (one; two; three)")
+  })
+
+  test("a violation is cut to 200 characters", () => {
+    const message = googleError(400, badRequestBody([{ description: "x".repeat(300) }]), "Google").message
+    expect(message).toBe(`Google: The request has errors (${"x".repeat(200)})`)
+  })
+
+  test("entries without a description, and other detail types, add nothing", () => {
+    const entries = [{ field: "a" }, { description: "" }, { description: 5 }, "text", null]
+    expect(googleError(400, badRequestBody(entries), "Google").message).toBe("Google: The request has errors")
+    const other = badRequestBody([{ description: "hidden" }], "type.googleapis.com/google.rpc.ErrorInfo")
+    expect(googleError(400, other, "Google").message).toBe("Google: The request has errors")
+  })
+
+  test("details that are no list or hold no violations leave the message as it is", () => {
+    expect(googleError(400, { error: { message: "bad", details: "x" } }, "Google").message).toBe("Google: bad")
+    expect(googleError(400, badRequestBody("nope" as unknown as unknown[]), "Google").message).toBe(
+      "Google: The request has errors",
+    )
+  })
+
+  test("violations are read from every BadRequest entry and never change the code", () => {
+    const body = {
+      error: {
+        message: "bad",
+        status: "NOT_FOUND",
+        details: [
+          { "@type": BAD_REQUEST, fieldViolations: [{ description: "first" }] },
+          { "@type": BAD_REQUEST, fieldViolations: [{ description: "second" }] },
+        ],
+      },
+    }
+    const error = googleError(400, body, "Google")
+    expect(error.message).toBe("Google: bad (first; second)")
+    expect(error.code).toBe("not_found")
   })
 })
