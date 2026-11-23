@@ -102,8 +102,11 @@ describe("readUpload refusals", () => {
 
   test("a file outside every upload directory is forbidden", async () => {
     const { root, options } = await allowed()
-    await writeFile(join(root, "elsewhere.txt"), "x")
-    expect((await refusal(readUpload(join(root, "elsewhere.txt"), options))).code).toBe("forbidden")
+    const path = join(root, "elsewhere.txt")
+    await writeFile(path, "x")
+    const error = await refusal(readUpload(path, options))
+    expect(error.code).toBe("forbidden")
+    expect(error.message).toBe(`"${path}" is not inside a directory the upload_dirs setting names.`)
   })
 
   test("a sibling directory whose name starts like an upload directory is outside it", async () => {
@@ -123,7 +126,26 @@ describe("readUpload refusals", () => {
     const { root, dir, options } = await allowed()
     await writeFile(join(root, "secret.txt"), "x")
     await symlink(join(root, "secret.txt"), join(dir, "innocent.txt"))
-    expect((await refusal(readUpload(join(dir, "innocent.txt"), options))).code).toBe("forbidden")
+    const path = join(dir, "innocent.txt")
+    const error = await refusal(readUpload(path, options))
+    expect(error.code).toBe("forbidden")
+    expect(error.message).toBe(
+      `"${path}" leads outside the directories the upload_dirs setting names through a link; uploads are read by their real path.`,
+    )
+  })
+
+  test("a link in a parent directory explains that the real path leads outside the upload directories", async () => {
+    const { root, dir, options } = await allowed()
+    const outside = join(root, "outside")
+    await mkdir(outside)
+    await writeFile(join(outside, "report.txt"), "x")
+    await symlink(outside, join(dir, "linked"))
+    const path = `${dir}/./linked/report.txt`
+    const error = await refusal(readUpload(path, options))
+    expect(error.code).toBe("forbidden")
+    expect(error.message).toBe(
+      `"${path}" leads outside the directories the upload_dirs setting names through a link; uploads are read by their real path.`,
+    )
   })
 
   test("a link to a file inside the same directory is forbidden: the last component is never followed", async () => {
