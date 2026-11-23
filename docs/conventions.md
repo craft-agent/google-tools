@@ -1028,7 +1028,7 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   cannot be undone. Filters and forwarding: a filter can forward every mail to
   an outside address, and nothing in a call shows that. Mailbox settings
   likewise. Renaming and deleting labels wait for a need.
-- **Limits**: a search returns up to 50 messages (default 20); a message body
+- **Limits**: a search returns up to 50 messages (default 10); a message body
   is read to 20,000 characters and a thread's bodies to 60,000 in all, and the
   result says when it cut (`body_truncated`); an attachment is saved up to
   25 MiB and a mail carries up to 25 MB of attachments (20 files); a mail

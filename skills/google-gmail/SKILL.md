@@ -46,7 +46,7 @@ do not look for another route.
    newest first. Examples: `from:ann@example.com newer_than:7d`,
    `subject:invoice has:attachment`, `is:unread in:inbox`,
    `label:Clients after:2026/10/01 before:2026/11/01`, `"exact words"`.
-   `limit` is 1 to 50 (default 20). A `next_page_token` that is not null goes
+   `limit` is 1 to 50 (default 10). A `next_page_token` that is not null goes
    in `page_token` for the next page. Spam and trash are left out unless
    `include_spam_trash` is true. `result_size_estimate` is Google's rough
    count: do not report it as a total.
