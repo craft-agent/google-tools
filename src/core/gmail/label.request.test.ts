@@ -3,7 +3,7 @@ import { toolError } from "../google/client.fixtures"
 import { googleSession } from "../google/session"
 import { applyLabelChange } from "./label-apply"
 import type { LabelPlan } from "./label-plan"
-import { GMAIL_CREDENTIAL } from "./read.testing"
+import { GMAIL_CREDENTIAL, messageUrl } from "./read.testing"
 import {
   BATCH_MODIFY_URL,
   callOf,
@@ -13,6 +13,7 @@ import {
   labelsHandler,
   mailboxFixture,
   messageActionUrl,
+  messagesMetadata,
   postHandler,
   threadActionUrl,
 } from "./mailbox.testing"
@@ -22,6 +23,7 @@ afterEach(cleanUp)
 
 const handlers = [
   labelsHandler(),
+  messagesMetadata(),
   postHandler(BATCH_MODIFY_URL),
   postHandler(/\/messages\/[^/]+\/untrash$/),
   postHandler(/\/threads\/[^/]+\/(modify|untrash)$/),
@@ -34,6 +36,28 @@ describe("google_gmail_label requests", () => {
     expect(result).toEqual({ changed: 2, adds: ["Receipts"], removes: ["INBOX"], untrashed: 0 })
     expect(h.writes().map(callOf)).toEqual([`POST ${BATCH_MODIFY_URL}`])
     expect(h.writes()[0]!.json).toEqual({ ids: ["m001", "m002"], addLabelIds: ["Label_1"], removeLabelIds: ["INBOX"] })
+    const reads = h.calls().filter(({ method, url }) => method === "GET" && url.pathname.includes("/messages/"))
+    expect(reads.map(({ url }) => url.pathname.split("/").pop()).sort()).toEqual(["m001", "m002"])
+    expect(reads.every(({ url }) => url.searchParams.get("format") === "metadata")).toBe(true)
+  })
+
+  test.each([false, true])("an unknown message refuses every write, including untrash (%s)", async (untrash) => {
+    const h = await mailboxFixture({
+      handlers: [
+        {
+          method: "GET",
+          url: new RegExp(`${messageUrl("missing")}\\?`),
+          reply: { status: 404, json: { error: { status: "NOT_FOUND", message: "Requested entity was not found." } } },
+        },
+        ...handlers,
+      ],
+    })
+    const error = await toolError(
+      h.label.run({ messages: ["m001", "missing"], add_labels: ["INBOX"], ...(untrash ? { untrash } : {}) }),
+    )
+    expect(error.code).toBe("not_found")
+    expect(error.message).toBe('The message id "missing" was not found. Google: Requested entity was not found.')
+    expect(h.writes()).toEqual([])
   })
 
   test("duplicate ids are changed once", async () => {
@@ -96,13 +120,16 @@ describe("google_gmail_label requests", () => {
     const h = await mailboxFixture({ handlers })
     const result = await h.label.run({ messages: ["m001"], untrash: true })
     expect(result).toEqual({ changed: 1, adds: [], removes: [], untrashed: 1 })
-    expect(h.calls().map(callOf)).toEqual([`POST ${messageActionUrl("m001", "untrash")}`])
+    expect(h.calls().filter(({ method }) => method === "GET")).toHaveLength(1)
+    expect(h.calls()[0]!.url.pathname).toEndWith("/messages/m001")
+    expect(h.writes().map(callOf)).toEqual([`POST ${messageActionUrl("m001", "untrash")}`])
   })
 
   test("a failure of the untrash stops the call before any label changes", async () => {
     const h = await mailboxFixture({
       handlers: [
         labelsHandler(),
+        messagesMetadata(),
         postHandler(BATCH_MODIFY_URL),
         { method: "POST", url: /untrash$/, reply: { status: 404, json: { error: { status: "NOT_FOUND" } } } },
       ],

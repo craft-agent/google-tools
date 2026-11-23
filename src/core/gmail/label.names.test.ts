@@ -7,6 +7,7 @@ import {
   freshTokens,
   labelsHandler,
   mailboxFixture,
+  messagesMetadata,
   postHandler,
 } from "./mailbox.testing"
 
@@ -16,7 +17,8 @@ afterEach(cleanUp)
 const modify = postHandler(BATCH_MODIFY_URL)
 
 /** A fixture whose mailbox holds `MAILBOX_LABELS` and takes a modification. */
-const open = (labels: unknown[] = MAILBOX_LABELS) => mailboxFixture({ handlers: [labelsHandler(labels), modify] })
+const open = (labels: unknown[] = MAILBOX_LABELS) =>
+  mailboxFixture({ handlers: [labelsHandler(labels), messagesMetadata(), modify] })
 
 const base = { messages: ["m001"] }
 
@@ -119,7 +121,9 @@ describe("google_gmail_label naming labels", () => {
   test("the labels are read once for the whole plan, and a label named twice (by name and by id) is used once", async () => {
     const h = await open()
     await h.label.run({ ...base, add_labels: ["Receipts", "Label_1"], remove_labels: ["INBOX", "INBOX"] })
-    expect(h.calls().filter((request) => request.method === "GET")).toHaveLength(1)
+    expect(
+      h.calls().filter((request) => request.method === "GET" && request.url.pathname.endsWith("/labels")),
+    ).toHaveLength(1)
     expect(h.writes()[0]!.json).toMatchObject({ addLabelIds: ["Label_1"], removeLabelIds: ["INBOX"] })
   })
 

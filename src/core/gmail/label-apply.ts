@@ -1,14 +1,15 @@
 import { fetchInBatches } from "./fetch-batches"
 import type { GmailLabelResult } from "./label-args"
 import type { LabelPlan } from "./label-plan"
-import { mailRoutes } from "./mail-items"
+import { mailRoutes, readItems } from "./mail-items"
 import { GMAIL_ROUTES } from "./routes"
 
 /** The most ids one `messages.batchModify` takes. */
 const BATCH_MODIFY_LIMIT = 1000
 
 /**
- * Makes the planned change: first the `untrash` of each message or thread
+ * Confirms every message exists before any write, since `batchModify` ignores
+ * unknown ids. Makes the planned change: first the `untrash` of each message or thread
  * (one request each), then the label change, so mail that comes back into the
  * Inbox can be archived by the same call. Messages change `BATCH_MODIFY_LIMIT`
  * at a time, threads one request each; a failure stops the call, and since the
@@ -18,6 +19,8 @@ export async function applyLabelChange(plan: LabelPlan): Promise<GmailLabelResul
   const { client, selection, adds, removes, untrash } = plan
   const { kind, ids } = selection
   const { untrash: untrashRoute, param } = mailRoutes(kind)
+
+  if (kind === "messages") await readItems(client, kind, ids)
 
   if (untrash) await fetchInBatches(ids, (id) => client.request(untrashRoute, { params: { [param]: id } }))
 
