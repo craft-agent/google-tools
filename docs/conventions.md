@@ -939,6 +939,19 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   `doc-…-sheets.googleusercontent.com/export/…`, the route's handoff (see
   "The Google client"); the Drive export, which needs no redirect, has none
   of the print options.
+- **Marks are read under the read scope too.** Google's developer-metadata
+  search accepts only the write scopes, so a label that holds `spreadsheets`
+  searches, and one that holds only `spreadsheets.readonly` reads the marks
+  of the spreadsheet, its tabs and their rows and columns from the
+  spreadsheet itself, with a field mask that takes no cell values, and
+  filters them on its own. The answer is the same either way; the second
+  reply grows with the tabs' rows and columns, which is the price of reading
+  without the right to write.
+- **A sort refuses a range under a basic filter.** Google sorts only the
+  rows the filter shows and leaves the hidden ones where they are, while it
+  reports success, so the rows would no longer be the rows the person sorted.
+  A `sort` whose range meets the tab's basic filter is refused, nothing sent,
+  naming `filter_clear`.
 - **Searching uses `drive.metadata.readonly`**: names and dates, a restricted
   scope that personal use needs no verification for (see "The OAuth client").
   No Drive content scope is asked.
