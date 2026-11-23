@@ -46,6 +46,13 @@ describe("buildMime body", () => {
     const mail = parseMime(build({ body: "--=_abc\r\n--=_abc--" }))
     expect(textOf(mail)).toBe("--=_abc\r\n--=_abc--")
   })
+
+  test("the text alternative keeps list items and headings on lines and separates table cells with tabs", () => {
+    const body = "<p>a</p><ul><li>one</li><li>two</li></ul><h2>t</h2><table><tr><td>x</td><td>y</td></tr></table>"
+    const mail = parseMime(build({ body, html: true }))
+    expect(textOf(mail.parts![0]!)).toBe("a\r\none\r\ntwo\r\n\r\nt\r\nx\ty")
+    expect(textOf(mail.parts![1]!)).toBe(body)
+  })
 })
 
 describe("buildMime attachments", () => {
