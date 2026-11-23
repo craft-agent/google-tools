@@ -1,7 +1,8 @@
 import { z } from "zod"
 import { ToolError } from "../errors"
+import { boundsOverlap, gridRangeA1 } from "./a1"
 import { columnIndex } from "./grid"
-import { defineOperation } from "./operations"
+import { defineOperation, type OperationContext } from "./operations"
 import { blockAt, closedAreasOf, onlyClosedArea, sizeOf, type ClosedArea } from "./operation-blocks"
 import {
   ONE_RANGE_MESSAGE,
@@ -117,11 +118,29 @@ const sortSchema = z.strictObject({
   header: headerArg,
 })
 
-/** `sort`: sorts the rows of a closed block by columns of it, the header row staying where it is. */
+/** Refuses the area when its tab has a basic filter over any of its cells: Google sorts only the rows the filter shows, and leaves the hidden ones where they are. */
+function requireNoFilterUnder(area: ClosedArea, { objects }: OperationContext): void {
+  const filter = objects.filters.get(area.tab.sheetId)
+  if (filter === undefined || !boundsOverlap(filter.range ?? {}, area.grid)) return
+  throw new ToolError(
+    "invalid_argument",
+    `${JSON.stringify(area.tab.title)} has a basic filter over ${gridRangeA1(area.tab.title, filter.range)}, and sorting under it moves only the rows the filter shows; clear the filter first with google_sheets_restructure's filter_clear.`,
+  )
+}
+
+/** The closed block a `sort` sorts, refused when a basic filter lies over it. */
+function sortedArea(op: { range: string }, context: OperationContext): ClosedArea {
+  const area = onlyClosedArea(op, context.tabs, "sort")
+  requireNoFilterUnder(area, context)
+  return area
+}
+
+/** `sort`: sorts the rows of a closed block by columns of it, the header row staying where it is; refused under a basic filter. */
 export const sortOperation = defineOperation({
   schema: sortSchema,
-  requests(op, { tabs }) {
-    const area = onlyClosedArea(op, tabs, "sort")
+  needs: ["objects"],
+  requests(op, context) {
+    const area = sortedArea(op, context)
     return [
       {
         sortRange: {
@@ -135,8 +154,8 @@ export const sortOperation = defineOperation({
     ]
   },
   tabs: (op, { tabs }) => [onlyClosedArea(op, tabs, "sort").tab],
-  describe(op, { tabs }) {
-    const area = onlyClosedArea(op, tabs, "sort")
+  describe(op, context) {
+    const area = sortedArea(op, context)
     const keys = op.by.map(({ column, order }) => `${column.toUpperCase()} ${order ?? DEFAULT_SORT_ORDER}`)
     return `sort ${areaLabel(area)} by ${keys.join(", ")}${headerWords(area, op.header)}`
   },

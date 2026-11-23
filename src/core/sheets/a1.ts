@@ -31,6 +31,15 @@ export type GridBounds = {
   endColumnIndex?: number
 }
 
+/** Whether the two blocks of a tab share a cell; a bound left open reaches the end of the tab. */
+export function boundsOverlap(a: GridBounds, b: GridBounds): boolean {
+  const apart = (aStart = 0, aEnd = Infinity, bStart = 0, bEnd = Infinity) => aEnd <= bStart || bEnd <= aStart
+  return (
+    !apart(a.startRowIndex, a.endRowIndex, b.startRowIndex, b.endRowIndex) &&
+    !apart(a.startColumnIndex, a.endColumnIndex, b.startColumnIndex, b.endColumnIndex)
+  )
+}
+
 /** The column's letters for a zero-based index: 0 is `A`, 25 is `Z`, 26 is `AA`. */
 export function columnLetters(index: number): string {
   if (!Number.isInteger(index) || index < 0) {

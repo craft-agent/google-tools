@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { ToolError } from "../errors"
-import { gridRangeA1, type GridBounds } from "./a1"
+import { boundsOverlap, gridRangeA1, type GridBounds } from "./a1"
 import { colorArg, normalizedColor, toColorStyle } from "./colors"
 import { conditionOf, fewValues, listValues, plainValues } from "./conditions"
 import { columnIndex, type GridRange, type ResolvedRange } from "./grid"
@@ -115,19 +115,10 @@ function closedBlock(area: ResolvedRange, text: string): ResolvedRange {
   return area
 }
 
-/** Whether the two blocks share a cell; a bound left open reaches the end of the tab. */
-function overlaps(a: GridBounds, b: GridBounds): boolean {
-  const apart = (aStart = 0, aEnd = Infinity, bStart = 0, bEnd = Infinity) => aEnd <= bStart || bEnd <= aStart
-  return (
-    !apart(a.startRowIndex, a.endRowIndex, b.startRowIndex, b.endRowIndex) &&
-    !apart(a.startColumnIndex, a.endColumnIndex, b.startColumnIndex, b.endColumnIndex)
-  )
-}
-
 /** Refuses a range that shares a cell with a table of the spreadsheet other than `own`, an earlier operation's table included. */
 function requireNoOverlap(context: OperationContext, area: ResolvedRange, own?: TableState): void {
   const clash = context.objects.tables.find(
-    (table) => table !== own && table.sheetId === area.tab.sheetId && overlaps(table.range, area.grid),
+    (table) => table !== own && table.sheetId === area.tab.sheetId && boundsOverlap(table.range, area.grid),
   )
   if (clash !== undefined) {
     throw new ToolError(

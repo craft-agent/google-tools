@@ -145,8 +145,9 @@ describe("google_sheets_transform: describe", () => {
       text: { label: "Operations", body: "sort Plan!A1:C20 by B desc, row 1 stays as the header" },
       pins: { values: expect.stringMatching(PIN_PATTERN) },
     })
-    expect(h.calls()[1]!.url.searchParams.getAll("ranges")).toEqual(["Plan!A2:C20"])
-    expect(h.calls()[1]!.url.searchParams.get("valueRenderOption")).toBe("FORMULA")
+    const read = h.calls().find((call) => call.url.pathname.endsWith("/values:batchGet"))!
+    expect(read.url.searchParams.getAll("ranges")).toEqual(["Plan!A2:C20"])
+    expect(read.url.searchParams.get("valueRenderOption")).toBe("FORMULA")
     expect(writesOf(h.requests)).toEqual([])
   })
 
