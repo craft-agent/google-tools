@@ -112,7 +112,8 @@ function checkScopes(route: Route, label: string, credential: Credential, missin
 
 /**
  * The one way a tool reaches Google: allowlisted routes, the label's scopes
- * checked first, no redirect followed, a time limit with cancellation,
+ * checked first, no redirect followed but a download route's handoff, followed
+ * once without the token, a time limit with cancellation,
  * Google's failures mapped to error codes and every text masked.
  */
 export class GoogleClient {
@@ -214,8 +215,9 @@ export class GoogleClient {
   /**
    * Calls one allowlisted route and streams its body to `options.write`,
    * returning how many bytes came and their media type. Scopes, token, time
-   * limit (which covers the whole body), the retry after a 401 and the refusal
-   * of a redirect are as in `request`; a failure status throws what
+   * limit (which covers the whole body) and the retry after a 401 are as in
+   * `request`; so is the refusal of any redirect but the route's handoff, which
+   * is followed once without the token (see `sendDownload`). A failure status throws what
    * `googleError` maps it to. A body whose content type does not start with
    * `options.accept` is `upstream_error` naming the type only, and one over
    * `options.maxBytes` stops as `invalid_argument`. A call that fails may have
@@ -231,7 +233,7 @@ export class GoogleClient {
       const grant = await this.#tokens.accessToken(this.#transport.signal)
       const known = [...credentialSecrets(grant.credential), grant.token]
       const init = this.#init(route, {}, grant.token, options.accept)
-      const outcome = await sendDownload(transport, url, init, known, options, attempt === 0)
+      const outcome = await sendDownload(transport, url, init, known, options, attempt === 0, route.handoff)
       if (outcome === UNAUTHORIZED) {
         forgetAccessToken(this.#paths, grant.credential.refresh_token)
         continue

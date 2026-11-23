@@ -1,6 +1,7 @@
 import { z } from "zod"
 import type { GoogleClient } from "../google/client"
 import { gridRangeA1 } from "../sheets/a1"
+import { readingRanges } from "../sheets/range-errors"
 import { parseReply } from "../sheets/reply"
 import { COMMENTS_ROUTES } from "./routes"
 import type { CommentReply, CommentThread } from "./schemas"
@@ -165,7 +166,7 @@ export async function readSpreadsheetComments(
   spreadsheetId: string,
   ranges: readonly string[] | undefined,
 ): Promise<CommentThread[]> {
-  const reply = await readSpreadsheet(client, spreadsheetId, ranges)
+  const reply = await readingRanges(() => readSpreadsheet(client, spreadsheetId, ranges))
   const cells = anchorCells(reply.sheets)
   return (reply.comments ?? []).flatMap((thread) => toThread(thread, cells) ?? [])
 }

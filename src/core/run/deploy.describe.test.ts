@@ -38,6 +38,12 @@ async function described(args: Record<string, unknown> = {}, service = apiServic
 }
 
 describe("google_run_service_deploy describe: a service that exists", () => {
+  test("shows the same image once with a redeploy note, not an unchanged arrow", async () => {
+    const { description } = await described({ image: OLD_IMAGE })
+
+    expect(description.text?.body).toBe(`image: ${OLD_IMAGE} (again; a tag takes the digest it points to now)`)
+  })
+
   test("headlines the image and the service from the call's arguments", async () => {
     const { description } = await described()
 

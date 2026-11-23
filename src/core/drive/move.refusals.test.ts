@@ -138,6 +138,7 @@ describe("google_drive_move into itself", () => {
   })
 
   test.each([
+    [400, "Bad Request"],
     [400, "Cannot move a folder into one of its own subfolders."],
     [403, "A folder cannot be a descendant of itself."],
   ])("Google's %s for a folder put below itself is invalid_argument", async (status, message) => {
@@ -146,7 +147,7 @@ describe("google_drive_move into itself", () => {
       json: { error: { code: status, message, errors: [{ reason: "badRequest" }] } },
     }
     const h = await folderItem([
-      ...ownFolderHandlers(OTHER_FOLDER_ID),
+      ...ownFolderHandlers(OTHER_FOLDER_ID, { parents: [] }),
       ...ownFolderHandlers(ROOT_ID, { name: "My Drive" }),
       patchHandler(FOLDER_ID, refusal),
     ])
@@ -158,7 +159,7 @@ describe("google_drive_move into itself", () => {
   test("any other refusal of a folder move is told by its status as usual", async () => {
     const other: FakeReply = { status: 400, json: { error: { code: 400, message: "Bad request." } } }
     const h = await folderItem([
-      ...ownFolderHandlers(OTHER_FOLDER_ID),
+      ...ownFolderHandlers(OTHER_FOLDER_ID, { parents: [] }),
       ...ownFolderHandlers(ROOT_ID, { name: "My Drive" }),
       patchHandler(FOLDER_ID, other),
     ])

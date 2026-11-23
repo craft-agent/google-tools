@@ -219,6 +219,9 @@ contains what it finds, changes more.
 3. `sort` and `dedupe` treat the first row as a header unless `header: false`.
    `split_text` overwrites the columns to its right; `autofill` overwrites the
    cells it fills; `find_replace` looks in formulas only with `formulas: true`.
+   `sort` is refused where the tab's basic filter covers any of the block
+   (Google would move only the rows the filter shows): clear the filter first
+   with `restructure` `filter_clear`.
 4. **`before`** holds the values the call may replace, as formulas, by range;
    it is null with `before_truncated: true` over 10,000 cells or a clipped
    text cell. It holds values only, not formats or notes: keep those yourself.
@@ -253,7 +256,9 @@ inserts, so a row is found by its mark where a row number goes stale.
   rows take several operations in the same call); `restructure`
   `metadata_update` and `metadata_delete` change or remove it by its
   `metadata_id`; `read` `metadata` lists marks by key and value, at most 200,
-  with `more` counting the rest.
+  with `more` counting the rest. An account that can only read lists them too,
+  through the spreadsheet itself, which is slower on tabs with many rows or
+  columns.
 - In `expect`, an item may be `{ range, metadata: { key, value? }, along? }`,
   which holds when the cell's row carries that mark: guard a `sort` or a later
   call against moved rows without trusting the row number.

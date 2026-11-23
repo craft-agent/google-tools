@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 import { constants } from "node:fs"
 import { open, realpath, type FileHandle } from "node:fs/promises"
-import { basename, isAbsolute } from "node:path"
+import { basename, isAbsolute, resolve } from "node:path"
 import { ToolError } from "../errors"
 import type { ToolContext } from "../tool"
 import { isInside, resolveDeep } from "./download"
@@ -67,6 +67,12 @@ async function checkPlace(path: string, real: string, options: ReadUploadOptions
     }
   }
   if (!allowed) {
+    if (options.uploadDirs.some((dir) => isInside(resolve(path), resolve(dir)))) {
+      throw new ToolError(
+        "forbidden",
+        `"${path}" leads outside the directories the upload_dirs setting names through a link; uploads are read by their real path.`,
+      )
+    }
     throw new ToolError("forbidden", `"${path}" is not inside a directory the upload_dirs setting names.`)
   }
   for (const { path: root, name } of keepOutOf(options)) {

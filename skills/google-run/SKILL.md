@@ -63,7 +63,8 @@ person; do not look for another route, such as a command line.
   `invoker_iam_disabled`, `conditions`, scaling and the `template` a deploy
   would change, beside what it keeps (service account, network, volumes).
 - `revisions` (`service`), `revision` (`service`, `revision`): each revision
-  with its images and their digests.
+  with its images already resolved to digests. Google returns the same
+  `…@sha256:…` reference in `images[].image` and `digest`, not the tag deployed.
 - `job` (`job`): its latest execution, `task_count`, `parallelism` and
   `template`. `executions` (`job`): its runs with task counts and `status`
   (`succeeded`, `failed`, `running`, `pending`, `cancelled`). `execution`
@@ -166,9 +167,10 @@ tool is offered, the person turns it on in the settings.
 ## Errors
 
 - `forbidden`: the image is not in the project's own registry, or Google
-  refused the call (the account lacks a Cloud Run role in the project, or the
-  Cloud Run Admin API is not enabled). Nothing was changed; tell the person.
-- `not_found`: the project, region, service, job, revision or execution does
+  refused the call (the project does not exist, the account lacks a Cloud Run
+  role in it, or the Cloud Run Admin API is not enabled).
+  Nothing was changed; tell the person.
+- `not_found`: the service, job, revision, execution or operation does
   not exist. List them and take the name from there.
 - `stale`: it changed after it was read (another deploy, a traffic change, a
   run that ended). Read it again, say what changed and ask again; never
@@ -178,3 +180,5 @@ tool is offered, the person turns it on in the settings.
   still serving, a finished execution). Fix the call; it was not sent.
 - `upstream_error` saying Google reported the change failed: read the
   service or job to see what was left before trying again.
+- `upstream_error` for a region that does not exist: the message carries
+  Google's reason, such as `Unsupported region …`. Check the region with the person.

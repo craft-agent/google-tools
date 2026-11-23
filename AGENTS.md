@@ -39,7 +39,8 @@ tagged `v<version>`; consumers pin a tag or the same npm version.
 - **Every program a tool runs goes through one runner**, which fixes a
   non-interactive environment and maps failures to error codes.
 - **Every Google call goes through the one client**, which checks the route
-  allowlist, follows no redirect and masks credentials; a tool never calls
+  allowlist, follows no redirect but the one credential-free handoff a route
+  names, and masks credentials; a tool never calls
   `fetch` itself and never runs a Google command line.
 - **A credential comes from a label's variable or file only and never leaves
   the client.** No argument or setting carries one, nothing shaped like a

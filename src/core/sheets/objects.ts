@@ -67,7 +67,7 @@ const objectsReply = z.object({
             }),
           )
           .optional(),
-        basicFilter: z.looseObject({}).optional(),
+        basicFilter: z.looseObject({ range: boundsReply.optional() }).optional(),
         filterViews: z
           .array(z.looseObject({ filterViewId: gridNumber, title: text, range: boundsReply.optional() }))
           .optional(),
@@ -118,8 +118,8 @@ export type SheetObjects = {
   tables: TableState[]
   /** The rules of each tab, by tab id, in the order Google applies them. */
   rules: Map<number, RuleState[]>
-  /** The tabs that have a basic filter, by tab id, with its definition if Google reported it. */
-  filters: Map<number, { definition?: unknown }>
+  /** The tabs that have a basic filter, by tab id, with its definition and the cells it covers (the whole tab when it names none) if Google reported them. */
+  filters: Map<number, { definition?: unknown; range?: GridBounds }>
   views: ViewState[]
   /** How many rows and columns each tab has, by tab id. */
   sizes: Map<number, TabSize>
@@ -170,7 +170,9 @@ export async function readObjects(client: GoogleClient, id: string): Promise<She
       definition: rule,
     }))
     if (rules.length > 0) objects.rules.set(sheetId, rules)
-    if (sheet.basicFilter !== undefined) objects.filters.set(sheetId, { definition: sheet.basicFilter })
+    if (sheet.basicFilter !== undefined) {
+      objects.filters.set(sheetId, { definition: sheet.basicFilter, range: boundsOf(sheet.basicFilter.range) })
+    }
     for (const view of sheet.filterViews ?? []) {
       objects.views.push({
         sheetId,

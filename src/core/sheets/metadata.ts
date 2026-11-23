@@ -14,6 +14,10 @@ const GOOGLE_VISIBILITIES: Record<MetadataVisibility, string> = { document: "DOC
 /** The largest id Google gives developer metadata. */
 const MAX_METADATA_ID = 2_147_483_647
 
+/** The fields of the spreadsheet that carry developer metadata (its own, each tab's, each row's and column's) and no cell values. */
+const METADATA_FIELDS =
+  "developerMetadata,sheets(properties(sheetId,title,index),developerMetadata,data(rowMetadata(developerMetadata),columnMetadata(developerMetadata)))"
+
 /** The kinds of place developer metadata sits on, as Google's search filters name them. */
 export const METADATA_LOCATION_TYPES = ["SPREADSHEET", "SHEET", "ROW", "COLUMN"] as const
 
@@ -86,6 +90,23 @@ const searchReply = z.object({
 
 type MetadataReply = z.output<typeof developerMetadataReply>
 
+/** Something that may carry developer metadata: the spreadsheet, a tab, one row or one column. */
+const markedReply = z.object({ developerMetadata: z.array(developerMetadataReply).optional() })
+
+const spreadsheetMarksReply = markedReply.extend({
+  sheets: z
+    .array(
+      markedReply.extend({
+        data: z
+          .array(
+            z.object({ rowMetadata: z.array(markedReply).optional(), columnMetadata: z.array(markedReply).optional() }),
+          )
+          .optional(),
+      }),
+    )
+    .optional(),
+})
+
 /** Where the reply says the metadata sits. */
 function locationOf(location: MetadataReply["location"]): MetadataLocation {
   const range = location?.dimensionRange
@@ -111,6 +132,16 @@ function metadataOf(reply: MetadataReply): DeveloperMetadata {
     location: locationOf(reply.location),
     definition: reply,
   }
+}
+
+/** The metadata of the replies, each id once, in the order first seen. */
+function distinct(replies: readonly MetadataReply[]): DeveloperMetadata[] {
+  const found = new Map<number, DeveloperMetadata>()
+  for (const reply of replies) {
+    const metadata = metadataOf(reply)
+    if (!found.has(metadata.metadataId)) found.set(metadata.metadataId, metadata)
+  }
+  return [...found.values()]
 }
 
 /** Google's word for a visibility. */
@@ -164,13 +195,37 @@ export async function searchMetadata(
     }),
     "the developer metadata",
   )
-  const found = new Map<number, DeveloperMetadata>()
-  for (const { developerMetadata } of reply.matchedDeveloperMetadata ?? []) {
-    if (developerMetadata === undefined) continue
-    const metadata = metadataOf(developerMetadata)
-    if (!found.has(metadata.metadataId)) found.set(metadata.metadataId, metadata)
-  }
-  return [...found.values()]
+  return distinct(
+    (reply.matchedDeveloperMetadata ?? []).flatMap(({ developerMetadata }) =>
+      developerMetadata === undefined ? [] : [developerMetadata],
+    ),
+  )
+}
+
+/**
+ * Every piece of developer metadata of the spreadsheet, each once, read from
+ * the spreadsheet itself with a field mask that holds no cell values: the
+ * search is closed to a label that cannot write, this is not. The reply grows
+ * with the rows and columns of the tabs. A reply not in the expected shape is
+ * `upstream_error`.
+ */
+export async function readAllMetadata(client: GoogleClient, id: string): Promise<DeveloperMetadata[]> {
+  const reply = parseReply(
+    spreadsheetMarksReply,
+    await client.request(SHEETS_ROUTES.spreadsheet, {
+      params: { spreadsheet_id: id },
+      query: { fields: METADATA_FIELDS },
+    }),
+    "the developer metadata",
+  )
+  const holders = [
+    reply,
+    ...(reply.sheets ?? []).flatMap((sheet) => [
+      sheet,
+      ...(sheet.data ?? []).flatMap((grid) => [...(grid.rowMetadata ?? []), ...(grid.columnMetadata ?? [])]),
+    ]),
+  ]
+  return distinct(holders.flatMap((holder) => holder.developerMetadata ?? []))
 }
 
 /** The metadata with the ids, as Google reports it now; an id Google does not show is left out. */

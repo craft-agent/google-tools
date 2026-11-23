@@ -40,11 +40,35 @@ describe("SHEETS_ROUTES", () => {
     expect(SHEETS_ROUTES.batchGet.scopes).toEqual([SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE])
   })
 
+  test("the metadata search is a read sent as POST that only the write scope allows", () => {
+    expect(SHEETS_ROUTES.metadataSearch.method).toBe("POST")
+    expect(SHEETS_ROUTES.metadataSearch.scopes).toEqual([SHEETS_WRITE_SCOPE])
+  })
+
   test("the export is a GET on the docs host that either Sheets scope allows", () => {
     expect(SHEETS_ROUTES.export.scopes).toEqual([SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE])
     expect(routeUrl(SHEETS_ROUTES.export, { spreadsheet_id: "abc_DEF-123" }).toString()).toBe(
       "https://docs.google.com/spreadsheets/d/abc_DEF-123/export",
     )
+  })
+
+  test("only the export hands off, to the sheets download host under /export/", () => {
+    const handoffs = Object.entries(SHEETS_ROUTES).filter(([, route]) => "handoff" in route)
+    expect(handoffs.map(([name]) => name)).toEqual(["export"])
+    const { host, pathPrefix } = SHEETS_ROUTES.export.handoff
+    expect(pathPrefix).toBe("/export/")
+    for (const name of ["doc-10-60-sheets.googleusercontent.com", "doc-0k-8s-sheets.googleusercontent.com"]) {
+      expect(host.test(name)).toBe(true)
+    }
+    for (const name of [
+      "docs.google.com",
+      "googleusercontent.com",
+      "doc-10-60-docs.googleusercontent.com",
+      "evil.doc-10-60-sheets.googleusercontent.com",
+      "doc-10-60-sheets.googleusercontent.com.evil.test",
+    ]) {
+      expect(host.test(name)).toBe(false)
+    }
   })
 
   test("the URLs keep the literal :batchGet and encode the id", () => {

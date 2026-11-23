@@ -10,6 +10,9 @@ import { DRIVE_TOOLSET } from "./scopes"
 import { DRIVE_WORDS } from "./words"
 import { driveRefusal } from "./write-session"
 
+const HTTP_BAD_REQUEST = 400
+const HTTP_FORBIDDEN = 403
+
 /** The fields of the moved item the answer carries. */
 const MOVED_FIELDS = "id,name,parents"
 
@@ -17,14 +20,18 @@ const MOVED_FIELDS = "id,name,parents"
 const PARENTS_PIN = "parents"
 
 /** The statuses with which Google refuses to put a folder into itself or below itself, which it words as a bad request or as a refusal. */
-const CYCLE_STATUSES: readonly unknown[] = [400, 403]
+const CYCLE_STATUSES: readonly unknown[] = [HTTP_BAD_REQUEST, HTTP_FORBIDDEN]
 
 /** What Google's text says of a folder put into itself or into a folder inside it. */
 const CYCLE_PATTERN = /\b(itself|its own|descendants?|subfolders?|circular)\b/i
 
-/** Whether Google refused to move a folder because the destination is the folder itself or inside it. */
+/** Whether Google refused a folder cycle, including its bare 400 badRequest when ancestry changed after planning. */
 function isCycleRefusal(error: unknown): boolean {
-  return isToolError(error) && CYCLE_STATUSES.includes(error.details?.status) && CYCLE_PATTERN.test(error.message)
+  return (
+    isToolError(error) &&
+    ((error.details?.status === HTTP_BAD_REQUEST && error.details?.reason === "badRequest") ||
+      (CYCLE_STATUSES.includes(error.details?.status) && CYCLE_PATTERN.test(error.message)))
+  )
 }
 
 /** What the prompt shows of a move: the item and the folder in the headline (which says so when the item is there already), the folders it is in now and its kind; the folders' digest and the destination's are pins. */

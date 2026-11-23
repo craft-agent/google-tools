@@ -1,8 +1,14 @@
 /** An opening `<script>` or `<style>` tag, whose content is not text. */
 const BLOCK_OPENING = /<(script|style)\b[^<>]*>/gi
 
-/** A tag that ends a line: `<br>`, and the end of a paragraph, a division or a table row. */
-const LINE_BREAK = /<br\b[^<>]*>|<\/(?:p|div|tr)\s*>/gi
+/** A break or rule, or the end of a block element, ends a line. */
+const LINE_BREAK =
+  /<(?:br|hr)\b[^<>]*>|<\/(?:p|div|tr|li|h[1-6]|ul|ol|blockquote|table|pre|section|article|header|footer)\s*>/gi
+
+/** Table cells are separated by tabs; the row's closing tag ends the line. */
+const CELL_BREAK = /<\/(?:td|th)\s*>/gi
+
+const TRAILING_CELL_BREAKS = /\t+(?=\n)/g
 
 const TAG = /<[^<>]*>/g
 
@@ -84,6 +90,10 @@ function decodeEntity(entity: string, hex?: string, decimal?: string, name?: str
  * named ones and every numeric one) and runs of blank lines folded to one.
  */
 export function htmlToText(html: string): string {
-  const stripped = withoutBlocks(html).replace(LINE_BREAK, "\n").replace(TAG, "")
+  const stripped = withoutBlocks(html)
+    .replace(LINE_BREAK, "\n")
+    .replace(CELL_BREAK, "\t")
+    .replace(TAG, "")
+    .replace(TRAILING_CELL_BREAKS, "")
   return stripped.replace(ENTITY, decodeEntity).replace(BLANK_LINES, "\n\n").trim()
 }

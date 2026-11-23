@@ -366,6 +366,13 @@ still reaches is not deleted. Changing IAM or public access, the service
 account, ingress, network, secrets and volumes, building from source and
 deleting an execution are not offered.
 
+`revisions` and `revision` return images already resolved to digests:
+`images[].image` and `digest` are the same `…@sha256:…` reference, not the tag
+deployed. A project that does not exist or whose Cloud Run Admin API is off
+is `forbidden`; a region that does not exist is `upstream_error`, with
+Google's reason (such as `Unsupported region …`) in the message. `not_found`
+means a service, job, revision, execution or operation does not exist.
+
 ### Grants (`grants`)
 
 Off by default. Delegates bounded writes for jobs where no person can answer.

@@ -34,6 +34,12 @@ async function described(args: Record<string, unknown> = {}, job = nightlyJob())
 }
 
 describe("google_run_job_deploy describe: a job that exists", () => {
+  test("shows the same image once with a redeploy note, not an unchanged arrow", async () => {
+    const { description } = await described({ image: OLD_IMAGE })
+
+    expect(description.text?.body).toBe(`image: ${OLD_IMAGE} (again; a tag takes the digest it points to now)`)
+  })
+
   test("headlines the image and the job from the call's arguments", async () => {
     const { description } = await described()
 

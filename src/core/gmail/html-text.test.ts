@@ -18,6 +18,37 @@ describe("htmlToText", () => {
     expect(htmlToText('<a href="https://example.test/?a=1&amp;b=2">link</a> <b>bold</b>')).toBe("link bold")
   })
 
+  test("list items, headings and table rows keep their lines, with tabs between cells", () => {
+    expect(
+      htmlToText("<p>a</p><ul><li>one</li><li>two</li></ul><h2>t</h2><table><tr><td>x</td><td>y</td></tr></table>"),
+    ).toBe("a\none\ntwo\n\nt\nx\ty")
+    expect(htmlToText("<table><tr><th>x</th><th>y</th></tr><tr><td>a</td><td>b</td></tr></table>")).toBe("x\ty\na\tb")
+  })
+
+  test.each([
+    "li",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "ul",
+    "ol",
+    "blockquote",
+    "table",
+    "pre",
+    "section",
+    "article",
+    "header",
+    "footer",
+  ])("the closing %s tag ends a line", (tag) => expect(htmlToText(`<${tag}>a</${tag}>b`)).toBe("a\nb"))
+
+  test("horizontal rules end lines in any case and with attributes", () => {
+    expect(htmlToText("a<hr>b<HR class='rule'/>c")).toBe("a\nb\nc")
+    expect(htmlToText("<section><ul><li>a</li></ul></section><hr><article>b</article>")).toBe("a\n\nb")
+  })
+
   test("runs of three or more line ends are folded to a blank line, and the ends are trimmed", () => {
     expect(htmlToText("\n\n<p>a</p><p></p><p></p><p>b</p>\n\n")).toBe("a\n\nb")
   })

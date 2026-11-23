@@ -112,13 +112,13 @@ export function taskView(reply: TaskReply): TaskView {
   const attempt = reply.lastAttemptResult
   return {
     task: shortName(reply.name),
-    index: reply.index ?? null,
+    index: reply.index ?? 0,
     retried: reply.retried ?? 0,
     start_time: reply.startTime ?? null,
     completion_time: reply.completionTime ?? null,
     status: completedStatus(reply.conditions),
     last_attempt:
-      attempt === undefined ? null : { exit_code: attempt.exitCode ?? null, message: attempt.status?.message ?? null },
+      attempt === undefined ? null : { exit_code: attempt.exitCode ?? 0, message: attempt.status?.message ?? null },
     log_uri: reply.logUri ?? null,
   }
 }

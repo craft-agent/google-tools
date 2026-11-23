@@ -1,5 +1,6 @@
 import { z } from "zod"
 import type { GoogleClient } from "../google/client"
+import { readingRanges } from "./range-errors"
 import { parseReply } from "./reply"
 import { SHEETS_ROUTES } from "./routes"
 import type { Cell, ReadRange, Render, ValuesResult } from "./schemas"
@@ -124,5 +125,6 @@ export async function readValues(
   ranges: readonly string[],
   render: Render = "formatted",
 ): Promise<ValuesResult> {
-  return { spreadsheet_id: id, ranges: budgeted(await fetchValueRanges(client, id, ranges, render)) }
+  const fetched = await readingRanges(() => fetchValueRanges(client, id, ranges, render))
+  return { spreadsheet_id: id, ranges: budgeted(fetched) }
 }

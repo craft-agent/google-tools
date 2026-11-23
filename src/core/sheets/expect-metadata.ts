@@ -30,11 +30,12 @@ function expectedText({ metadata }: MetadataGuard): string {
   return metadata.value === undefined ? metadata.key : `${metadata.key}=${metadata.value}`
 }
 
-/** One place that carries a mark as a difference names it: `12–12` for rows, `C–C` for columns. */
+/** One place that carries a mark as a difference names it: `12` for one row, `10–14` for several, `C` for one column, `C–E` for several. */
 function placeText({ location }: Marked, along: Along): string {
-  return along === "rows"
-    ? `${location.startIndex + 1}–${location.endIndex}`
-    : `${columnLetters(location.startIndex)}–${columnLetters(Math.max(location.endIndex - 1, location.startIndex))}`
+  const name = (index: number) => (along === "rows" ? String(index + 1) : columnLetters(index))
+  const first = name(location.startIndex)
+  const last = name(Math.max(location.endIndex - 1, location.startIndex))
+  return first === last ? first : `${first}–${last}`
 }
 
 /** Where the marks that match are, as a difference says it, from the top or the left; none is said so. */

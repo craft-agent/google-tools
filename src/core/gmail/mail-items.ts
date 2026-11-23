@@ -82,13 +82,23 @@ function lineOf(part: GmailPart | undefined): string {
 
 /** The message or thread `id`, read from its headers alone. */
 async function readItem(client: GoogleClient, kind: MailKind, id: string): Promise<MailItem> {
-  const { get, param } = KINDS[kind]
+  const { get, param, what } = KINDS[kind]
   const reply = parseReply(
     itemReply,
-    await client.request(get, {
-      params: { [param]: id },
-      query: { format: "metadata", metadataHeaders: LINE_HEADERS },
-    }),
+    await client
+      .request(get, {
+        params: { [param]: id },
+        query: { format: "metadata", metadataHeaders: LINE_HEADERS },
+      })
+      .catch((error: unknown) => {
+        if (error instanceof ToolError && error.code === "not_found") {
+          throw new ToolError("not_found", `The ${what} "${id}" was not found. ${error.message}`, {
+            cause: error,
+            details: error.details,
+          })
+        }
+        throw error
+      }),
     "a message or thread",
   )
   return { id, historyId: reply.historyId ?? "", line: lineOf(reply.payload ?? reply.messages?.[0]?.payload) }

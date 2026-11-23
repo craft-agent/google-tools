@@ -26,9 +26,9 @@ type CopyPlan = {
   label: string
   source: DriveItem
   destination: Destination
-  /** The name the call gives the copy; none leaves Google's own (`Copy of …`). */
+  /** The name the call gives the copy; left out, the copy keeps the file's name. */
   name: string | undefined
-  /** How many files of `name` are in the destination already, up to `MAX_COUNTED_FILES`; 0 when no name is given. */
+  /** How many files of the copy's name are in the destination already, up to `MAX_COUNTED_FILES`; 0 when the source has no name and none is given. */
   existing: number
 }
 
@@ -49,7 +49,7 @@ function checkCopyable(source: DriveItem): void {
   }
 }
 
-/** Reads and checks what a copy is made of, before anything is made: the ids, the label's scopes, the source, the destination (see `readDestination`) and, when a name is given, the files already there under it. */
+/** Reads and checks what a copy is made of, before anything is made: the ids, the label's scopes, the source, the destination (see `readDestination`) and the files already there under the copy's name. */
 async function planCopy(args: DriveCopyArgs, ctx: ToolContext): Promise<CopyPlan> {
   const fileId = driveId(args.file_id, "file id")
   const folder = folderId(args.folder ?? ROOT_FOLDER)
@@ -57,11 +57,12 @@ async function planCopy(args: DriveCopyArgs, ctx: ToolContext): Promise<CopyPlan
   const source = await readItem(client, fileId)
   checkCopyable(source)
   const destination = await readDestination(client, folder, await client.accountEmail())
-  const existing = args.name === undefined ? 0 : await countSameName(client, destination, args.name)
+  const name = args.name ?? source.name
+  const existing = name === undefined ? 0 : await countSameName(client, destination, name)
   return { client, label, source, destination, name: args.name, existing }
 }
 
-/** What the prompt shows of a copy: the folder in the headline, the source's name and size and, when a name is given and taken, how many files have it; the source's version and the folder's digest are pins. */
+/** What the prompt shows of a copy: the folder in the headline, the source's name and size and, when the copy's name is taken, how many files have it; the source's version and the folder's digest are pins. */
 function describeCopy({ source, destination, existing }: CopyPlan): CallDescription {
   const size = sizeOf(source)
   const facts: CallFact[] = [
@@ -103,8 +104,8 @@ export const googleDriveCopy = defineTool({
   description:
     "Copy one file in the account's Google Drive, by `file_id` as `google_drive_read` gives it. Drive cannot copy a folder and a shortcut is not copied, so both are refused, and so is a file the account may not copy. " +
     "The copy goes into My Drive (`folder` `root`, the default) or into a folder, by id, that is the account's own, not in the trash, not in a shared drive and shared with no one: a file put in a shared folder is shared with everyone who reaches it, and these tools never change sharing, so such a folder is refused. " +
-    `\`name\` (1 to ${MAX_UPLOAD_NAME_LENGTH} characters, no control character) names the copy; left out, Google names it \`Copy of\` and the file's name. ` +
-    "A file of the same name is never replaced: the copy adds another, and when `name` is given the prompt says how many are there already. " +
+    `\`name\` (1 to ${MAX_UPLOAD_NAME_LENGTH} characters, no control character) names the copy; left out, the copy keeps the file's name. ` +
+    "A file of the same name is never replaced: the copy adds another, and the prompt says how many files of the copy's name are there already. " +
     "The account must hold the drive.file scope to write and drive.readonly to read the file and the folder; drive.file lets these tools change only the files and folders they created or a person opened with them, so copying a file these tools did not make may be refused, and nothing is then copied. " +
     "Returns the copy's `file_id`, `name`, `mime_type`, `folder_id` and `web_view_link`; if the call fails or times out without a result, search Drive for the copy with `google_drive_read` before copying again, since it may exist. " +
     "`account` is needed when several accounts are set up. " +

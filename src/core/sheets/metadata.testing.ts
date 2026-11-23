@@ -1,9 +1,10 @@
 import type { FakeHandler } from "../google/fake-google.testing"
-import { SPREADSHEET_ID } from "./read.testing"
+import { SPREADSHEET_ID, SPREADSHEET_URL } from "./read.testing"
 import {
   BATCH_UPDATE_URL,
   CLEAR_URL,
   METADATA_SEARCH_URL,
+  SPREADSHEET,
   UPDATE_URL,
   metadata,
   post,
@@ -106,6 +107,59 @@ export function searchHandler(marks: readonly Mark[] = MARKS): FakeHandler {
             : { matchedDeveloperMetadata: matched.map((developerMetadata) => ({ developerMetadata })) },
       }
     },
+  }
+}
+
+/** The id of the tab a mark sits on or in; Google leaves out the id 0. */
+function sheetIdOf(entry: Mark): number {
+  const range = entry.location.dimensionRange as { sheetId?: number } | undefined
+  return (range ?? (entry.location as { sheetId?: number })).sheetId ?? 0
+}
+
+/** What Google answers for the rows (or columns) of a tab: one entry for each up to the last one marked, empty where nothing is marked, and a mark on every row it covers. */
+function dimensionMarks(marks: readonly Mark[], locationType: string, sheetId: number): unknown[] {
+  const here = marks.filter((entry) => entry.location.locationType === locationType && sheetIdOf(entry) === sheetId)
+  const span = (entry: Mark) => entry.location.dimensionRange as { startIndex?: number; endIndex: number }
+  const length = Math.max(0, ...here.map((entry) => span(entry).endIndex))
+  return Array.from({ length }, (_, index) => {
+    const covering = here.filter((entry) => (span(entry).startIndex ?? 0) <= index && index < span(entry).endIndex)
+    return covering.length === 0 ? {} : { developerMetadata: covering }
+  })
+}
+
+/** The spreadsheet as the field mask of the marks cuts it: the marks of the spreadsheet, of each tab of `SPREADSHEET`, and of their rows and columns. */
+function marksReply(marks: readonly Mark[]): unknown {
+  const on = (locationType: string, sheetId?: number) =>
+    marks.filter(
+      (entry) =>
+        entry.location.locationType === locationType && (sheetId === undefined || sheetIdOf(entry) === sheetId),
+    )
+  return {
+    developerMetadata: on("SPREADSHEET"),
+    sheets: SPREADSHEET.sheets.map(({ properties }) => {
+      const sheetId = (properties as { sheetId?: number }).sheetId ?? 0
+      return {
+        properties,
+        developerMetadata: on("SHEET", sheetId),
+        data: [
+          {
+            rowMetadata: dimensionMarks(marks, "ROW", sheetId),
+            columnMetadata: dimensionMarks(marks, "COLUMN", sheetId),
+          },
+        ],
+      }
+    }),
+  }
+}
+
+/** A read of the spreadsheet that answers the marks of `marks` when the field mask asks for them, and the tabs otherwise. */
+export function marksSpreadsheetHandler(marks: readonly Mark[] = MARKS): FakeHandler {
+  return {
+    method: "GET",
+    url: SPREADSHEET_URL,
+    reply: ({ url }) => ({
+      json: url.searchParams.get("fields")?.includes("developerMetadata") ? marksReply(marks) : SPREADSHEET,
+    }),
   }
 }
 

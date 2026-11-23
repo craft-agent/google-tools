@@ -42,7 +42,10 @@ task needs one, tell the person; do not look for another route.
    `me` (the account wrote it), `text`, `text_clipped`, `time`, `assignee` and
    `replies`. A reply has `reply_id`, `author`, `me`, `text`, `text_clipped`,
    `time`, `assignee` and `action`: `resolve` or `reopen` when the reply
-   resolved or reopened the thread. Deleted comments and replies are left out.
+   resolved or reopened the thread. On spreadsheets and other Drive files alike,
+   a thread's `time` is when it last changed, including a reply or status change.
+   Resolving or reopening adds an empty-text reply with `action` `resolve` or
+   `reopen` on both kinds. Deleted comments and replies are left out.
 2. **In a spreadsheet** `at` is the cell the thread is anchored to (`Plan!B2`,
    or `Plan!B2:C3`; null for a thread with no anchor). `ranges` (1 to as many
    A1 ranges as the Sheets tools take) returns only the threads anchored
@@ -92,6 +95,8 @@ task needs one, tell the person; do not look for another route.
   (`resolved` or `open`). It sends no text, so nobody is emailed; to say
   something too, use `google_comments_add`. A thread that has the status
   already is not touched (`changed: false`), and the result gives `before`.
+  On spreadsheets and other Drive files alike, each change adds an empty-text
+  reply with `action` `resolve` or `reopen`.
 - **Edit.** `google_comments_edit` takes `comment_id`, `text` and, to edit a
   reply, `reply_id`. Only the account's own posts (`me` is true) can be
   edited. The old text is not kept: the prompt shows it and the result gives

@@ -1,4 +1,5 @@
-import { readdir, stat } from "node:fs/promises"
+import { constants } from "node:fs"
+import { open, readdir, stat } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
 import { isAbortError } from "../errors"
 import { exec } from "../exec"
@@ -12,6 +13,12 @@ const RENDER_DENSITY = 110
 
 /** Where a renderer is looked for when the environment names no `PATH`. */
 const DEFAULT_PATH = "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"
+
+/** Mode of a page image: owner only, as the PDF it is drawn from, since it holds the person's content. */
+const IMAGE_MODE = 0o600
+
+/** How a page image is opened to set its mode: never through a link. */
+const IMAGE_OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW
 
 /** How much of a failed renderer's standard error the note keeps, in characters. */
 const MAX_STDERR_LENGTH = 300
@@ -105,6 +112,26 @@ async function singleImage(stem: string): Promise<string[]> {
   return (await stat(path).catch(() => undefined))?.isFile() ? [path] : []
 }
 
+/**
+ * The images a renderer wrote, each made owner only: a renderer writes with
+ * the process's umask, which usually lets others read. An image that is a
+ * link, or that cannot be opened, is not listed.
+ */
+async function ownerOnly(paths: readonly string[]): Promise<string[]> {
+  const kept: string[] = []
+  for (const path of paths) {
+    const handle = await open(path, IMAGE_OPEN_FLAGS).catch(() => undefined)
+    if (handle === undefined) continue
+    try {
+      await handle.chmod(IMAGE_MODE)
+      kept.push(path)
+    } finally {
+      await handle.close()
+    }
+  }
+  return kept
+}
+
 function stderrTail(stderr: string, code: number): string {
   return stderr.trim().slice(-MAX_STDERR_LENGTH) || `exit code ${code}`
 }
@@ -130,8 +157,9 @@ export async function renderPages(options: RenderOptions): Promise<Rendered> {
       if (isAbortError(error)) throw error
       return { images: [], note: `${renderer.name} could not be started: ${(error as Error).message}` }
     }
-    const images =
-      renderer.output === "numbered" ? await numberedImages(dirname(pdf), basename(stem)) : await singleImage(stem)
+    const images = await ownerOnly(
+      renderer.output === "numbered" ? await numberedImages(dirname(pdf), basename(stem)) : await singleImage(stem),
+    )
     if (result.timedOut) {
       return { images, note: `${renderer.name} did not finish within ${RENDER_TIMEOUT_MS / MS_PER_SECOND} s.` }
     }

@@ -2,6 +2,7 @@ import { z } from "zod"
 import type { GoogleClient } from "../google/client"
 import { columnLetters, gridRangeA1 } from "./a1"
 import { colorOf, colorReply, colorStyleReply } from "./colors"
+import { readingRanges } from "./range-errors"
 import { parseReply } from "./reply"
 import { SHEETS_ROUTES } from "./routes"
 import type { CellFormat, FormatResult, FormattedCell, FormattedRange } from "./schemas"
@@ -231,10 +232,12 @@ function formattedBlock(title: string, data: DataReply, asked: string): Omit<For
 export async function readFormat(client: GoogleClient, id: string, ranges: readonly string[]): Promise<FormatResult> {
   const reply = parseReply(
     formatReply,
-    await client.request(SHEETS_ROUTES.spreadsheet, {
-      params: { spreadsheet_id: id },
-      query: { ranges, includeGridData: true, fields: FORMAT_FIELDS },
-    }),
+    await readingRanges(() =>
+      client.request(SHEETS_ROUTES.spreadsheet, {
+        params: { spreadsheet_id: id },
+        query: { ranges, includeGridData: true, fields: FORMAT_FIELDS },
+      }),
+    ),
     "the formatting",
   )
   // Google answers the tabs in their order and, for each, its ranges in the order asked: pair them back up.

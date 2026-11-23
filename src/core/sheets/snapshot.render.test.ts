@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { readFile, readdir } from "node:fs/promises"
+import { readFile, readdir, stat } from "node:fs/promises"
 import { basename, join } from "node:path"
 import { cleanUp, freshTokens } from "./read.testing"
 import {
@@ -46,6 +46,12 @@ describe("google_sheets_read snapshot rendering", () => {
     const [call, ...others] = await renderCalls(bin)
     expect(others).toEqual([])
     expect(call).toBe(`pdftoppm -png -r 110 -f 1 -l 3 ${result.pdf} ${result.pdf.replace(/\.pdf$/, "")}`)
+  })
+
+  test("the page images are made owner only, whatever mode the renderer wrote them with", async () => {
+    const { result } = await snapshotWith({ pdftoppm: `umask 022\n${pdftoppmBody(2)}` })
+
+    for (const page of result.pages) expect((await stat(page)).mode & 0o777).toBe(0o600)
   })
 
   test("pages beyond nine sort by number, not by name", async () => {

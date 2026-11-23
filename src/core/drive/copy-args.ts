@@ -6,7 +6,7 @@ export const driveCopyInput = z.strictObject({
   account: accountArg,
   file_id: fileIdArg("the file to copy (not a folder or a shortcut)"),
   folder: folderArg("to put the copy in"),
-  name: nameArg("The name of the copy; left out, Google names it `Copy of` and the file's name.").optional(),
+  name: nameArg("The name of the copy; left out, the copy keeps the file's name.").optional(),
 })
 
 export const driveCopyOutput = z.object({

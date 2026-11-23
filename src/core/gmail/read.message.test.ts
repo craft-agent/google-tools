@@ -102,6 +102,12 @@ describe("google_gmail_read message", () => {
     expect(result).toMatchObject({ body: "", body_format: "none", body_truncated: false })
   })
 
+  test("HTML-only mail keeps list items and headings on lines and separates table cells with tabs", async () => {
+    const html = "<p>a</p><ul><li>one</li><li>two</li></ul><h2>t</h2><table><tr><td>x</td><td>y</td></tr></table>"
+    const result = await readParts([textPart("text/html", html)])
+    expect(result).toMatchObject({ body: "a\none\ntwo\n\nt\nx\ty", body_format: "html_as_text" })
+  })
+
   test("a text part that is an attachment is no body", async () => {
     const result = await readParts([
       { ...textPart("text/plain", "notes in a file", "1"), filename: "notes.txt" },

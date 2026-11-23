@@ -74,6 +74,12 @@ describe("google_run_job_run describe", () => {
     ])
   })
 
+  test("leaves out the last run when Google returns an empty execution reference", async () => {
+    const { description } = await described({}, nightlyJob({ latestCreatedExecution: {} }))
+
+    expect(description.facts.map((fact) => fact.label)).toEqual(["Image", "Tasks", "Runs as"])
+  })
+
   test("leaves out the image when the job has several containers and the call names none", async () => {
     const job = nightlyJob({
       template: { template: templateSettings({ containers: [container(), container({ name: "sidecar" })] }) },

@@ -70,8 +70,8 @@ const threadSchema = z.object({
   me: z.boolean(),
   text: z.string(),
   text_clipped: z.boolean(),
-  /** When the thread's first comment was last changed, else when it was made. */
-  time: z.string().nullable(),
+  /** When the thread last changed, including a reply or status change. */
+  time: z.string().nullable().describe("When the thread last changed, including a reply or status change."),
   assignee: z.string().nullable(),
   replies: z.array(replySchema),
 })

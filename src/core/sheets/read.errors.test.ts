@@ -122,15 +122,28 @@ describe("google_sheets_read: Google's refusals", () => {
     })
   })
 
-  test("a range Google cannot parse is upstream_error carrying Google's text", async () => {
+  test.each([
+    ["values", BATCH_GET_URL],
+    ["format", SPREADSHEET_URL],
+  ])("a range %s cannot parse is invalid_argument carrying Google's text", async (method, url) => {
     const h = await fixture([
-      failing(BATCH_GET_URL, 400, { code: 400, message: "Unable to parse range: Nope!A1", status: "INVALID_ARGUMENT" }),
+      failing(url, 400, { code: 400, message: "Unable to parse range: Nope!A1", status: "INVALID_ARGUMENT" }),
     ])
 
-    await expect(h.read({ method: "values", spreadsheet: SPREADSHEET_ID, ranges: ["Nope!A1"] })).rejects.toMatchObject({
-      code: "upstream_error",
-      message: expect.stringContaining("Unable to parse range"),
-    })
+    const error = await toolError(h.read({ method, spreadsheet: SPREADSHEET_ID, ranges: ["Nope!A1"] }))
+
+    expect(error.code).toBe("invalid_argument")
+    expect(error.message).toBe("Google: Unable to parse range: Nope!A1")
+  })
+
+  test("any other 400 of a read of ranges stays upstream_error", async () => {
+    const h = await fixture([
+      failing(BATCH_GET_URL, 400, { code: 400, message: "Invalid value at 'ranges'", status: "INVALID_ARGUMENT" }),
+    ])
+
+    const error = await toolError(h.read({ method: "values", spreadsheet: SPREADSHEET_ID, ranges: ["A1"] }))
+
+    expect(error.code).toBe("upstream_error")
   })
 
   test("the Drive list being refused is forbidden", async () => {

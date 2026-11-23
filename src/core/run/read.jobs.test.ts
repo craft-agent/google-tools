@@ -76,7 +76,7 @@ describe("google_run_read jobs", () => {
   test("lists the jobs as summaries with the latest execution", async () => {
     const h = await fixture([
       answer(JOBS_URL, {
-        jobs: [nightlyJob(), { name: `${PARENT}/jobs/fresh` }],
+        jobs: [nightlyJob(), { name: `${PARENT}/jobs/fresh`, latestCreatedExecution: {} }],
         nextPageToken: "n",
       }),
     ])
@@ -112,6 +112,12 @@ describe("google_run_read jobs", () => {
 })
 
 describe("google_run_read job", () => {
+  test("an empty latest execution reference means the job has never run", async () => {
+    const h = await fixture([answer(JOB_URL, nightlyJob({ latestCreatedExecution: {} }))])
+
+    expect(await h.read({ method: "job", job: "nightly" })).toMatchObject({ latest_execution: null })
+  })
+
   test("returns the job with its task template, and no environment value or annotation", async () => {
     const h = await fixture([answer(JOB_URL, nightlyJob())])
 
@@ -261,7 +267,7 @@ describe("google_run_read tasks", () => {
       },
       {
         task: "nightly-abc12-1",
-        index: null,
+        index: 0,
         retried: 0,
         start_time: null,
         completion_time: null,

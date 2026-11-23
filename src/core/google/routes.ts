@@ -3,6 +3,20 @@ import { ToolError } from "../errors"
 /** The HTTP methods a route may use. */
 export type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
 
+/**
+ * The one redirect the client follows for a download route: Google hands the
+ * file off to a signed address on a download host, which serves it without the
+ * token. The address is followed only when its host matches `host` and its path
+ * starts with `pathPrefix`; nothing but `Accept` is sent to it. Handoffs apply
+ * to downloads only: `request` and the resumable calls never follow a redirect.
+ */
+export type Handoff = {
+  /** Matched against the address's host name, without its port. */
+  readonly host: RegExp
+  /** What the address's path must start with, such as `/export/`. */
+  readonly pathPrefix: string
+}
+
 /** One call the package may make: a method, a host and a path template, with the scopes that allow it. */
 export type Route = {
   readonly method: Method
@@ -12,6 +26,8 @@ export type Route = {
   readonly path: string
   /** The OAuth scopes, any one of which lets a label call the route; empty for a route that takes no access token. */
   readonly scopes: readonly string[]
+  /** The redirect a download of this route follows; without it every redirect is refused. */
+  readonly handoff?: Handoff
 }
 
 /** A query value; an array repeats the key once per item and `undefined` leaves the key out. */

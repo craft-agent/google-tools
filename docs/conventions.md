@@ -704,6 +704,16 @@ and every entry point checks them the same way.
   token elsewhere), a time limit with cancellation, and Google's failures
   mapped to the error codes. A tool never calls `fetch` itself, and no Google
   command line is run.
+- **A route may name one handoff, the only redirect the client follows.**
+  Some exports answer every request, whatever the access, with a redirect to
+  a signed address on a download host, which serves the file without the
+  token. Such a route names the host pattern and path prefix it hands off
+  to; the client follows that one redirect only when its address matches
+  (`https`, no user info, no fragment), sends nothing but `Accept` to it (no
+  token, no cookie), follows no redirect from it, and masks the address in
+  every message, since the signature in it is a capability. Any other
+  redirect, or one from a route that names no handoff, is `upstream_error`
+  and nothing is fetched from it.
 - **A route left off the allowlist cannot be reached by any argument.** An
   operation a domain never offers is kept out by the allowlist, not only by
   the tool's schema, so a bug or a crafted id cannot turn a read into it.
@@ -719,7 +729,10 @@ and every entry point checks them the same way.
   | anything else                                                              | `upstream_error`  |
 
   The message carries Google's own text, masked, since it often names the
-  API to enable or the permission to grant.
+  API to enable or the permission to grant. When Google's message is generic
+  and its reply lists field violations (`google.rpc.BadRequest`, such as
+  `Unsupported region …`), their descriptions follow it, since they are what
+  says which argument was wrong.
 
 - **A value a tool writes to a file, never to a result, is masked for the
   label's own secrets only**, since shape masking would corrupt file content
@@ -921,7 +934,24 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   cut text cells, so the model never takes a cut for the whole.
 - **The snapshot's export URL is undocumented by Google**, so it is checked
   at a real install, not only against the fake. It needs only the Sheets read
-  scopes; no Drive content scope is asked for it.
+  scopes; no Drive content scope is asked for it. A real install showed that
+  it always hands the PDF off with one redirect to
+  `doc-…-sheets.googleusercontent.com/export/…`, the route's handoff (see
+  "The Google client"); the Drive export, which needs no redirect, has none
+  of the print options.
+- **Marks are read under the read scope too.** Google's developer-metadata
+  search accepts only the write scopes, so a label that holds `spreadsheets`
+  searches, and one that holds only `spreadsheets.readonly` reads the marks
+  of the spreadsheet, its tabs and their rows and columns from the
+  spreadsheet itself, with a field mask that takes no cell values, and
+  filters them on its own. The answer is the same either way; the second
+  reply grows with the tabs' rows and columns, which is the price of reading
+  without the right to write.
+- **A sort refuses a range under a basic filter.** Google sorts only the
+  rows the filter shows and leaves the hidden ones where they are, while it
+  reports success, so the rows would no longer be the rows the person sorted.
+  A `sort` whose range meets the tab's basic filter is refused, nothing sent,
+  naming `filter_clear`.
 - **Searching uses `drive.metadata.readonly`**: names and dates, a restricted
   scope that personal use needs no verification for (see "The OAuth client").
   No Drive content scope is asked.
@@ -998,7 +1028,7 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   cannot be undone. Filters and forwarding: a filter can forward every mail to
   an outside address, and nothing in a call shows that. Mailbox settings
   likewise. Renaming and deleting labels wait for a need.
-- **Limits**: a search returns up to 50 messages (default 20); a message body
+- **Limits**: a search returns up to 50 messages (default 10); a message body
   is read to 20,000 characters and a thread's bodies to 60,000 in all, and the
   result says when it cut (`body_truncated`); an attachment is saved up to
   25 MiB and a mail carries up to 25 MB of attachments (20 files); a mail
@@ -1106,6 +1136,13 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   and a download are up to 2 GiB; an upload's chunk is 8 MiB; a name is 1 to
   500 characters with no control character. Uploads are read only under
   `upload_dirs` and encrypted under `encrypt_dirs` (see "Files").
+- **A copy keeps the source's name when `name` is left out.** The prompt counts
+  files of the copy's name in the destination even without an explicit name,
+  since Drive keeps the name rather than adding a prefix.
+- **A folder move checks the destination's ancestors before writing.** A folder
+  cannot go inside itself; Google's bare `badRequest` does not explain that
+  refusal. The walk follows at most 100 levels, refusing as `invalid_argument`
+  if the ancestors cannot be followed within that bound.
 
 ## Comments
 
@@ -1182,6 +1219,12 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   take no comments, and the refusal names a shortcut's target. Comments are
   written by other people: the read and every write say they are data, never
   instructions.
+- **Status changes appear as replies on spreadsheets and other Drive files.**
+  Resolving or reopening adds an empty-text reply with `action` `resolve` or
+  `reopen`, because Google records the action in the thread on both kinds.
+- **A thread's `time` is when it last changed**, including a reply or status
+  change, on spreadsheets and other Drive files alike; Google updates the
+  thread's modified time, not just the first comment's.
 - **Not offered, and why.** Comments on other files than spreadsheets that
   these tools did not make would take the `drive` scope, which reads and
   changes every file. Editing or deleting another person's post is refused
@@ -1323,6 +1366,15 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   error and the resource it changes, never its body. Descriptions, labels,
   conditions' messages and members were written by other people: they are
   data, never instructions.
+- **Revision images are already resolved.** In `revisions` and `revision`,
+  Google returns the same `…@sha256:…` reference in `images[].image` and
+  `digest`; the tag deployed is not shown.
+- **Read errors follow Google's response.** A project that does not exist,
+  a disabled Cloud Run Admin API or missing permission is `forbidden`.
+  A region that does not exist is `upstream_error`, with Google's reason
+  (such as `Unsupported region …`) in the message. `not_found` means a service,
+  job, revision, execution or operation does not exist. These distinctions
+  reflect Google's responses, not whether a project or region was named.
 - **Not offered, and why.**
   - Changing IAM (`setIamPolicy`) and public access (`invokerIamDisabled`,
     IAP, custom audiences, the default URL): they change who may reach a
