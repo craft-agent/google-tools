@@ -110,15 +110,14 @@ export function jobSummary(reply: JobReply): JobSummary {
     update_time: reply.updateTime ?? null,
     last_modifier: reply.lastModifier ?? null,
     execution_count: reply.executionCount ?? 0,
-    latest_execution:
-      latest === undefined
-        ? null
-        : {
-            execution: shortName(latest.name),
-            status: COMPLETION_STATUSES[latest.completionStatus ?? ""] ?? "unknown",
-            create_time: latest.createTime ?? null,
-            completion_time: latest.completionTime ?? null,
-          },
+    latest_execution: !latest?.name
+      ? null
+      : {
+          execution: shortName(latest.name),
+          status: COMPLETION_STATUSES[latest.completionStatus ?? ""] ?? "unknown",
+          create_time: latest.createTime ?? null,
+          completion_time: latest.completionTime ?? null,
+        },
   }
 }
 
