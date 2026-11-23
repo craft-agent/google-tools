@@ -186,6 +186,25 @@ describe("google_comments_read: a spreadsheet", () => {
     expect(result).toMatchObject({ resolved_hidden: 1, more: 1, incomplete: false })
   })
 
+  test("a range Google cannot parse is invalid_argument carrying Google's text", async () => {
+    const h = await fixture([
+      answer(fileUrl(SPREADSHEET_ID), SPREADSHEET_FILE),
+      {
+        method: "GET",
+        url: SPREADSHEET_URL,
+        reply: {
+          status: 400,
+          json: { error: { code: 400, message: "Unable to parse range: Nope!A1", status: "INVALID_ARGUMENT" } },
+        },
+      },
+    ])
+
+    await expect(h.read({ file: SPREADSHEET_ID, ranges: ["Nope!A1"] })).rejects.toMatchObject({
+      code: "invalid_argument",
+      message: "Google: Unable to parse range: Nope!A1",
+    })
+  })
+
   test("a reply that is not a spreadsheet is upstream_error", async () => {
     const h = await fixture([
       answer(fileUrl(SPREADSHEET_ID), SPREADSHEET_FILE),
