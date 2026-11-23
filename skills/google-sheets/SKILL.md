@@ -140,6 +140,10 @@ change. Files go in the person's download directory; never overwrite or move
 them. Report what you checked: a value read-back proves values, and a
 snapshot proves only what showed on those pages.
 
+`format` reads rich-text `runs` back in `rich_text`'s shape, with `start` and
+`text`; only styled text within the cell's first 2,000 characters is returned,
+with `runs_clipped: true` when a run is cut or dropped.
+
 ## Format and lay out
 
 `google_sheets_format` changes how a sheet looks and never a value or an
@@ -229,6 +233,10 @@ contains what it finds, changes more.
    reports for `find_replace`, `dedupe` and `trim`.
 5. `rich_text` without `value` restyles the cell's text as read; it is refused
    after an operation of the call that rewrites cells of the same tab.
+   `read` `format` reads runs back in the same shape (`text` and styles), with
+   a UTF-16 `start` index added; omit `start` when giving them to `rich_text`.
+   `runs_clipped: true` means the 2,000-character read budget cut or dropped
+   a run, so the listed runs are not the whole styling.
 
 ## Protect
 

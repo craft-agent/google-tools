@@ -207,6 +207,10 @@ result carries the one command to run.
 
 On by default. Finds, reads and writes Google spreadsheets: their values,
 formatting, structure and protections.
+The `format` read also returns rich-text runs as `text` and styles, in
+`transform`'s `rich_text` shape with a UTF-16 `start` index added. Only styled
+text within a cell's first 2,000 characters is returned; `runs_clipped: true`
+marks a run cut or dropped by that budget.
 
 | Tool                        | What it does                                                                                                                                                                                                                                                                                                                                          | Class             |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
