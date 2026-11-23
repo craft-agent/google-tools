@@ -1,12 +1,15 @@
+import { ToolError } from "../errors"
 import type { GoogleClient } from "../google/client"
 import { quoteTab } from "./a1"
 import {
   METADATA_LOCATION_TYPES,
   placeOf,
+  readAllMetadata,
   searchMetadata,
   type DeveloperMetadata,
   type MetadataLocation,
 } from "./metadata"
+import { SHEETS_ROUTES } from "./routes"
 import type { MetadataResult } from "./schemas"
 import { readTabs, tabOfRange, type SheetTab } from "./tabs"
 
@@ -36,12 +39,35 @@ function sorted(metadata: readonly DeveloperMetadata[], tabs: readonly SheetTab[
     .map(({ entry }) => entry)
 }
 
+/** Whether the label may use the metadata search, which Google closes to a label that cannot write. */
+async function maySearch(client: GoogleClient): Promise<boolean> {
+  try {
+    await client.requireScopes(SHEETS_ROUTES.metadataSearch)
+    return true
+  } catch (error) {
+    if (error instanceof ToolError && error.code === "unauthenticated") return false
+    throw error
+  }
+}
+
+/** The metadata `key` and `value` select, as the search selects them: the ones given must equal, exactly and case-sensitively. */
+function selected(
+  metadata: readonly DeveloperMetadata[],
+  { key, value }: Pick<Parameters<typeof readMetadata>[2], "key" | "value">,
+): DeveloperMetadata[] {
+  return metadata.filter(
+    (entry) => (key === undefined || entry.key === key) && (value === undefined || entry.value === value),
+  )
+}
+
 /**
- * The developer metadata of a spreadsheet, in one search with a lookup for
- * each kind of location, filtered by `key` and `value` when given and, with
- * `titles`, kept to the metadata on those tabs and their rows and columns (a
- * title the spreadsheet lacks is `invalid_argument`). It lists at most
- * `MAX_METADATA_ENTRIES`, ordered by location then key, and counts the rest.
+ * The developer metadata of a spreadsheet, filtered by `key` and `value` when
+ * given and, with `tabs`, kept to the metadata on those tabs and their rows
+ * and columns (a title the spreadsheet lacks is `invalid_argument`). A label
+ * that may write searches, with a lookup for each kind of location; one that
+ * can only read takes every mark from the spreadsheet itself and filters
+ * them here, with the same answer. It lists at most `MAX_METADATA_ENTRIES`,
+ * ordered by location then key, and counts the rest.
  */
 export async function readMetadata(
   client: GoogleClient,
@@ -53,15 +79,17 @@ export async function readMetadata(
     filters.tabs === undefined
       ? undefined
       : new Set(filters.tabs.map((title) => tabOfRange(tabs, quoteTab(title)).sheetId))
-  const found = await searchMetadata(
-    client,
-    id,
-    METADATA_LOCATION_TYPES.map((locationType) => ({
-      locationType,
-      ...(filters.key !== undefined && { metadataKey: filters.key }),
-      ...(filters.value !== undefined && { metadataValue: filters.value }),
-    })),
-  )
+  const found = (await maySearch(client))
+    ? await searchMetadata(
+        client,
+        id,
+        METADATA_LOCATION_TYPES.map((locationType) => ({
+          locationType,
+          ...(filters.key !== undefined && { metadataKey: filters.key }),
+          ...(filters.value !== undefined && { metadataValue: filters.value }),
+        })),
+      )
+    : selected(await readAllMetadata(client, id), filters)
   const kept = found.filter(
     ({ location }) => picked === undefined || (location.kind !== "spreadsheet" && picked.has(location.sheetId)),
   )

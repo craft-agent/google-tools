@@ -2,16 +2,16 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { toolError } from "../google/client.fixtures"
 import { MARKS, ON_SPREADSHEET, lookupsOf, mark, onColumns, onRows, onTab, searchHandler } from "./metadata.testing"
 import { MAX_METADATA_ENTRIES } from "./metadata-read"
-import { SHEETS_CREDENTIAL, SPREADSHEET_ID, SPREADSHEET_URL, cleanUp, freshTokens } from "./read.testing"
-import { METADATA_SEARCH_URL, metadata, writeFixture } from "./write.testing"
+import { SPREADSHEET_ID, SPREADSHEET_URL, cleanUp, freshTokens } from "./read.testing"
+import { METADATA_SEARCH_URL, SHEETS_WRITE_CREDENTIAL, metadata, writeFixture } from "./write.testing"
 
 beforeEach(freshTokens)
 afterEach(cleanUp)
 
 const LOCATION_TYPES = ["SPREADSHEET", "SHEET", "ROW", "COLUMN"]
 
-/** A label logged in for reading only, a fake that answers the spreadsheet's tabs and a search over `marks`. */
-const readFixture = (marks = MARKS) => writeFixture([metadata(), searchHandler(marks)], SHEETS_CREDENTIAL)
+/** A label logged in to write, which may search, a fake that answers the spreadsheet's tabs and a search over `marks`. */
+const readFixture = (marks = MARKS) => writeFixture([metadata(), searchHandler(marks)], SHEETS_WRITE_CREDENTIAL)
 
 const ids = (result: { metadata?: { metadata_id: number }[] }) => result.metadata!.map((entry) => entry.metadata_id)
 
@@ -180,7 +180,7 @@ describe("google_sheets_read: metadata", () => {
   test("is upstream_error when Google's answer is not a list of matches", async () => {
     const h = await writeFixture(
       [metadata(), { method: "POST", url: METADATA_SEARCH_URL, reply: { json: { matchedDeveloperMetadata: "none" } } }],
-      SHEETS_CREDENTIAL,
+      SHEETS_WRITE_CREDENTIAL,
     )
 
     const error = await toolError(h.read({ method: "metadata", spreadsheet: SPREADSHEET_ID }))

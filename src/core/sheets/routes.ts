@@ -32,12 +32,15 @@ export const SHEETS_ROUTES = {
     path: "/v4/spreadsheets/{spreadsheet_id}/values:batchGet",
     scopes: [SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE],
   },
-  // A read sent as POST: the search takes its filters in a body and changes nothing.
+  /**
+   * A read sent as POST: the search takes its filters in a body and changes nothing. Google accepts it only under
+   * the write scope, so a label that can only read the spreadsheet reads the marks through `spreadsheet` instead.
+   */
   metadataSearch: {
     method: "POST",
     host: SHEETS_HOST,
     path: "/v4/spreadsheets/{spreadsheet_id}/developerMetadata:search",
-    scopes: [SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE],
+    scopes: [SHEETS_WRITE_SCOPE],
   },
   update: {
     method: "POST",

@@ -40,6 +40,11 @@ describe("SHEETS_ROUTES", () => {
     expect(SHEETS_ROUTES.batchGet.scopes).toEqual([SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE])
   })
 
+  test("the metadata search is a read sent as POST that only the write scope allows", () => {
+    expect(SHEETS_ROUTES.metadataSearch.method).toBe("POST")
+    expect(SHEETS_ROUTES.metadataSearch.scopes).toEqual([SHEETS_WRITE_SCOPE])
+  })
+
   test("the export is a GET on the docs host that either Sheets scope allows", () => {
     expect(SHEETS_ROUTES.export.scopes).toEqual([SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE])
     expect(routeUrl(SHEETS_ROUTES.export, { spreadsheet_id: "abc_DEF-123" }).toString()).toBe(
