@@ -119,6 +119,8 @@ modifiedTime > '2026-01-01T00:00:00'`), never together with `query`, and
 - `google_drive_folder_create` makes a folder (`name`, `folder` as for an
   upload, the same shared-place rule). `google_drive_copy` copies a file
   (`file_id`, `folder`, optional `name`); a folder or a shortcut is not copied.
+  Left out, `name` keeps the source file's name; the prompt counts files of the
+  copy's name already in the destination.
   Both add another item when the name is taken, so search before you create
   again after an error.
 - `google_drive_rename` takes `file_id` and `name`. Only the name changes. The

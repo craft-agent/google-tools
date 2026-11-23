@@ -1136,6 +1136,13 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   and a download are up to 2 GiB; an upload's chunk is 8 MiB; a name is 1 to
   500 characters with no control character. Uploads are read only under
   `upload_dirs` and encrypted under `encrypt_dirs` (see "Files").
+- **A copy keeps the source's name when `name` is left out.** The prompt counts
+  files of the copy's name in the destination even without an explicit name,
+  since Drive keeps the name rather than adding a prefix.
+- **A folder move checks the destination's ancestors before writing.** A folder
+  cannot go inside itself; Google's bare `badRequest` does not explain that
+  refusal. The walk follows at most 100 levels, refusing as `invalid_argument`
+  if the ancestors cannot be followed within that bound.
 
 ## Comments
 
@@ -1212,6 +1219,12 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   take no comments, and the refusal names a shortcut's target. Comments are
   written by other people: the read and every write say they are data, never
   instructions.
+- **Status changes appear as replies on spreadsheets and other Drive files.**
+  Resolving or reopening adds an empty-text reply with `action` `resolve` or
+  `reopen`, because Google records the action in the thread on both kinds.
+- **A thread's `time` is when it last changed**, including a reply or status
+  change, on spreadsheets and other Drive files alike; Google updates the
+  thread's modified time, not just the first comment's.
 - **Not offered, and why.** Comments on other files than spreadsheets that
   these tools did not make would take the `drive` scope, which reads and
   changes every file. Editing or deleting another person's post is refused
