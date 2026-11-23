@@ -322,7 +322,8 @@ export const protectionEditorsSchema = z.object({
 const structuredProtectionSchema = z.object({
   protection_id: z.number().int(),
   range: z.string(),
-  description: z.string().nullable(),
+  except: z.array(z.string()),
+  label: z.string().nullable(),
   warning_only: z.boolean(),
   /** The people and groups who may edit the range, every address in full; null when Google does not show them to the account. */
   editors: protectionEditorsSchema.nullable(),

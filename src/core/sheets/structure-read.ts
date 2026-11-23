@@ -296,7 +296,8 @@ function structuredTab(
       return {
         protection_id: protection.protectionId ?? 0,
         range: rangeA1(title, protection.range),
-        description: protection.description ?? null,
+        except: protection.unprotected.map((range) => rangeA1(title, range)),
+        label: protection.description ?? null,
         warning_only: protection.warningOnly,
         editors: protection.editors === undefined ? null : editorsView(protection),
         can_edit: protection.canEdit,
