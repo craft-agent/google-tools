@@ -47,6 +47,25 @@ describe("SHEETS_ROUTES", () => {
     )
   })
 
+  test("only the export hands off, to the sheets download host under /export/", () => {
+    const handoffs = Object.entries(SHEETS_ROUTES).filter(([, route]) => "handoff" in route)
+    expect(handoffs.map(([name]) => name)).toEqual(["export"])
+    const { host, pathPrefix } = SHEETS_ROUTES.export.handoff
+    expect(pathPrefix).toBe("/export/")
+    for (const name of ["doc-10-60-sheets.googleusercontent.com", "doc-0k-8s-sheets.googleusercontent.com"]) {
+      expect(host.test(name)).toBe(true)
+    }
+    for (const name of [
+      "docs.google.com",
+      "googleusercontent.com",
+      "doc-10-60-docs.googleusercontent.com",
+      "evil.doc-10-60-sheets.googleusercontent.com",
+      "doc-10-60-sheets.googleusercontent.com.evil.test",
+    ]) {
+      expect(host.test(name)).toBe(false)
+    }
+  })
+
   test("the URLs keep the literal :batchGet and encode the id", () => {
     expect(routeUrl(SHEETS_ROUTES.files).toString()).toBe("https://www.googleapis.com/drive/v3/files")
     expect(routeUrl(SHEETS_ROUTES.spreadsheet, { spreadsheet_id: "abc_DEF-123" }).toString()).toBe(

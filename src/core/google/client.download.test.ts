@@ -131,15 +131,15 @@ describe("GoogleClient.download", () => {
     )
   })
 
-  test("a redirect is not followed", async () => {
+  test("a redirect of a route with no handoff is not followed", async () => {
     const { download, requests } = clientOver([
       tokenHandler,
       exportReply({ status: 302, headers: { location: "https://elsewhere.test/" } }),
     ])
     const error = await toolError(download())
     expect(error.code).toBe("upstream_error")
-    expect(error.message).toContain("Google answered the export with a redirect, which is not followed;")
-    expect(requests.filter((request) => request.url.host === "elsewhere.test")).toHaveLength(0)
+    expect(error.message).toBe("Google answered with a redirect, which is not followed; nothing was fetched from it.")
+    expect(requests.filter((request) => request.url.host !== "oauth2.googleapis.com")).toHaveLength(1)
   })
 
   test("a failure status is mapped as for any call, and its body is masked", async () => {

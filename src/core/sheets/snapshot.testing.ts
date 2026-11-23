@@ -5,6 +5,19 @@ import { SPREADSHEET_ID, SPREADSHEET_URL, answer, fixture } from "./read.testing
 
 export const EXPORT_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export`
 
+/** Where a made-up Google hands the export off to: a signed address on the sheets download host. */
+export const HANDOFF_URL = "https://doc-10-60-sheets.googleusercontent.com/export/opaqueA/opaqueB/1780315200000/1/2/3"
+
+/** The signed query of the handoff address, which no message may show. */
+export const HANDOFF_QUERY = "?sig=madeUpSignature&ttl=300"
+
+/** The export answering with a redirect to `location`, as Google answers every export. */
+export const handoffRedirect = (location: string): FakeHandler => ({
+  method: "GET",
+  url: EXPORT_URL,
+  reply: { status: 307, headers: { location } },
+})
+
 /** The bytes of a made-up PDF. */
 export const PDF_BYTES = new TextEncoder().encode("%PDF-1.4 made up")
 

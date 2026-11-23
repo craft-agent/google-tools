@@ -5,7 +5,16 @@ import { toolError } from "../google/client.fixtures"
 import { invoke } from "../tool"
 import { callOf, cleanUp, freshTokens } from "./read.testing"
 import { googleSheetsRead } from "./read"
-import { EXPORT_URL, PDF_BYTES, SHEET1_STEM, snapshotArgs, snapshotFixture } from "./snapshot.testing"
+import {
+  EXPORT_URL,
+  HANDOFF_QUERY,
+  HANDOFF_URL,
+  PDF_BYTES,
+  SHEET1_STEM,
+  handoffRedirect,
+  snapshotArgs,
+  snapshotFixture,
+} from "./snapshot.testing"
 
 beforeEach(freshTokens)
 afterEach(cleanUp)
@@ -30,6 +39,23 @@ describe("google_sheets_read snapshot file", () => {
     expect(await readFile(path)).toEqual(Buffer.from(PDF_BYTES))
     expect((await stat(path)).mode & 0o777).toBe(0o600)
     expect((await stat(join(h.downloadDir, "sheet-snapshots"))).mode & 0o777).toBe(0o700)
+  })
+
+  test("follows the export's handoff to the download host and saves the PDF it serves", async () => {
+    const h = await snapshotFixture(undefined, [
+      handoffRedirect(`${HANDOFF_URL}${HANDOFF_QUERY}`),
+      { method: "GET", url: HANDOFF_URL, reply: { bytes: PDF_BYTES, headers: { "content-type": "application/pdf" } } },
+    ])
+
+    const result = await h.read(snapshotArgs())
+
+    const path = join(h.downloadDir, "sheet-snapshots", `${SHEET1_STEM}.pdf`)
+    expect(result).toMatchObject({ pdf: path })
+    expect(await readFile(path)).toEqual(Buffer.from(PDF_BYTES))
+    const handedOff = h.calls().find((call) => call.url.host === "doc-10-60-sheets.googleusercontent.com")
+    expect(handedOff?.url.search).toBe(HANDOFF_QUERY)
+    expect(handedOff?.headers.authorization).toBeUndefined()
+    expect(JSON.stringify(result)).not.toContain("sig=")
   })
 
   test("a second snapshot of the same second is a new file, never over the first", async () => {
@@ -83,15 +109,28 @@ describe("google_sheets_read snapshot failures leave nothing behind", () => {
     expect(await saved(h)).toEqual([])
   })
 
-  test("a redirect is refused and no file stays", async () => {
+  test("a handoff to an address the route does not accept is refused and no file stays", async () => {
+    const h = await snapshotFixture(undefined, [handoffRedirect("https://elsewhere.test/export/x?sig=madeUp")])
+
+    const error = await toolError(h.read(snapshotArgs()))
+
+    expect(error.code).toBe("upstream_error")
+    expect(error.message).toContain("Google handed the export to an address this call does not accept;")
+    expect(error.message).not.toContain("elsewhere.test")
+    expect(h.calls().map((call) => call.url.host)).not.toContain("elsewhere.test")
+    expect(await saved(h)).toEqual([])
+  })
+
+  test("a redirect from the handoff address is refused and no file stays", async () => {
     const h = await snapshotFixture(undefined, [
-      { method: "GET", url: EXPORT_URL, reply: { status: 302, headers: { location: "https://elsewhere.test/" } } },
+      handoffRedirect(`${HANDOFF_URL}${HANDOFF_QUERY}`),
+      { method: "GET", url: HANDOFF_URL, reply: { status: 302, headers: { location: "https://elsewhere.test/" } } },
     ])
 
     const error = await toolError(h.read(snapshotArgs()))
 
     expect(error.code).toBe("upstream_error")
-    expect(error.message).toContain("Google answered the export with a redirect, which is not followed;")
+    expect(error.message).toContain("download address answered with another redirect")
     expect(h.calls().map((call) => call.url.host)).not.toContain("elsewhere.test")
     expect(await saved(h)).toEqual([])
   })
