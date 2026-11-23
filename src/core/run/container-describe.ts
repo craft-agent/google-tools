@@ -13,6 +13,9 @@ const ENV_PIN = "env"
 /** What a line of the changes shows for a value that was not set. */
 const UNSET = "-"
 
+/** What the image line adds when the call deploys the image the container runs now, which still makes a new revision. */
+const IMAGE_AGAIN = "again; a tag takes the digest it points to now"
+
 /** The words that begin a line of the changes, one per setting a service and a job share. */
 export const SETTINGS = {
   image: "image",
@@ -49,7 +52,9 @@ export function containerLines(
   { line, setting }: ChangeLines,
 ): string[] {
   return [
-    line(SETTINGS.image, textOf(container?.image), args.image),
+    container?.image === args.image
+      ? `${SETTINGS.image}: ${args.image} (${IMAGE_AGAIN})`
+      : line(SETTINGS.image, textOf(container?.image), args.image),
     ...Object.entries(args.env ?? {}).map(([name, value]) => `env ${name}: ${value === null ? "removed" : "set"}`),
     ...setting(SETTINGS.command, listOf(container?.command ?? []), args.command),
     ...setting(SETTINGS.args, listOf(container?.args ?? []), args.args),
