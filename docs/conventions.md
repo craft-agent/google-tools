@@ -929,6 +929,13 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   protection added or changed as Google reports it, read back, with every
   editor, and `errors` says so when the read-back fails after the write. A
   person decides on who may edit, so the tool never hides one.
+- **The `format` read returns no cell value, except the text of a styled
+  run.** Rich text styles parts of a cell's text, and a part is named by its
+  text, as `transform`'s `rich_text` takes it; a start index alone would
+  leave the model to pair it with a `values` read and count UTF-16 units. So
+  a cell's runs are listed in `rich_text`'s shape, each with its `start` and
+  the text it covers, within the read budget of 2,000 characters a cell. The
+  rest of the cell's text, and every other value, stays out of the read.
 - **The read budget is 10,000 cells a call and 2,000 characters a cell.** A
   range that loses rows says `truncated: true`, and `clipped_cells` counts the
   cut text cells, so the model never takes a cut for the whole.

@@ -37,6 +37,7 @@ describe("google_sheets_protect: the result", () => {
       {
         protection_id: 7,
         range: "Plan!A1:F1",
+        except: [],
         label: "Header",
         warning_only: false,
         editors: {
@@ -79,6 +80,28 @@ describe("google_sheets_protect: the result", () => {
       domain_users_can_edit: false,
     })
     expect(result.deleted).toEqual([7])
+  })
+
+  test("reads back a whole-tab protection's editable exceptions in A1 with the tab", async () => {
+    const exceptions = [PLAN_GRID(1, 20, 1, 2), PLAN_GRID(0, 1, 3, 4)]
+    const { result } = await sendProtect(
+      [{ op: "protect", range: "Plan", except: ["Plan!B2:B20", "Plan!D1"], label: "Inputs" }],
+      {
+        reply: added({ ...NEW, range: { sheetId: 0 } }),
+        after: [{ ...NEW, range: { sheetId: 0 }, unprotectedRanges: exceptions, description: "Inputs" }],
+      },
+    )
+
+    expect(result.protections).toEqual([
+      {
+        protection_id: 300,
+        range: "Plan",
+        except: ["Plan!B2:B20", "Plan!D1"],
+        label: "Inputs",
+        warning_only: false,
+        editors: { users: [ME, "ann@example.test"], groups: [], domain_users_can_edit: false },
+      },
+    ])
   })
 
   test("reads the protected ranges back once, of the tabs the call touched, after the batch", async () => {
@@ -131,6 +154,7 @@ describe("google_sheets_protect: when the read-back fails after the write", () =
       {
         protection_id: 300,
         range: "Plan!A1:C5",
+        except: [],
         label: "Budget",
         warning_only: false,
         editors: { users: [ME, "ann@example.test"], groups: [], domain_users_can_edit: false },

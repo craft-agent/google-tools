@@ -2,6 +2,7 @@ import { z } from "zod"
 import type { GoogleClient } from "../google/client"
 import { columnLetters, gridRangeA1 } from "./a1"
 import { colorOf, colorReply, colorStyleReply } from "./colors"
+import { formattedRuns, textFormatReply, textRunReply, textFormatView } from "./format-runs"
 import { readingRanges } from "./range-errors"
 import { parseReply } from "./reply"
 import { SHEETS_ROUTES } from "./routes"
@@ -18,7 +19,7 @@ export const DEFAULT_COLUMN_WIDTH = 100
 const FORMAT_FIELDS =
   "sheets(properties(sheetId,title),data(startRow,startColumn," +
   "rowMetadata(pixelSize,hiddenByUser),columnMetadata(pixelSize,hiddenByUser)," +
-  "rowData(values(userEnteredFormat,note,hyperlink,dataValidation))))"
+  "rowData(values(userEnteredFormat,note,hyperlink,dataValidation,textFormatRuns,userEnteredValue(stringValue)))))"
 
 /** Google's enum names that say nothing was set. */
 const UNSPECIFIED = /_UNSPECIFIED$/
@@ -40,18 +41,7 @@ const cellReply = z.object({
     .object({
       backgroundColor: colorReply.optional(),
       backgroundColorStyle: colorStyleReply.optional(),
-      textFormat: z
-        .object({
-          bold: flag,
-          italic: flag,
-          underline: flag,
-          strikethrough: flag,
-          fontFamily: text,
-          fontSize: pixels,
-          foregroundColor: colorReply.optional(),
-          foregroundColorStyle: colorStyleReply.optional(),
-        })
-        .optional(),
+      textFormat: textFormatReply.optional(),
       horizontalAlignment: text,
       verticalAlignment: text,
       wrapStrategy: text,
@@ -63,6 +53,8 @@ const cellReply = z.object({
     .optional(),
   note: text,
   hyperlink: text,
+  textFormatRuns: z.array(textRunReply).optional(),
+  userEnteredValue: z.object({ stringValue: text }).optional(),
   dataValidation: z
     .object({
       condition: z
@@ -108,15 +100,8 @@ function word(name: string | undefined): string | undefined {
 
 /** The compact, snake_case view of a cell's `userEnteredFormat`: only what is set, in the words the `format` operation takes. */
 function formatView(format: NonNullable<CellReply["userEnteredFormat"]>): CellFormat {
-  const view: CellFormat = {}
   const { textFormat, numberFormat, textRotation, padding } = format
-  for (const key of ["bold", "italic", "underline", "strikethrough"] as const) {
-    if (textFormat?.[key] !== undefined) view[key] = textFormat[key]
-  }
-  if (textFormat?.fontSize !== undefined) view.font_size = textFormat.fontSize
-  if (textFormat?.fontFamily !== undefined) view.font = textFormat.fontFamily
-  const color = colorOf(textFormat?.foregroundColorStyle) ?? colorOf(textFormat?.foregroundColor)
-  if (color !== undefined) view.color = color
+  const view: CellFormat = textFormatView(textFormat)
   const background = colorOf(format.backgroundColorStyle) ?? colorOf(format.backgroundColor)
   if (background !== undefined) view.background = background
   const horizontal = word(format.horizontalAlignment)
@@ -156,18 +141,21 @@ function formatView(format: NonNullable<CellReply["userEnteredFormat"]>): CellFo
   return view
 }
 
-/** The cell as the result lists it, or `undefined` for a cell that carries no format, note, link or validation. */
+/** The cell as listed, or `undefined` when it carries no format, note, link, styled run or validation. */
 function formattedCell(address: string, cell: CellReply): FormattedCell | undefined {
   const format = cell.userEnteredFormat === undefined ? {} : formatView(cell.userEnteredFormat)
   const rule = cell.dataValidation
   const note = cell.note === undefined || cell.note === "" ? null : cell.note
   const link = cell.hyperlink === undefined || cell.hyperlink === "" ? null : cell.hyperlink
-  if (Object.keys(format).length === 0 && note === null && link === null && rule === undefined) return undefined
+  const runs = formattedRuns(cell.userEnteredValue?.stringValue ?? "", cell.textFormatRuns ?? [])
+  if (Object.keys(format).length === 0 && note === null && link === null && runs.runs === null && rule === undefined)
+    return undefined
   return {
     cell: address,
     format: Object.keys(format).length === 0 ? null : format,
     note,
     link,
+    ...runs,
     validation:
       rule === undefined
         ? null
@@ -224,7 +212,10 @@ function formattedBlock(title: string, data: DataReply, asked: string): Omit<For
 
 /**
  * The formatting of each range: its hidden or resized rows and columns and
- * every cell that carries a format, note, link or validation, never a value.
+ * every cell that carries a format, note, link, styled run or validation.
+ * No cell value is returned except styled run text, in `rich_text`'s shape
+ * with its UTF-16 `start`; runs are cut at `MAX_CELL_LENGTH` characters of
+ * the cell's text, with `runs_clipped: true` when any is cut or dropped.
  * One shared budget of `MAX_FORMAT_CELLS` cells applies to the ranges in
  * order; a range that has more is `truncated`, and so is every later range
  * that has any.
