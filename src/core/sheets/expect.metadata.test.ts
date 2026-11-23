@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { toolError } from "../google/client.fixtures"
-import { MARKS, guardHandlers, holds, lookupsOf, mark, onRows } from "./metadata.testing"
+import { MARKS, guardHandlers, holds, lookupsOf, mark, onColumns, onRows } from "./metadata.testing"
 import { BATCH_GET_URL, SPREADSHEET_URL, cleanUp, freshTokens } from "./read.testing"
 import { METADATA_SEARCH_URL, UPDATE_URL, metadata, post, writeFixture, writesOf } from "./write.testing"
 
@@ -61,10 +61,10 @@ describe("expect with metadata: the check", () => {
     const { error } = await stale([{ range: "Plan!A13", metadata: { key: "order", value: "A-100" } }])
 
     expect(error.message).toBe(
-      'Nothing was written: the cells the call expected differ (the rows may have moved; read them again): Plan!A13: expected "order=A-100", found "rows 12–12 carry it"',
+      'Nothing was written: the cells the call expected differ (the rows may have moved; read them again): Plan!A13: expected "order=A-100", found "rows 12 carry it"',
     )
     expect(error.details).toEqual({
-      differs: [{ range: "Plan!A13", expected: "order=A-100", found: "rows 12–12 carry it" }],
+      differs: [{ range: "Plan!A13", expected: "order=A-100", found: "rows 12 carry it" }],
     })
   })
 
@@ -78,7 +78,7 @@ describe("expect with metadata: the check", () => {
     const { error } = await stale([{ range: "Plan!A12", metadata: { key: "order", value: "A-200" } }])
 
     expect(error.details).toEqual({
-      differs: [{ range: "Plan!A12", expected: "order=A-200", found: "rows 5–5 carry it" }],
+      differs: [{ range: "Plan!A12", expected: "order=A-200", found: "rows 5 carry it" }],
     })
   })
 
@@ -96,7 +96,7 @@ describe("expect with metadata: the check", () => {
     const { error } = await stale([{ range: "Plan!A20", metadata: { key: "tag" } }], rows)
 
     expect(error.details).toEqual({
-      differs: [{ range: "Plan!A20", expected: "tag", found: "rows 2–2, 4–4, 6–6 (+2 more) carry it" }],
+      differs: [{ range: "Plan!A20", expected: "tag", found: "rows 2, 4, 6 (+2 more) carry it" }],
     })
   })
 
@@ -111,7 +111,7 @@ describe("expect with metadata: the check", () => {
 
     expect(error.details).toEqual({
       differs: [
-        { range: "Plan!D1", expected: "region", found: "columns C–C carry it" },
+        { range: "Plan!D1", expected: "region", found: "columns C carry it" },
         { range: "Plan!C1", expected: "nothing", found: "no column carries it" },
       ],
     })
@@ -135,6 +135,14 @@ describe("expect with metadata: the check", () => {
 
     expect(writesOf(h.requests)).toHaveLength(1)
     expect(error.details).toEqual({ differs: [{ range: "Plan!A15", expected: "block", found: "rows 10–14 carry it" }] })
+  })
+
+  test("names a mark on several columns as a span, `C–E`", async () => {
+    const wide = [mark(51, "block", onColumns(0, 2, 5))]
+
+    const { error } = await stale([{ range: "Plan!F1", metadata: { key: "block" }, along: "columns" }], wide)
+
+    expect(error.details).toEqual({ differs: [{ range: "Plan!F1", expected: "block", found: "columns C–E carry it" }] })
   })
 
   test("is invalid_argument for a cell on a tab the spreadsheet lacks, with nothing written", async () => {

@@ -28,7 +28,7 @@ describe("expect with metadata: mixed with values, and in the other tools", () =
     expect(error.details).toEqual({
       differs: [
         { range: "Plan!A1", expected: "Name", found: "Total" },
-        { range: "Plan!A13", expected: "order", found: "rows 5–5, 12–12 carry it" },
+        { range: "Plan!A13", expected: "order", found: "rows 5, 12 carry it" },
       ],
     })
     expect(writesOf(h.requests)).toEqual([])
