@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { mkdir, readdir, symlink, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { CLIENT_SECRET, REFRESH_TOKEN } from "../core/google/client.fixtures"
+import { CLIENT_SECRET, CREDENTIAL, REFRESH_TOKEN } from "../core/google/client.fixtures"
 import { fakeGoogle } from "../core/google/fake-google.testing"
 import { stateRoot } from "../core/google/labels"
 import { EXIT_FAILED, EXIT_OK, EXIT_USAGE } from "./command-io"
@@ -40,7 +40,7 @@ describe("remove confirmation", () => {
   test("--yes revokes the token and removes only the selected label, without asking", async () => {
     const stateDir = await tempDir()
     await signedInAccount(stateDir, "work")
-    await signedInAccount(stateDir, "other")
+    await signedInAccount(stateDir, "other", { ...CREDENTIAL, email: "another@example.test" })
     const google = acceptingGoogle()
 
     const run = await remove(["--account=work", "--yes", `${STATE_DIR_FLAG}=${stateDir}`], {
@@ -180,6 +180,7 @@ describe("remove refusals", () => {
       ["--account", "Bad"],
       ["--account", CLIENT_SECRET],
       ["--account", "work", "--yes=true"],
+      ["--account", "work", "--revoke=true"],
       ["--account", "work", "--nope"],
       ["--account", "work", "extra"],
     ].map((args): [string[]] => [args]),
