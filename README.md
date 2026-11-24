@@ -425,8 +425,12 @@ scopes), plus your address (`openid` and `email`), which the label records.
 To add a toolset to a label later, log in again with the whole list;
 Desktop clients cannot add scopes to a consent. One label may hold Workspace
 and Cloud scopes together, but a label per use (one for mail and files, one
-for Cloud) keeps a leaked token from reaching both. `remove` revokes a
-label's token at Google and deletes its state.
+for Cloud) keeps a leaked token from reaching both. Labels logged in with
+the same client for the same account still share one grant at Google:
+revoking any of their tokens logs all of them out. `remove` deletes a
+label's state and revokes its token at Google, unless another label shares
+the grant; then the token stays valid until the last of those labels is
+removed, and `remove --revoke` revokes it anyway and logs them out too.
 
 Each label keeps its state in its own directory,
 `<state root>/accounts/<label>/` (mode 700), under the `state_dir`

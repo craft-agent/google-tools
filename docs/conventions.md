@@ -623,6 +623,16 @@ and every entry point checks them the same way.
 - **`remove` revokes the label's token at Google** and deletes the label's
   state, after the label is typed back unless `--yes` is given. Deleting the
   file alone would leave the token valid wherever it was copied.
+- **`remove` keeps a grant another label holds.** Every login of one OAuth
+  client for one Google account holds the same grant, and Google ends the
+  whole grant when any of its refresh tokens is revoked, so revoking one
+  label's token would log the others out. A credential shares a grant with
+  another label's (its file, or its variable when set) when their
+  `client_id` is the same and their `email` is the same or unknown. Such a
+  token is left valid: `remove` deletes the local state, names the labels
+  that share the grant and says the token stays valid until the last of
+  them is removed. `--revoke` revokes it anyway, and the confirmation and the
+  output name the labels it logs out.
 
 ## Accounts and scopes
 
