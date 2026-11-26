@@ -1,5 +1,5 @@
 name: google-tools
-version: 0.0.0
+version: 0.1.0
 description: "Google tools for coding agents: Sheets, Gmail, Drive and Google Cloud."
 manifest_version: 1
 requires_hermes: ">=0.22"

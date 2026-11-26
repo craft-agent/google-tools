@@ -1,6 +1,6 @@
 {
   "name": "google-tools",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Google tools for coding agents: Sheets, Gmail, Drive and Google Cloud.",
   "author": {
     "name": "craftsamo",
