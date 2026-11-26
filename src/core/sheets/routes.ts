@@ -73,14 +73,15 @@ export const SHEETS_ROUTES = {
     scopes: [SHEETS_WRITE_SCOPE],
   },
   /**
-   * The export URL is not a documented API: the scopes it accepts are checked at a real install, not here.
-   * A real install showed it always hands the file off once, to the sheets download host.
+   * The export URL is not a documented API: a real install refused it (401) to a
+   * label holding only the Sheets read scopes, so it takes the drive toolset's
+   * read scope. It always hands the file off once, to the sheets download host.
    */
   export: {
     method: "GET",
     host: DOCS_HOST,
     path: "/spreadsheets/d/{spreadsheet_id}/export",
-    scopes: [SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE],
+    scopes: [DRIVE_READ_SCOPE],
     handoff: { host: EXPORT_HANDOFF_HOST, pathPrefix: "/export/" },
   },
 } as const satisfies Record<string, Route>

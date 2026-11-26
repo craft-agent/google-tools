@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { CLI } from "../account/read.testing"
+import { DRIVE_READ_SCOPE } from "../drive/scopes"
 import { CREDENTIAL, toolError } from "../google/client.fixtures"
-import { callOf, cleanUp, fixture, freshTokens } from "./read.testing"
-import { SHEETS_WRITE_SCOPE } from "./scopes"
+import { SHEETS_CREDENTIAL, callOf, cleanUp, fixture, freshTokens } from "./read.testing"
+import { SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE } from "./scopes"
 import { EXPORT_URL, SHEET1_STEM, pdfHandler, snapshotArgs, snapshotFixture, tabsHandler } from "./snapshot.testing"
 
 beforeEach(freshTokens)
@@ -130,15 +132,39 @@ describe("google_sheets_read snapshot export", () => {
     }
   })
 
-  test("a label that holds the read scope only can export", async () => {
-    const h = await snapshotFixture()
+  test("a label with the Sheets read scope and drive.readonly exports", async () => {
+    const credential = { ...CREDENTIAL, scopes: [...CREDENTIAL.scopes, SHEETS_READ_SCOPE, DRIVE_READ_SCOPE] }
+    const h = await fixture([tabsHandler, pdfHandler], credential)
     expect(await h.read(snapshotArgs())).toMatchObject({ tab: "Sheet1" })
   })
 
-  test("a label that holds the write scope only can export too", async () => {
+  test("a label holding the Sheets read scope only is unauthenticated with zero calls sent", async () => {
+    const h = await fixture([tabsHandler, pdfHandler], SHEETS_CREDENTIAL)
+
+    const error = await toolError(h.read(snapshotArgs()))
+
+    const fix = `${CLI} login --account work --toolsets account,sheets,drive,comments --read-only --state-dir ${h.stateDir}`
+    expect(error).toMatchObject({
+      code: "unauthenticated",
+      details: { account: "work", needs: [DRIVE_READ_SCOPE], fix },
+    })
+    expect(error.message).toBe(
+      `Google account "work" was not logged in with a scope this call needs (${DRIVE_READ_SCOPE}). Ask a person to log it in again with: ${fix}`,
+    )
+    expect(h.calls()).toHaveLength(0)
+  })
+
+  test("a label with the Sheets write scope but no drive.readonly is unauthenticated with zero calls sent", async () => {
     const credential = { ...CREDENTIAL, scopes: [...CREDENTIAL.scopes, SHEETS_WRITE_SCOPE] }
     const h = await fixture([tabsHandler, pdfHandler], credential)
-    expect(await h.read(snapshotArgs())).toMatchObject({ tab: "Sheet1" })
+
+    const error = await toolError(h.read(snapshotArgs()))
+
+    expect(error).toMatchObject({
+      code: "unauthenticated",
+      details: { account: "work", needs: [DRIVE_READ_SCOPE] },
+    })
+    expect(h.calls()).toHaveLength(0)
   })
 
   test("a label without a Sheets scope is unauthenticated before any call", async () => {

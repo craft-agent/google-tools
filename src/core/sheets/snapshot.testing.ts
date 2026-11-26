@@ -1,5 +1,7 @@
+import { DRIVE_READ_SCOPE } from "../drive/scopes"
+import type { Credential } from "../google/credentials"
 import type { FakeHandler } from "../google/fake-google.testing"
-import { SPREADSHEET_ID, SPREADSHEET_URL, answer, fixture } from "./read.testing"
+import { SHEETS_CREDENTIAL, SPREADSHEET_ID, SPREADSHEET_URL, answer, fixture } from "./read.testing"
 
 /** Fixtures the snapshot tests share: the export's reply and the spreadsheet's tabs. */
 
@@ -51,10 +53,17 @@ export const snapshotArgs = (more: Record<string, unknown> = {}) => ({
 /** A `PATH` with no program on it, so no real renderer runs. */
 const NO_PROGRAMS_PATH = "/nonexistent-programs"
 
+/** What a label that can snapshot spreadsheets holds: Sheets read plus Drive read. */
+export const SNAPSHOT_CREDENTIAL: Credential = {
+  ...SHEETS_CREDENTIAL,
+  scopes: [...SHEETS_CREDENTIAL.scopes, DRIVE_READ_SCOPE],
+}
+
 /** The fixtures with the tabs and a PDF export answering; `env` is the runtime's environment, with no renderer on its `PATH` unless it names one. */
 export function snapshotFixture(
   env: Record<string, string> = { PATH: NO_PROGRAMS_PATH },
   handlers: FakeHandler[] = [pdfHandler],
+  credential: Credential | null = SNAPSHOT_CREDENTIAL,
 ) {
-  return fixture([tabsHandler, ...handlers], undefined, env)
+  return fixture([tabsHandler, ...handlers], credential, env)
 }

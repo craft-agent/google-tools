@@ -116,9 +116,11 @@ function pageLimitNote(pages: number): string {
 /**
  * Exports a tab, or a closed block of it, as a PDF through Google's export
  * URL, saves it under the download directory and renders its first pages to
- * PNG when a renderer is installed. A bad `range`, or `range` and `tab`
- * naming different tabs, is `invalid_argument`. The PDF is removed when the
- * export fails or is stopped; the images are never the content, only paths.
+ * PNG when a renderer is installed. Checks the export route's scope before
+ * reading tabs so a label lacking `drive.readonly` fails `unauthenticated`
+ * with no call sent. A bad `range`, or `range` and `tab` naming different tabs,
+ * is `invalid_argument`. The PDF is removed when the export fails or is
+ * stopped; the images are never the content, only paths.
  */
 export async function snapshotSpreadsheet(
   client: GoogleClient,
@@ -130,6 +132,7 @@ export async function snapshotSpreadsheet(
   const range = args.range === undefined ? undefined : parsedRange(args.range)
   const downloadDir = requireDownloadDir(ctx)
   const pages = args.pages ?? DEFAULT_SNAPSHOT_PAGES
+  await client.requireScopes(SHEETS_ROUTES.export)
   const { title, tabs } = await readTabs(client, id)
   const tab = chosenTab(tabs, args, range?.tab)
 
