@@ -135,7 +135,10 @@ exports the tab or block as a PDF and renders its first pages to PNG files.
 It returns file paths, not images: open a PNG to look at it. `pages` (1 to 10,
 default 3), `fit` (`width`, `height`, `page`, `none`), `paper`, `portrait` and
 `gridlines` shape the pages. If `note` says no converter is installed, only
-the PDF was saved. Look once per kind of tab, and take a new snapshot after a
+the PDF was saved. A snapshot needs the drive toolset's read scope: when it
+fails as `unauthenticated` for that, relay the `fix` to the person and check
+the look with `format` and `structure` meanwhile. Look once per kind of tab,
+and take a new snapshot after a
 change. Files go in the person's download directory; never overwrite or move
 them. Report what you checked: a value read-back proves values, and a
 snapshot proves only what showed on those pages.
