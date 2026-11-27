@@ -380,6 +380,28 @@ is `forbidden`; a region that does not exist is `upstream_error`, with
 Google's reason (such as `Unsupported region …`) in the message. `not_found`
 means a service, job, revision, execution or operation does not exist.
 
+### YouTube (`youtube`)
+
+Off by default. Reads public YouTube, a video's caption tracks and, for the
+channel a label was logged in for, its own uploads and analytics.
+
+| Tool                  | What it does                                                                                                                                                                                                                                                                                   | Class |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| `google_youtube_read` | `search`: videos, channels or playlists. `videos`, `channels`: by id, handle or address. `playlist`: a playlist and its items. `comments`: a video's threads or a thread's replies. `my_channel`, `my_videos`: the channel and its uploads. `captions`: a video's tracks. `analytics`: reports | read  |
+
+The toolset asks for `youtube.readonly` and `yt-analytics.readonly` to read
+and `youtube.force-ssl` to write. Google serves comments and caption tracks
+only to `youtube.force-ssl`, so a label logged in with `--read-only` cannot
+read them. A consent picks one channel (a brand account's on Google's
+chooser), so log in a label per channel; an account with no channel reads
+public YouTube only. Enable the YouTube Data API v3 and the YouTube Analytics
+API in the client's Cloud project. Google counts quota per Cloud project and
+Pacific day, about 100 searches and 10,000 units for everything else, shared
+with whatever else uses the project; the tools do not count it, and a spent
+quota is `rate_limited` until midnight Pacific time. Transcripts and
+downloads of videos and settings only YouTube Studio changes are not
+offered.
+
 ### Grants (`grants`)
 
 Off by default. Delegates bounded writes for jobs where no person can answer.
@@ -405,7 +427,8 @@ Google Cloud project of your own; the package ships none.
 1. In the [Google Cloud console](https://console.cloud.google.com/), create a
    project or pick one, and enable the API of each toolset you will use
    (APIs & Services → Library: Google Sheets API, Gmail API, Google Drive
-   API, Cloud Run Admin API and so on).
+   API, Cloud Run Admin API, YouTube Data API v3, YouTube Analytics API and
+   so on).
 2. Open Google Auth Platform. Under **Branding**, give the app a name and your
    address. Under **Audience**, choose **External** for a personal account
    (**Internal** for a Workspace organization's own users) and, for External,
