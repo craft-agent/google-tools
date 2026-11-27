@@ -18,6 +18,7 @@ export const playlistReply = z.object({
 
 /** An item of a playlist as `playlistItems.list` gives it, with the parts `snippet`, `contentDetails` and `status`. */
 const playlistItemReply = z.object({
+  id: z.string().optional(),
   snippet: z
     .object({
       position: z.number().optional(),
@@ -48,6 +49,8 @@ export const playlistSchema = z.object({
 })
 
 export const playlistItemSchema = z.object({
+  /** The item's own id, which a change to the playlist names it by. */
+  playlist_item_id: z.string().nullable(),
   position: z.number().nullable(),
   video_id: z.string().nullable(),
   /** Google titles a video that was deleted or made private `Deleted video` or `Private video`. */
@@ -83,6 +86,7 @@ export function playlistItemView(item: z.output<typeof playlistItemReply>): Play
   const { snippet, contentDetails, status } = item
   const videoId = contentDetails?.videoId ?? snippet?.resourceId?.videoId ?? null
   return {
+    playlist_item_id: item.id ?? null,
     position: snippet?.position ?? null,
     video_id: videoId,
     title: snippet?.title ?? "",

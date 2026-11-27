@@ -28,6 +28,7 @@ const playlistResource = (extra: Record<string, unknown> = {}) => ({
 })
 
 const itemResource = (position: number, extra: Record<string, unknown> = {}) => ({
+  id: `item${position}`,
   snippet: {
     position,
     title: "An item",
@@ -69,7 +70,7 @@ describe("google_youtube_read playlist", () => {
   })
 
   test("returns the playlist and its items as views, with the next page", async () => {
-    const hidden = { snippet: { position: 1, title: "Private video" }, contentDetails: {}, status: {} }
+    const hidden = { id: undefined, snippet: { position: 1, title: "Private video" }, contentDetails: {}, status: {} }
     const h = await fixtureOf([itemResource(0), itemResource(1, hidden)], { nextPageToken: "CBkQAA" })
 
     expect(await h.read({ method: "playlist", playlist: PLAYLIST })).toEqual({
@@ -86,6 +87,7 @@ describe("google_youtube_read playlist", () => {
       },
       items: [
         {
+          playlist_item_id: "item0",
           position: 0,
           video_id: VIDEO,
           title: "An item",
@@ -96,6 +98,7 @@ describe("google_youtube_read playlist", () => {
           url: `https://www.youtube.com/watch?v=${VIDEO}`,
         },
         {
+          playlist_item_id: null,
           position: 1,
           video_id: null,
           title: "Private video",

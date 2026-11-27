@@ -17,7 +17,13 @@ export const videoReply = z.object({
     .optional(),
   contentDetails: z.object({ duration: z.string().optional() }).optional(),
   statistics: z.object({ viewCount: countReply, likeCount: countReply, commentCount: countReply }).optional(),
-  status: z.object({ privacyStatus: z.string().optional(), madeForKids: z.boolean().optional() }).optional(),
+  status: z
+    .object({
+      privacyStatus: z.string().optional(),
+      madeForKids: z.boolean().optional(),
+      publishAt: z.string().optional(),
+    })
+    .optional(),
 })
 
 export const videoSchema = z.object({
