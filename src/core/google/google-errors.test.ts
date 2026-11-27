@@ -33,6 +33,7 @@ describe("googleError mapping", () => {
     ["403 rateLimitExceeded", 403, googleBody(403, "slow", undefined, ["rateLimitExceeded"]), "rate_limited"],
     ["403 userRateLimitExceeded", 403, googleBody(403, "slow", undefined, ["userRateLimitExceeded"]), "rate_limited"],
     ["403 dailyLimitExceeded", 403, googleBody(403, "slow", undefined, ["dailyLimitExceeded"]), "rate_limited"],
+    ["403 quotaExceeded", 403, googleBody(403, "slow", undefined, ["quotaExceeded"]), "rate_limited"],
     ["500", 500, googleBody(500, "oops", "INTERNAL"), "upstream_error"],
     ["400", 400, googleBody(400, "bad request", "INVALID_ARGUMENT"), "upstream_error"],
     ["OAuth invalid_client on 400", 400, { error: "invalid_client" }, "upstream_error"],

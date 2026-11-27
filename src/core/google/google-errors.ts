@@ -25,6 +25,7 @@ const RATE_LIMIT_REASONS: ReadonlySet<string> = new Set([
   "rateLimitExceeded",
   "userRateLimitExceeded",
   "dailyLimitExceeded",
+  "quotaExceeded",
 ])
 
 /** The `@type` suffix of the `error.details` entry that lists the arguments a 400 refused. */
