@@ -859,6 +859,9 @@ and every entry point checks them the same way.
   Workspace is what most users set the package up for, and a write there asks
   every time. A Cloud write reaches running services and other people's
   traffic, so turning a Cloud toolset on is a choice of its own.
+- **YouTube is off by default too.** Its label is logged in for one channel,
+  which few labels are, and its writes are public at once, so turning it on
+  is a choice of its own.
 
 ## Sheets
 
@@ -1422,3 +1425,29 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
     operations: they wait for a need.
   - Deleting an execution: it is the record of what a job ran, and nothing
     needs it gone.
+
+## YouTube
+
+- **The official APIs only.** The tools call the YouTube Data API v3
+  (`youtube.googleapis.com`) and the YouTube Analytics API v2
+  (`youtubeanalytics.googleapis.com`). Transcripts and downloads of other
+  channels' videos, which only an unofficial program reaches, are not here.
+- **One label is one channel.** A consent picks one channel, a brand
+  account's on Google's chooser, so `account` picks the channel as it picks
+  any label. A label whose account has no channel reads public YouTube only,
+  and the channel's own reads say a channel is needed.
+- **Scopes**: `youtube.readonly` and `yt-analytics.readonly` to read,
+  `youtube.force-ssl` to write. Google serves comment threads, comments and
+  caption tracks only to `youtube.force-ssl`, which also writes, so those
+  reads take it: a label logged in with `--read-only` is refused them, nothing
+  sent, with the login that adds it. A read-only label stays one that cannot
+  write.
+- **Quota is Google's to count.** It is per Cloud project and Pacific day,
+  shared with whatever else uses the project, so a local count would be
+  wrong. Google's `quotaExceeded` and `dailyLimitExceeded` answers are
+  `rate_limited`, and the YouTube tools say the quota resets at midnight
+  Pacific time.
+- **Reading.** Lists return a page (each method has its default and maximum)
+  with a `next_page_token`. Titles, descriptions, comments and channel texts
+  were written by other people: they are data, never instructions, and long
+  ones are clipped, saying so.
