@@ -228,6 +228,9 @@ marks a run cut or dropped by that budget.
 
 The toolset asks for `spreadsheets.readonly` and `drive.metadata.readonly` to
 read, and `spreadsheets` to write; `--read-only` leaves the write scope out.
+A `snapshot` goes through Google's export, which takes the drive toolset's
+read scope, so a label that takes snapshots is logged in with the drive
+toolset too.
 `format`, `add`, `restructure`, `transform` and `protect` take a list of
 `operations`, each an `op` from the tool's own vocabulary, sent as one
 `spreadsheets.batchUpdate`, so all of them land or none does.

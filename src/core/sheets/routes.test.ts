@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { DRIVE_READ_SCOPE } from "../drive/scopes"
 import { HOSTS, routeUrl } from "../google/routes"
 import { SHEETS_ROUTES } from "./routes"
 import { DRIVE_METADATA_READ_SCOPE, SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE } from "./scopes"
@@ -45,8 +46,8 @@ describe("SHEETS_ROUTES", () => {
     expect(SHEETS_ROUTES.metadataSearch.scopes).toEqual([SHEETS_WRITE_SCOPE])
   })
 
-  test("the export is a GET on the docs host that either Sheets scope allows", () => {
-    expect(SHEETS_ROUTES.export.scopes).toEqual([SHEETS_READ_SCOPE, SHEETS_WRITE_SCOPE])
+  test("the export is a GET on the docs host that only the Drive read scope allows", () => {
+    expect(SHEETS_ROUTES.export.scopes).toEqual([DRIVE_READ_SCOPE])
     expect(routeUrl(SHEETS_ROUTES.export, { spreadsheet_id: "abc_DEF-123" }).toString()).toBe(
       "https://docs.google.com/spreadsheets/d/abc_DEF-123/export",
     )

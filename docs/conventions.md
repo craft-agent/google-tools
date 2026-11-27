@@ -954,8 +954,12 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   range that loses rows says `truncated: true`, and `clipped_cells` counts the
   cut text cells, so the model never takes a cut for the whole.
 - **The snapshot's export URL is undocumented by Google**, so it is checked
-  at a real install, not only against the fake. It needs only the Sheets read
-  scopes; no Drive content scope is asked for it. A real install showed that
+  at a real install, not only against the fake. A real install refused it
+  (HTTP 401) to a label holding only the Sheets read scopes, so it takes
+  `drive.readonly`, the drive toolset's read scope, as the original
+  implementation did; a label without it is refused before any call and told
+  to add the drive toolset. The sheets toolset itself still asks for no Drive
+  content scope. A real install showed that
   it always hands the PDF off with one redirect to
   `doc-…-sheets.googleusercontent.com/export/…`, the route's handoff (see
   "The Google client"); the Drive export, which needs no redirect, has none
@@ -975,7 +979,8 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   naming `filter_clear`.
 - **Searching uses `drive.metadata.readonly`**: names and dates, a restricted
   scope that personal use needs no verification for (see "The OAuth client").
-  No Drive content scope is asked.
+  No Drive content scope is asked; a snapshot is the one read that needs the
+  drive toolset too.
 - **The structure read lists pivot tables only on request.** `pivots: true`
   reads every cell of the tabs, which is slow on large tabs, so the default
   leaves `pivots` null and the other structure comes cheap.
