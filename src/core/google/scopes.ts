@@ -10,6 +10,7 @@ import {
 } from "../gmail/scopes"
 import { RUN_READ_SCOPE, RUN_SCOPE, RUN_TOOLSET } from "../run/scopes"
 import { DRIVE_METADATA_READ_SCOPE, SHEETS_READ_SCOPE, SHEETS_TOOLSET, SHEETS_WRITE_SCOPE } from "../sheets/scopes"
+import { YOUTUBE_ANALYTICS_READ_SCOPE, YOUTUBE_READ_SCOPE, YOUTUBE_SCOPE, YOUTUBE_TOOLSET } from "../youtube/scopes"
 import { EMAIL_SCOPE, OPENID_SCOPE } from "./routes"
 
 /** The scopes one toolset's tools need, read and write apart, each the narrowest an operation accepts. */
@@ -29,6 +30,7 @@ export const TOOLSET_SCOPES: Readonly<Record<string, ToolsetScopes>> = {
   [DRIVE_TOOLSET]: { read: [DRIVE_READ_SCOPE], write: [DRIVE_FILE_SCOPE] },
   [COMMENTS_TOOLSET]: { read: [SHEETS_READ_SCOPE, DRIVE_READ_SCOPE], write: [SHEETS_WRITE_SCOPE, DRIVE_FILE_SCOPE] },
   [RUN_TOOLSET]: { read: [RUN_READ_SCOPE], write: [RUN_SCOPE] },
+  [YOUTUBE_TOOLSET]: { read: [YOUTUBE_READ_SCOPE, YOUTUBE_ANALYTICS_READ_SCOPE], write: [YOUTUBE_SCOPE] },
 }
 
 /** What every login asks for besides its toolsets' scopes, so the label records the account's address. */
