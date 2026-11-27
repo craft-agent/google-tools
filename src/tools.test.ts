@@ -73,6 +73,16 @@ describe("the Cloud Run read", () => {
   })
 })
 
+describe("the YouTube read", () => {
+  test("is a read tool of the youtube toolset, which is off by default", () => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === "google_youtube_read")
+    expect(spec).toMatchObject({ toolset: "youtube", class: "read" })
+    expect(PROJECT.toolsets).toContain("youtube")
+    expect(PROJECT.defaultToolsets).not.toContain("youtube")
+    expect(annotations(spec!)).toMatchObject({ readOnlyHint: true, openWorldHint: true })
+  })
+})
+
 describe("the Cloud Run writes", () => {
   const OVERWRITES = [
     "google_run_service_deploy",
