@@ -1,14 +1,34 @@
 import { z } from "zod"
 import { accountArg } from "../sheets/schemas"
+import { analyticsRowSchema } from "./analytics-view"
+import { captionSchema } from "./caption-view"
 import { channelSchema } from "./channel-view"
 import { commentSchema } from "./comment-view"
+import { myChannelSchema } from "./my-channel-view"
+import { ownVideoSchema } from "./my-videos-view"
 import { LIMITS, MAX_LIMIT } from "./paging"
 import { playlistItemSchema, playlistSchema } from "./playlist-view"
 import { SEARCH_KINDS, searchResultSchema } from "./search-view"
-import { videoSchema } from "./video-view"
 
 /** The methods of the YouTube read. */
-export const YOUTUBE_METHODS = ["search", "videos", "channels", "playlist", "comments"] as const
+export const YOUTUBE_METHODS = [
+  "search",
+  "videos",
+  "channels",
+  "playlist",
+  "comments",
+  "my_channel",
+  "my_videos",
+  "captions",
+  "analytics",
+] as const
+
+/** How many days before its `end` a report starts when `start` is left out. */
+export const DEFAULT_ANALYTICS_WINDOW_DAYS = 27
+
+/** The metrics of a report that names none. */
+export const DEFAULT_ANALYTICS_METRICS =
+  "views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained,subscribersLost,likes,comments,shares"
 
 /** How `search` orders its results, and how `comments` orders the threads of a video. */
 export const SEARCH_ORDERS = ["relevance", "date", "view_count", "rating", "title"] as const
@@ -73,7 +93,9 @@ export const youtubeReadInput = z.strictObject({
     .min(1)
     .max(MAX_LOOKUPS)
     .optional()
-    .describe(`videos: 1 to ${MAX_LOOKUPS} video ids or video addresses; a repeated one counts once.`),
+    .describe(
+      `videos: 1 to ${MAX_LOOKUPS} video ids or video addresses; a repeated one counts once. analytics: only these videos (adds \`video==…\` to \`filters\`).`,
+    ),
   channels: z
     .array(z.string())
     .min(1)
@@ -86,7 +108,9 @@ export const youtubeReadInput = z.strictObject({
   video: z
     .string()
     .optional()
-    .describe("comments: the video whose comment threads to list, an id or an address; never with `thread`."),
+    .describe(
+      "comments: the video whose comment threads to list, an id or an address; never with `thread`. captions: the channel's own video whose caption tracks to list.",
+    ),
   thread: z
     .string()
     .optional()
@@ -105,12 +129,45 @@ export const youtubeReadInput = z.strictObject({
     .min(1)
     .max(MAX_LIMIT)
     .optional()
-    .describe(`search, playlist, comments: how many to return (${limitHelp}).`),
+    .describe(
+      `search, playlist, comments, my_videos, analytics: how many to return (${limitHelp}); analytics: rows, and only for a report with dimensions other than \`day\` or \`month\`.`,
+    ),
   page_token: z
     .string()
     .min(1)
     .optional()
-    .describe("search, playlist, comments: the `next_page_token` of the previous call, for the next page."),
+    .describe("search, playlist, comments, my_videos: the `next_page_token` of the previous call, for the next page."),
+  metrics: z
+    .string()
+    .optional()
+    .describe(
+      `analytics: comma-separated metric names (default \`${DEFAULT_ANALYTICS_METRICS}\`); letters only, such as \`views,likes\`.`,
+    ),
+  dimensions: z
+    .string()
+    .optional()
+    .describe(
+      "analytics: comma-separated dimension names that group the rows, such as `day`, `video` or `country`; none gives one row of totals.",
+    ),
+  filters: z
+    .string()
+    .optional()
+    .describe(
+      "analytics: `name==value` pairs joined by `;`, such as `country==JP;video==ID1,ID2` (a value may be several, comma-separated).",
+    ),
+  sort: z
+    .string()
+    .optional()
+    .describe(
+      "analytics: comma-separated metric names to order the rows by, `-` in front for descending; with the dimension `video` and no `sort`, by the first metric, descending.",
+    ),
+  start: z
+    .string()
+    .optional()
+    .describe(
+      `analytics: the first day of the report, YYYY-MM-DD; default ${DEFAULT_ANALYTICS_WINDOW_DAYS} days before \`end\`; not after \`end\`.`,
+    ),
+  end: z.string().optional().describe("analytics: the last day of the report, YYYY-MM-DD; default today (UTC)."),
 })
 
 /** One object for all methods, each filling its own keys; a list fills its list key and `next_page_token`. */
@@ -119,13 +176,29 @@ export const youtubeReadOutput = z
     results: z.array(searchResultSchema),
     /** Google's estimate of everything the search matches. */
     total_results: z.number().nullable(),
-    videos: z.array(videoSchema),
+    videos: z.array(ownVideoSchema),
     channels: z.array(channelSchema),
     /** The videos or channels asked for that Google did not return, as given (videos: by id). */
     not_found: z.array(z.string()),
     playlist: playlistSchema,
     items: z.array(playlistItemSchema),
     comments: z.array(commentSchema),
+    /** The label's own channel (`my_channel`). */
+    channel: myChannelSchema,
+    /** The label's channel (`my_videos`). */
+    channel_id: z.string(),
+    /** The video whose caption tracks `captions` lists. */
+    video_id: z.string(),
+    tracks: z.array(captionSchema),
+    /** The days a report covers, YYYY-MM-DD, and its columns and rows. */
+    start: z.string(),
+    end: z.string(),
+    columns: z.array(z.string()),
+    rows: z.array(analyticsRowSchema),
+    /** The title of each video a report's `video` column names; `null` without such a column. */
+    titles: z.record(z.string(), z.string()).nullable(),
+    /** What to know when reading a report. */
+    note: z.string(),
     next_page_token: z.string().nullable(),
   })
   .partial()

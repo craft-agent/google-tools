@@ -38,6 +38,11 @@ export const PLAYLISTS_URL = `${DATA_API}/playlists`
 export const PLAYLIST_ITEMS_URL = `${DATA_API}/playlistItems`
 export const COMMENT_THREADS_URL = `${DATA_API}/commentThreads`
 export const COMMENTS_URL = `${DATA_API}/comments`
+export const CAPTIONS_URL = `${DATA_API}/captions`
+export const ANALYTICS_URL = "https://youtubeanalytics.googleapis.com/v2/reports"
+
+/** The uploads playlist of `CHANNEL`, as `channelResource` names it. */
+export const UPLOADS = "UUmadeUpChannelId0123456"
 
 /** What the fake Google received other than the token refresh, as `METHOD url` without its query. */
 export const requestLine = (request: { method: string; url: URL }) =>
@@ -85,9 +90,23 @@ export const channelResource = (id = CHANNEL, extra: Record<string, unknown> = {
     country: "JP",
   },
   statistics: { subscriberCount: "1500", hiddenSubscriberCount: false, videoCount: "42", viewCount: "99000" },
-  contentDetails: { relatedPlaylists: { uploads: "UUmadeUpChannelId0123456" } },
+  contentDetails: { relatedPlaylists: { uploads: UPLOADS } },
   ...extra,
 })
+
+/** The label's own channel as `channels.list` gives it with `mine=true` and every part. */
+export const myChannelResource = (extra: Record<string, unknown> = {}) =>
+  channelResource(CHANNEL, {
+    snippet: { ...channelResource().snippet, defaultLanguage: "ja" },
+    brandingSettings: { channel: { keywords: 'made "made up" things' } },
+    status: {
+      privacyStatus: "public",
+      madeForKids: false,
+      selfDeclaredMadeForKids: false,
+      longUploadsStatus: "allowed",
+    },
+    ...extra,
+  })
 
 /** A comment as `comments.list` gives it, and as a thread holds it. */
 export const commentResource = (id: string, text = "A made-up comment.", extra: Record<string, unknown> = {}) => ({

@@ -43,7 +43,7 @@ export type CommentsRequest =
   | { video: string; order: (typeof COMMENT_ORDERS)[number]; searchTerms: string | undefined; page: Page }
   | { thread: string; page: Page }
 
-function refusal(message: string): ToolError {
+export function refusal(message: string): ToolError {
   return new ToolError("invalid_argument", message)
 }
 
@@ -65,13 +65,18 @@ function orderOf<Order extends string>(method: string, order: string | undefined
   return found
 }
 
-/** `day` (YYYY-MM-DD, a real date) as RFC 3339 midnight UTC; else `invalid_argument`. */
-function midnight(name: string, day: string): string {
+/** `day` when it is a real date as YYYY-MM-DD; else `invalid_argument`. */
+export function checkedDay(name: string, day: string): string {
   const time = DAY_PATTERN.test(day) ? Date.parse(`${day}T00:00:00Z`) : Number.NaN
   if (Number.isNaN(time) || new Date(time).toISOString().slice(0, 10) !== day) {
     throw refusal(`\`${name}\` is not a date as YYYY-MM-DD.`)
   }
-  return `${day}T00:00:00Z`
+  return day
+}
+
+/** `day` (YYYY-MM-DD, a real date) as RFC 3339 midnight UTC; else `invalid_argument`. */
+function midnight(name: string, day: string): string {
+  return `${checkedDay(name, day)}T00:00:00Z`
 }
 
 /** The arguments of a search, checked: the query, the channel, the dates, the language and region, and the order and duration for the kind. */

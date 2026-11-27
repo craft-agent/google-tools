@@ -22,9 +22,9 @@ import { searchList, searchResults, type SearchResult } from "./search-view"
 import { videoReply, videoView, type VideoView } from "./video-view"
 import type { Listed } from "./views"
 
-const VIDEO_PARTS = "snippet,contentDetails,statistics,status"
+export const VIDEO_PARTS = "snippet,contentDetails,statistics,status"
 const CHANNEL_PARTS = "snippet,statistics,contentDetails"
-const PLAYLIST_PARTS = "snippet,contentDetails,status"
+export const PLAYLIST_PARTS = "snippet,contentDetails,status"
 
 /** The reason of the 403 Google answers when the owner turned the comments of a video off. */
 const COMMENTS_DISABLED = "commentsDisabled"
@@ -33,7 +33,13 @@ const videosList = z.object({ items: z.array(videoReply).optional() })
 const channelsList = z.object({ items: z.array(channelReply).optional() })
 
 /** The query every list call of a page carries. */
-const pageQuery = (page: Page) => ({ maxResults: page.maxResults, pageToken: page.pageToken })
+export const pageQuery = (page: Page) => ({ maxResults: page.maxResults, pageToken: page.pageToken })
+
+/** The videos of `ids` as `videos.list` gives them, with the `part`s of them; the ones Google did not return are left out. */
+export async function listVideos(client: GoogleClient, ids: readonly string[], part: string) {
+  const reply = await client.request(YOUTUBE_ROUTES.videos, { query: { part, id: ids.join(",") } })
+  return parseReply(videosList, reply, "the video list").items ?? []
+}
 
 /** The channels `filter` names (`id` or `forHandle`), with the `part`s of them. */
 async function listChannels(client: GoogleClient, filter: Record<string, string>, part: string) {
@@ -83,8 +89,7 @@ export async function readVideos(
   client: GoogleClient,
   ids: readonly string[],
 ): Promise<{ videos: VideoView[]; not_found: string[] }> {
-  const reply = await client.request(YOUTUBE_ROUTES.videos, { query: { part: VIDEO_PARTS, id: ids.join(",") } })
-  const found = new Map((parseReply(videosList, reply, "the video list").items ?? []).map((video) => [video.id, video]))
+  const found = new Map((await listVideos(client, ids, VIDEO_PARTS)).map((video) => [video.id, video]))
   return {
     videos: ids.flatMap((id) => {
       const video = found.get(id)

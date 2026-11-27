@@ -6,6 +6,9 @@ export const LIMITS = {
   search: { standard: 10, max: 50 },
   playlist: { standard: 25, max: 50 },
   comments: { standard: 20, max: 100 },
+  my_videos: { standard: 25, max: 50 },
+  /** Rows of a report that has dimensions; `pageOf` checks the size and the report takes no page token. */
+  analytics: { standard: 50, max: 200 },
 } as const
 
 /** The most any method returns: what the `limit` argument allows before the method's own maximum applies. */
