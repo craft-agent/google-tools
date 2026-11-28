@@ -6,9 +6,9 @@ import { YOUTUBE_ANALYTICS_READ_SCOPE, YOUTUBE_READ_SCOPE, YOUTUBE_SCOPE } from 
 const DATA_HOSTS = ["youtube.googleapis.com", "youtubeanalytics.googleapis.com"]
 
 describe("YOUTUBE_ROUTES", () => {
-  test("every route is a GET on a YouTube host", () => {
-    for (const route of Object.values(YOUTUBE_ROUTES)) {
-      expect(route.method).toBe("GET")
+  test("every route is a GET on a YouTube host, but the video update", () => {
+    for (const [name, route] of Object.entries(YOUTUBE_ROUTES)) {
+      expect(route.method).toBe(name === "videosUpdate" ? "PUT" : "GET")
       expect(DATA_HOSTS).toContain(route.host)
       expect(HOSTS).toContain(route.host)
     }
@@ -26,8 +26,8 @@ describe("YOUTUBE_ROUTES", () => {
     }
   })
 
-  test("comments and caption tracks take force-ssl alone", () => {
-    for (const name of ["commentThreads", "comments", "captions"] as const) {
+  test("comments, caption tracks and the video update take force-ssl alone", () => {
+    for (const name of ["commentThreads", "comments", "captions", "videosUpdate"] as const) {
       expect(YOUTUBE_ROUTES[name].scopes).toEqual([YOUTUBE_SCOPE])
     }
   })
@@ -39,6 +39,9 @@ describe("YOUTUBE_ROUTES", () => {
   test("the URLs, with the query after the path", () => {
     expect(routeUrl(YOUTUBE_ROUTES.videos, {}, { part: "snippet", id: "abc" }).toString()).toBe(
       "https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id=abc",
+    )
+    expect(routeUrl(YOUTUBE_ROUTES.videosUpdate, {}, { part: "snippet,status" }).toString()).toBe(
+      "https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2Cstatus",
     )
     expect(routeUrl(YOUTUBE_ROUTES.playlistItems).toString()).toBe(
       "https://youtube.googleapis.com/youtube/v3/playlistItems",

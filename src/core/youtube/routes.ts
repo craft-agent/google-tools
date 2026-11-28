@@ -10,7 +10,7 @@ const DATA_PATH = "/youtube/v3"
 /** The scopes that read public data, narrowest first. */
 const READ_SCOPES = [YOUTUBE_READ_SCOPE, YOUTUBE_SCOPE] as const
 
-/** Google serves comments and caption tracks only to `youtube.force-ssl`. */
+/** Google serves comments and caption tracks, and takes every write, only with `youtube.force-ssl`. */
 const FORCE_SSL_SCOPES = [YOUTUBE_SCOPE] as const
 
 /** The calls the YouTube tools may make, each with every scope that allows it, narrowest first. */
@@ -23,6 +23,8 @@ export const YOUTUBE_ROUTES = {
   commentThreads: { method: "GET", host: YOUTUBE_HOST, path: `${DATA_PATH}/commentThreads`, scopes: FORCE_SSL_SCOPES },
   comments: { method: "GET", host: YOUTUBE_HOST, path: `${DATA_PATH}/comments`, scopes: FORCE_SSL_SCOPES },
   captions: { method: "GET", host: YOUTUBE_HOST, path: `${DATA_PATH}/captions`, scopes: FORCE_SSL_SCOPES },
+  /** `videos.update`, which replaces every writable property of the parts it is sent. */
+  videosUpdate: { method: "PUT", host: YOUTUBE_HOST, path: `${DATA_PATH}/videos`, scopes: FORCE_SSL_SCOPES },
   /** `reports.query` of the Analytics API. */
   analytics: {
     method: "GET",

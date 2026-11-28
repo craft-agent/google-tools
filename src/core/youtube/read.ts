@@ -1,4 +1,4 @@
-import { ToolError, isToolError } from "../errors"
+import { ToolError } from "../errors"
 import { abortError } from "../exec"
 import { googleSession } from "../google/session"
 import { requireRuntime } from "../runtime"
@@ -14,6 +14,7 @@ import {
   type SearchRequest,
 } from "./args"
 import { readChannels, readComments, readPlaylist, readVideos, searchYoutube } from "./calls"
+import { youtubeError } from "./errors"
 import { playlistId, videoId } from "./ids"
 import { readCaptions, readMyChannel, readMyVideos, type OwnSession } from "./own-calls"
 import { LIMITS, pageOf, type Page } from "./paging"
@@ -31,7 +32,7 @@ import {
   type YoutubeReadArgs,
   type YoutubeReadResult,
 } from "./schemas"
-import { MAX_COMMENT_CHARACTERS, MAX_DESCRIPTION_CHARACTERS, decodeEntities } from "./views"
+import { MAX_COMMENT_CHARACTERS, MAX_DESCRIPTION_CHARACTERS } from "./views"
 
 const COMMON_ARGUMENTS = ["method", "account"] as const
 
@@ -74,9 +75,6 @@ const REQUIRED_ARGUMENTS = {
   captions: ["video"],
   analytics: [],
 } as const satisfies Record<YoutubeMethod, readonly MethodArgument[]>
-
-/** What a rate-limited call's message goes on to say: Google's quota is the project's, counted by Pacific day. */
-const QUOTA_RESET_SENTENCE = " The YouTube quota resets at midnight Pacific time."
 
 /** A call with its arguments checked. */
 type Plan =
@@ -158,17 +156,6 @@ function perform(session: OwnSession, plan: Plan): Promise<YoutubeReadResult> {
   }
 }
 
-/** `error`, with a quota failure's message going on to say when the quota resets; Google's HTML in any message is turned to plain text. */
-function withQuotaReset(error: unknown): unknown {
-  if (!isToolError(error)) return error
-  const plain = decodeEntities(error.message.replace(/<[^>]+>/g, ""))
-    .replace(/\s+/g, " ")
-    .trim()
-  const suffix = error.code === "rate_limited" ? QUOTA_RESET_SENTENCE : ""
-  if (plain === error.message && suffix === "") return error
-  return new ToolError(error.code, `${plain}${suffix}`, { cause: error, details: error.details })
-}
-
 export const googleYoutubeRead = defineTool({
   id: "google_youtube_read",
   title: "Read YouTube",
@@ -200,7 +187,7 @@ export const googleYoutubeRead = defineTool({
     try {
       return await perform({ client, label }, plan)
     } catch (error) {
-      throw withQuotaReset(error)
+      throw youtubeError(error)
     }
   },
 })
