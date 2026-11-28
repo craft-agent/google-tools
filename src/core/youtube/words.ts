@@ -107,6 +107,8 @@ export const YOUTUBE_TRANSLATIONS: Translations = {
     [YOUTUBE_WORDS.tracksMany]: "{count} 件あります",
     [YOUTUBE_WORDS.track]: "トラック",
     [YOUTUBE_WORDS.updated]: "最終更新",
+    "Reply to a YouTube comment": "YouTube コメントに返信する",
+    "About to reply to a YouTube comment": "YouTube コメントに返信しようとしています",
     [YOUTUBE_WORDS.replyTo]: "{title} の {author} さんのコメントに返信しようとしています",
     [YOUTUBE_WORDS.comment]: "コメント",
     [YOUTUBE_WORDS.reply]: "返信",
