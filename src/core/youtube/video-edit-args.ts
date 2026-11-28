@@ -1,15 +1,13 @@
 import { z } from "zod"
 import { accountArg } from "../sheets/schemas"
 import { MAX_DESCRIPTION_BYTES, MAX_TAG_CHARACTERS, MAX_TITLE_CHARACTERS } from "./checks"
+import { MAX_LOCALIZATIONS } from "./localizations"
 import { videoArg } from "./write-args"
-
-/** The most languages one edit sets localizations for. */
-export const MAX_LOCALIZATIONS = 50
 
 /** The licenses a video can have. */
 export const VIDEO_LICENSES = ["youtube", "creativeCommon"] as const
 
-const languageHelp = "a language tag such as `en`, `ja` or `pt-BR`"
+export const languageHelp = "a language tag such as `en`, `ja` or `pt-BR`"
 
 const localizationInput = z.strictObject({
   title: z
@@ -63,7 +61,13 @@ export const youtubeVideoEditInput = z.strictObject({
 })
 
 /** A value of a changed field, as a result returns it: text, a flag, a list, a localization, or null for none. */
-const changeValue = z.union([z.string(), z.boolean(), z.array(z.string()), z.record(z.string(), z.string()), z.null()])
+export const changeValue = z.union([
+  z.string(),
+  z.boolean(),
+  z.array(z.string()),
+  z.record(z.string(), z.string()),
+  z.null(),
+])
 
 export type ChangeValue = z.output<typeof changeValue>
 

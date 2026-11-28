@@ -1,4 +1,4 @@
-import type { CallDescription } from "../tool"
+import type { CallDescription, CallText } from "../tool"
 import type { ChangeValue } from "./video-edit-args"
 import type { FieldChange } from "./video-edit-merge"
 import type { VideoEditPlan } from "./video-edit-plan"
@@ -25,6 +25,16 @@ function linesOf({ field, before, after }: FieldChange): string[] {
   return [`${field}: ${after.title}`, ...(described ? [`${field} description: ${after.description}`] : [])]
 }
 
+/** The text of an edit: a line for each new value of `changes`, with the description last. */
+export function newValuesText(changes: readonly FieldChange[]): CallText {
+  const lines = changes.filter(({ field }) => field !== "description").flatMap(linesOf)
+  const description = changes.find(({ field }) => field === "description")
+  return {
+    label: YOUTUBE_WORDS.newValues,
+    body: [...lines, ...(description === undefined ? [] : linesOf(description))].join("\n"),
+  }
+}
+
 /**
  * What the prompt shows of an edit: the headline with the video's title as
  * Google has it, who can watch it now, the fields that change, and a line for
@@ -32,18 +42,13 @@ function linesOf({ field, before, after }: FieldChange): string[] {
  * property the edit read, so a video changed after the prompt is `stale`.
  */
 export function describeVideoEdit({ before, changes }: VideoEditPlan): CallDescription {
-  const lines = changes.filter(({ field }) => field !== "description").flatMap(linesOf)
-  const description = changes.find(({ field }) => field === "description")
   return {
     headline: { text: YOUTUBE_WORDS.videoEdit, values: { title: before.snippet.title } },
     facts: [
       privacyFact(YOUTUBE_WORDS.privacy, before.status),
       { label: YOUTUBE_WORDS.fields, value: changes.map(({ field }) => field).join(", ") },
     ],
-    text: {
-      label: YOUTUBE_WORDS.newValues,
-      body: [...lines, ...(description === undefined ? [] : linesOf(description))].join("\n"),
-    },
+    text: newValuesText(changes),
     pins: { video: statePin(before) },
   }
 }
