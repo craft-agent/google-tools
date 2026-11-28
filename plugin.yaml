@@ -65,6 +65,8 @@ provides_tools:
   - google_youtube_thumbnail_set
   - google_youtube_video_edit
   - google_youtube_video_upload
+  - google_youtube_watermark_remove
+  - google_youtube_watermark_set
 provides_hooks:
   - pre_tool_call
 config_schema:

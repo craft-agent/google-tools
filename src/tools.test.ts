@@ -100,6 +100,8 @@ describe("the YouTube writes", () => {
     ["google_youtube_playlist_move", "idempotent", false, true],
     ["google_youtube_playlist_remove", "overwrite", true, true],
     ["google_youtube_channel_edit", "overwrite", true, true],
+    ["google_youtube_watermark_set", "overwrite", true, true],
+    ["google_youtube_watermark_remove", "overwrite", true, true],
   ] as const
 
   test.each(WRITES)(

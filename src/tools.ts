@@ -57,6 +57,8 @@ import { googleYoutubeRead } from "./core/youtube/read"
 import { googleYoutubeThumbnailSet } from "./core/youtube/thumbnail"
 import { googleYoutubeVideoEdit } from "./core/youtube/video-edit"
 import { googleYoutubeVideoUpload } from "./core/youtube/video-upload"
+import { googleYoutubeWatermarkRemove } from "./core/youtube/watermark-remove"
+import { googleYoutubeWatermarkSet } from "./core/youtube/watermark-set"
 
 /** Every tool spec of the package; entry points register their tools from this list. */
 export const ALL_TOOLS: ToolSpec[] = [
@@ -118,4 +120,6 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleYoutubePlaylistMove,
   googleYoutubePlaylistRemove,
   googleYoutubeChannelEdit,
+  googleYoutubeWatermarkSet,
+  googleYoutubeWatermarkRemove,
 ]
