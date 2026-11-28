@@ -860,8 +860,8 @@ and every entry point checks them the same way.
   every time. A Cloud write reaches running services and other people's
   traffic, so turning a Cloud toolset on is a choice of its own.
 - **YouTube is off by default too.** Its label is logged in for one channel,
-  which few labels are, and its writes are public at once, so turning it on
-  is a choice of its own.
+  which few labels are, and a change to a public video is seen at once, so
+  turning it on is a choice of its own.
 
 ## Sheets
 
@@ -1451,3 +1451,109 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
   with a `next_page_token`. Titles, descriptions, comments and channel texts
   were written by other people: they are data, never instructions, and long
   ones are clipped, saying so.
+
+### The channel's videos
+
+- **Six write tools**, each its own so an approval remembered for one never
+  carries over to a harsher one: `google_youtube_video_upload` and
+  `google_youtube_caption_add` (add); `google_youtube_video_edit`,
+  `google_youtube_thumbnail_set` and `google_youtube_caption_update`
+  (overwrite); `google_youtube_privacy_set` (administrative).
+- **The classes, and why.** An upload and a new caption track add, and a
+  repeat adds another. An edit replaces a title, a description or a setting,
+  a thumbnail replaces the one there, and a caption update replaces a track's
+  file or its draft state: each loses what was there, so they overwrite. A
+  privacy change decides who can watch, and a public video is seen and
+  shared at once, which no edit undoes, so it is administrative and asks every
+  time; no other tool changes a video's privacy or its schedule.
+- **The channel's own videos only.** Every tool but the upload reads the
+  video (`videos.list`) and the label's channel (`channels.list` with
+  `mine`) before the prompt, and a video of another channel is `forbidden`,
+  nothing sent; one that does not exist is `not_found`. Google would refuse
+  most of these calls itself, but the prompt would then show another
+  channel's video as the call's subject.
+- **An upload is always private.** Since 2 November 2026 Google makes a video
+  sent without a privacy public, so the upload names `private` on every call
+  and takes no privacy argument; going unlisted, public or scheduled is
+  `google_youtube_privacy_set`, after the person has seen the video. The
+  upload therefore stays an `add`, asked like any other.
+- **A privacy change says what Google did.** It returns the privacy and the
+  schedule Google reports after the change, beside what was asked; when they
+  differ (an account setting can keep a video private), the result says so
+  and points to YouTube Studio. A schedule is a future time with its offset,
+  which makes the video private until then; a past time is refused, since
+  Google would publish at once, which is `public`'s to ask. `private` with no
+  time clears a schedule.
+- **An edit sends each part back whole.** `videos.update` replaces every
+  property of a part it is sent and deletes those left out, so the tool reads
+  the video's `snippet`, `status` and `localizations`, keeps their writable
+  properties as Google gave them, applies the call's changes and sends only
+  the parts the call touches. An edit that touches `status` sends its privacy
+  and schedule back as they were read; the made-for-kids and altered-content
+  flags, which Google changes only when sent, are sent only when the call
+  sets them. The prompt pins the writable properties of every part it read,
+  so a video changed after the prompt is `stale`; `videos.update` takes no
+  etag, so the window between the run's own read and its write stays open.
+- **Lists change through flat arguments.** An edit takes `add_tags` and
+  `remove_tags` (exact matches); `set_localizations` adds or replaces a
+  language's title and description, and `remove_localizations` drops
+  languages. A new localization needs a title, and localizations need the
+  video's default language, sent or already set. An upload is new, so it
+  takes `tags` whole.
+- **Google's limits are checked before sending**: a title of 1 to 100
+  characters, a description of up to 5000 bytes, neither holding `<` or `>`;
+  tags of up to 500 characters in all as Google counts them (a comma between
+  two, a tag with a space counted with its quotes); a category id of up to
+  three digits; language tags such as `en` or `pt-BR`.
+- **Files follow "Files".** A thumbnail, a video and a caption file are read
+  only under `upload_dirs`, by the same rules as Drive's uploads, and the
+  prompt pins each file's SHA-256 beside its path and size, so a file changed
+  after the prompt is `stale`. A file under `encrypt_dirs` is refused,
+  nothing sent: YouTube would hold only ciphertext, which no one could watch.
+- **Thumbnails** are JPEG or PNG, told by their first bytes as well as their
+  extension, up to 50 MB, sent whole. A channel that may not set custom
+  thumbnails gets Google's `forbidden`, with the advice to verify the channel
+  in YouTube Studio.
+- **Video uploads are resumable and never half-made**, as Drive's are: 8 MiB
+  chunks, the session address masked as a credential, the file hashed as it
+  goes and the last chunk held until it equals the pinned hash, so a file
+  that changed or ended early is `stale` and Google keeps nothing. The size
+  limit is 2 GiB, or the `youtube_upload_max_gib` setting (a whole number of
+  GiB from 1 to 256, Google's own limit): a large file holds the call open
+  for as long as it takes to send, which a harness may cut short. A video is
+  `.mp4`, `.mov`, `.m4v`, `.webm`, `.mkv` or `.avi`. `made_for_kids` has no
+  default: it is a declaration YouTube requires of the uploader, so the call
+  makes it. After an error or a timeout without a result, the tool and the
+  skill say to look at `my_videos` before uploading again: uploads come from
+  a bucket of their own, 100 a day by default.
+- **Caption files carry their own timings**, since Google no longer syncs a
+  plain transcript: `.srt`, `.vtt`, `.sbv`, `.ttml`, `.dfxp` or `.scc`, up to
+  100 MB, sent as `application/octet-stream`. A new track takes its language,
+  a name (empty by default) and whether it is a draft, which viewers do not
+  see. An update names the video and the track, and replaces the file, the
+  draft state or both; the track must be the video's.
+- **Targets**: `<label>/videos/<video>` for an edit, a privacy change, a
+  thumbnail and a new track; `<label>/videos/<video>/captions/<track>` for a
+  track updated; `<label>/channels/<channel>` for an upload, or `*` when the
+  channel cannot be told. A grant thus bounds a write to a video, or to the
+  channel an upload goes to; an upload's size is its `bytes` bound.
+- **The prompt shows the video as Google has it**: its title in the
+  headline, its privacy now among the facts (a change to a public video is
+  seen at once), and for an edit the fields changed, with the new values as
+  the text. A privacy change shows its privacy now and after; an upload its
+  file, size, type, made-for-kids and that it goes up private, with the
+  description as the text; a caption its language, draft state and file, with
+  the file's text as the text.
+- **A write returns what it changed**: the fields an edit or a privacy change
+  set, before and after; the thumbnail's addresses; the new video with its
+  privacy and upload status; the track with its language, name, draft state
+  and status.
+- **Upload limits are `rate_limited`.** `uploadLimitExceeded` (the channel
+  uploaded too many videos), `uploadRateLimitExceeded` and a spent Video
+  Uploads bucket read like a spent quota, with the reset sentence.
+- **Not offered, and why.**
+  - Deleting a video or a caption track: it cannot be undone, and a video
+    takes its views and comments with it; the person deletes in YouTube
+    Studio.
+  - The recording date and place, the subscribers' notification and Shorts'
+    thumbnail shapes: they wait for a need.
