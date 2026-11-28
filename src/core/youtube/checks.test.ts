@@ -6,6 +6,7 @@ import {
   checkedDescription,
   checkedLanguage,
   checkedPublishAt,
+  checkedReplyText,
   checkedTags,
   checkedTitle,
 } from "./checks"
@@ -32,6 +33,21 @@ describe("checkedTitle and checkedDescription", () => {
     for (const call of [() => checkedTitle("<b>"), () => checkedDescription("a>b"), () => checkedTitle(" ")]) {
       expect(refused(call)).toBe("invalid_argument")
     }
+  })
+})
+
+describe("checkedReplyText", () => {
+  test("counts code points, not UTF-16 units: 10,000 are accepted and 10,001 are not", () => {
+    expect(refused(() => checkedReplyText("😀".repeat(10_000)))).toBe("accepted")
+    expect(refused(() => checkedReplyText("😀".repeat(10_001)))).toBe("invalid_argument")
+  })
+
+  test("refuses text that is empty or only white space", () => {
+    for (const text of ["", " ", "\n\t "]) expect(refused(() => checkedReplyText(text))).toBe("invalid_argument")
+  })
+
+  test("gives the text back as it is", () => {
+    expect(checkedReplyText(" Thanks!\n")).toBe(" Thanks!\n")
   })
 })
 

@@ -13,6 +13,9 @@ const HANDLE_PATTERN = /^@[A-Za-z0-9._-]{3,30}$/
 /** A playlist id of any kind (`PL…`, `UU…`, `LL…`, `FL…`, `RD…`). */
 const PLAYLIST_ID_PATTERN = /^[A-Za-z0-9_-]{2,64}$/
 
+/** What a reply's id holds between its thread's id and its own part. */
+const REPLY_SEPARATOR = "."
+
 /** A comment id; a reply's id holds a `.`. */
 const COMMENT_ID_PATTERN = /^[A-Za-z0-9_.-]{1,128}$/
 
@@ -95,6 +98,26 @@ export function playlistId(value: string): string {
 export function commentId(value: string): string {
   if (COMMENT_ID_PATTERN.test(value)) return value
   throw refusal(value, "is not a comment id.")
+}
+
+/** `value` when it is a thread's id, which is its top-level comment's: a comment id without the `.` of a reply's, else `invalid_argument`. */
+export function threadId(value: string): string {
+  const id = commentId(value)
+  if (!id.includes(REPLY_SEPARATOR)) return id
+  throw refusal(
+    value,
+    "is a reply's id; a reply goes to the thread's top-level comment, whose `comment_id` `google_youtube_read` method `comments` gives without a `.`.",
+  )
+}
+
+/** The id of the thread a comment belongs to: a reply's id up to its `.`, a thread's own id as it is. */
+export function threadOf(id: string): string {
+  return id.split(REPLY_SEPARATOR)[0]!
+}
+
+/** The comment ids of `values`, each checked as `commentId` does, a repeated one counted once; the first that is none is `invalid_argument`. */
+export function commentIds(values: readonly string[]): string[] {
+  return [...new Set(values.map(commentId))]
 }
 
 /** `value` when it is shaped like a caption track id, as `google_youtube_read` method `captions` gives it, else `invalid_argument`. */

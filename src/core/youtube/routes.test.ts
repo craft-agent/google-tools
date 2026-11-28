@@ -16,6 +16,8 @@ describe("YOUTUBE_ROUTES", () => {
       captionsInsert: "POST",
       captionsUpdateMedia: "PUT",
       captionsUpdate: "PUT",
+      commentsInsert: "POST",
+      commentsModerate: "POST",
     }
     const uploads = ["thumbnailsSet", "videosInsert", "videosInsertChunk", "captionsInsert", "captionsUpdateMedia"]
     for (const [name, route] of Object.entries(YOUTUBE_ROUTES)) {
@@ -45,6 +47,8 @@ describe("YOUTUBE_ROUTES", () => {
       "captionsInsert",
       "captionsUpdateMedia",
       "captionsUpdate",
+      "commentsInsert",
+      "commentsModerate",
     ] as const
     for (const name of [...names, ...more]) {
       expect(YOUTUBE_ROUTES[name].scopes).toEqual([YOUTUBE_SCOPE])
@@ -79,6 +83,18 @@ describe("YOUTUBE_ROUTES", () => {
     ).toBe("https://www.googleapis.com/upload/youtube/v3/captions?uploadType=multipart&part=snippet")
     expect(routeUrl(YOUTUBE_ROUTES.captionsUpdate, {}, { part: "snippet" }).toString()).toBe(
       "https://youtube.googleapis.com/youtube/v3/captions?part=snippet",
+    )
+    expect(routeUrl(YOUTUBE_ROUTES.commentsInsert, {}, { part: "snippet" }).toString()).toBe(
+      "https://youtube.googleapis.com/youtube/v3/comments?part=snippet",
+    )
+    expect(
+      routeUrl(
+        YOUTUBE_ROUTES.commentsModerate,
+        {},
+        { id: "a,b", moderationStatus: "rejected", banAuthor: true },
+      ).toString(),
+    ).toBe(
+      "https://youtube.googleapis.com/youtube/v3/comments/setModerationStatus?id=a%2Cb&moderationStatus=rejected&banAuthor=true",
     )
     expect(routeUrl(YOUTUBE_ROUTES.playlistItems).toString()).toBe(
       "https://youtube.googleapis.com/youtube/v3/playlistItems",

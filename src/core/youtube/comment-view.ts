@@ -2,10 +2,15 @@ import { z } from "zod"
 import { clippedCommentText, commentTextShape, pageReply } from "./views"
 
 /** A comment as `comments.list` gives it, or as `commentThreads.list` holds it; every field not read here is left out of the parse. */
-const commentReply = z.object({
+export const commentReply = z.object({
   id: z.string(),
   snippet: z
     .object({
+      /** The video a thread's top-level comment is on; a reply carries `parentId` instead. */
+      videoId: z.string().optional(),
+      parentId: z.string().optional(),
+      /** Whether the comment is published, held for review or rejected; Google gives it to the video's channel only. */
+      moderationStatus: z.string().optional(),
       authorDisplayName: z.string().optional(),
       authorChannelId: z.object({ value: z.string().optional() }).optional(),
       textDisplay: z.string().optional(),
@@ -18,9 +23,16 @@ const commentReply = z.object({
 })
 
 /** A thread as `commentThreads.list` gives it, with the parts `snippet` and `replies`. */
-const threadReply = z.object({
+export const threadReply = z.object({
   id: z.string(),
-  snippet: z.object({ topLevelComment: commentReply.optional(), totalReplyCount: z.number().optional() }).optional(),
+  snippet: z
+    .object({
+      videoId: z.string().optional(),
+      canReply: z.boolean().optional(),
+      topLevelComment: commentReply.optional(),
+      totalReplyCount: z.number().optional(),
+    })
+    .optional(),
   replies: z.object({ comments: z.array(commentReply).optional() }).optional(),
 })
 

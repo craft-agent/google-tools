@@ -14,6 +14,9 @@ export const MAX_TAG_CHARACTERS = 500
 /** The most characters of a caption track's name. */
 export const MAX_CAPTION_NAME_CHARACTERS = 150
 
+/** The most characters of a reply, as code points. */
+export const MAX_REPLY_CHARACTERS = 10_000
+
 /** What Google adds to the count of a tag that holds a space, for the quotes it writes around it. */
 const QUOTED_TAG_EXTRA = 2
 
@@ -105,6 +108,16 @@ export function checkedLanguage(language: string, subject = "A language"): strin
     throw refusal(`${subject} ${shown(language)} is not a language tag such as \`en\` or \`pt-BR\``)
   }
   return language
+}
+
+/** `text` when it is 1 to 10,000 code points and not blank. */
+export function checkedReplyText(text: string): string {
+  if (text.trim() === "") throw refusal("`text` must not be blank")
+  const length = lengthOf(text)
+  if (length > MAX_REPLY_CHARACTERS) {
+    throw refusal(`\`text\` must be 1 to ${MAX_REPLY_CHARACTERS} characters, not ${length}`)
+  }
+  return text
 }
 
 /** `name` when it is at most 150 characters without control characters; the name may be empty. */

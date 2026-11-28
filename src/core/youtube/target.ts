@@ -1,4 +1,6 @@
+import { isAbortError } from "../errors"
 import type { Route } from "../google/routes"
+import { ANY_TARGET } from "../targets"
 import type { ToolContext } from "../tool"
 import { captionId, videoId } from "./ids"
 import { youtubeWriteSession } from "./write-session"
@@ -11,6 +13,26 @@ export function videoTarget(label: string, video: string): string {
 /** The target of a write to a caption track of a video of the label's channel: the video's target, then the track's path (`captions`, its id). */
 export function captionTarget(label: string, video: string, caption: string): string {
   return [videoTarget(label, video), "captions", caption].join("/")
+}
+
+/** The target of a write to a comment of a video of the label's channel: the video's target, then the comment's path (`comments`, its id). */
+export function commentTarget(label: string, video: string, comment: string): string {
+  return [videoTarget(label, video), "comments", comment].join("/")
+}
+
+/**
+ * The targets `find` gives, which read Google to learn the video of each
+ * comment; `*` when they cannot be told (Google refused, or the comment is not
+ * there), since the call itself then fails with the reason. A call that was
+ * cancelled stays cancelled.
+ */
+export async function foundTargets(ctx: ToolContext, find: () => Promise<string[]>): Promise<string[]> {
+  try {
+    return await find()
+  } catch (error) {
+    if (isAbortError(error) || ctx.signal?.aborted) throw error
+    return [ANY_TARGET]
+  }
 }
 
 /** The target of a write that makes a video in the label's channel: the label, then the channel's path (`channels`, its id). */

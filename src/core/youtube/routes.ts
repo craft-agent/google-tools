@@ -63,6 +63,15 @@ export const YOUTUBE_ROUTES = {
   },
   /** `captions.update` with no file, which changes the track's draft state alone. */
   captionsUpdate: { method: "PUT", host: YOUTUBE_HOST, path: `${DATA_PATH}/captions`, scopes: FORCE_SSL_SCOPES },
+  /** `comments.insert`, which here makes a reply to a thread. */
+  commentsInsert: { method: "POST", host: YOUTUBE_HOST, path: `${DATA_PATH}/comments`, scopes: FORCE_SSL_SCOPES },
+  /** `comments.setModerationStatus`, which publishes, holds or rejects the comments of the `id` query and answers 204. */
+  commentsModerate: {
+    method: "POST",
+    host: YOUTUBE_HOST,
+    path: `${DATA_PATH}/comments/setModerationStatus`,
+    scopes: FORCE_SSL_SCOPES,
+  },
   /** `reports.query` of the Analytics API. */
   analytics: {
     method: "GET",

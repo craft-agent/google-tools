@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { captionId, channelRef, commentId, pageToken, playlistId, videoId } from "./ids"
+import { captionId, channelRef, commentId, commentIds, pageToken, playlistId, threadId, threadOf, videoId } from "./ids"
 
 const VIDEO = "dQw4w9WgXcQ"
 const CHANNEL = "UC" + "a".repeat(22)
@@ -90,6 +90,37 @@ describe("commentId", () => {
 
   test.each(["", "a/b", "a b", "a".repeat(129)])("%p is refused", (id) => {
     expect(() => commentId(id)).toThrow(/is not a comment id/)
+  })
+})
+
+describe("threadId", () => {
+  test("a comment id without a `.` is a thread's", () => {
+    expect(threadId("Ugx_abc-1")).toBe("Ugx_abc-1")
+  })
+
+  test("a reply's id is refused, saying where replies go", () => {
+    expect(() => threadId("Ugx_abc.def-1")).toThrow(/is a reply's id; a reply goes to the thread's top-level comment/)
+  })
+
+  test("a value that is no comment id is refused as one", () => {
+    expect(() => threadId("a/b")).toThrow(/is not a comment id/)
+  })
+})
+
+describe("commentIds", () => {
+  test("keeps the first of each repeated id, in order", () => {
+    expect(commentIds(["b", "a.1", "b", "a.1", "c"])).toEqual(["b", "a.1", "c"])
+  })
+
+  test("refuses the first value that is no comment id", () => {
+    expect(() => commentIds(["a", "b/c", "d e"])).toThrow(/"b\/c" is not a comment id/)
+  })
+})
+
+describe("threadOf", () => {
+  test("is a reply's id up to its `.`, and a thread's id as it is", () => {
+    expect(threadOf("Ugx_abc.def-1")).toBe("Ugx_abc")
+    expect(threadOf("Ugx_abc")).toBe("Ugx_abc")
   })
 })
 
