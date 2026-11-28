@@ -72,6 +72,31 @@ export const YOUTUBE_ROUTES = {
     path: `${DATA_PATH}/comments/setModerationStatus`,
     scopes: FORCE_SSL_SCOPES,
   },
+  /** `playlists.insert`, which makes a playlist. */
+  playlistsInsert: { method: "POST", host: YOUTUBE_HOST, path: `${DATA_PATH}/playlists`, scopes: FORCE_SSL_SCOPES },
+  /** `playlists.update`, which replaces every writable property of the parts it is sent. */
+  playlistsUpdate: { method: "PUT", host: YOUTUBE_HOST, path: `${DATA_PATH}/playlists`, scopes: FORCE_SSL_SCOPES },
+  /** `playlistItems.insert`, which adds a video to a playlist. */
+  playlistItemsInsert: {
+    method: "POST",
+    host: YOUTUBE_HOST,
+    path: `${DATA_PATH}/playlistItems`,
+    scopes: FORCE_SSL_SCOPES,
+  },
+  /** `playlistItems.update`, which replaces every writable property of the parts it is sent. */
+  playlistItemsUpdate: {
+    method: "PUT",
+    host: YOUTUBE_HOST,
+    path: `${DATA_PATH}/playlistItems`,
+    scopes: FORCE_SSL_SCOPES,
+  },
+  /** `playlistItems.delete`, which takes the entry of the `id` query out of its playlist and answers 204. */
+  playlistItemsDelete: {
+    method: "DELETE",
+    host: YOUTUBE_HOST,
+    path: `${DATA_PATH}/playlistItems`,
+    scopes: FORCE_SSL_SCOPES,
+  },
   /** `reports.query` of the Analytics API. */
   analytics: {
     method: "GET",

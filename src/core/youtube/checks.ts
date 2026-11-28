@@ -17,6 +17,15 @@ export const MAX_CAPTION_NAME_CHARACTERS = 150
 /** The most characters of a reply, as code points. */
 export const MAX_REPLY_CHARACTERS = 10_000
 
+/** The most characters of a playlist's title. */
+export const MAX_PLAYLIST_TITLE_CHARACTERS = 150
+
+/** The most characters of a playlist's description, as code points. */
+export const MAX_PLAYLIST_DESCRIPTION_CHARACTERS = 5000
+
+/** The most characters of the note of a playlist's entry, as code points. */
+export const MAX_PLAYLIST_NOTE_CHARACTERS = 280
+
 /** What Google adds to the count of a tag that holds a space, for the quotes it writes around it. */
 const QUOTED_TAG_EXTRA = 2
 
@@ -48,14 +57,43 @@ export function encryptedFileRefusal(path: string): ToolError {
 
 const lengthOf = (text: string) => Array.from(text).length
 
-/** `title` when it is 1 to 100 characters without `<` or `>`; `subject` names it in the refusal. */
-export function checkedTitle(title: string, subject = "`title`"): string {
+/** `title` when it is 1 to `max` characters without `<` or `>`; `subject` names it in the refusal. */
+function titleWithin(title: string, max: number, subject: string): string {
   const length = lengthOf(title.trim())
-  if (length === 0 || lengthOf(title) > MAX_TITLE_CHARACTERS) {
-    throw refusal(`${subject} must be 1 to ${MAX_TITLE_CHARACTERS} characters, not ${lengthOf(title)}`)
+  if (length === 0 || lengthOf(title) > max) {
+    throw refusal(`${subject} must be 1 to ${max} characters, not ${lengthOf(title)}`)
   }
   if (MARKUP.test(title)) throw refusal(`${subject} must not hold \`<\` or \`>\``)
   return title
+}
+
+/** `title` when it is 1 to 100 characters without `<` or `>`; `subject` names it in the refusal. */
+export function checkedTitle(title: string, subject = "`title`"): string {
+  return titleWithin(title, MAX_TITLE_CHARACTERS, subject)
+}
+
+/** `title` when it is 1 to 150 characters without `<` or `>`, as a playlist's is; `subject` names it in the refusal. */
+export function checkedPlaylistTitle(title: string, subject = "`title`"): string {
+  return titleWithin(title, MAX_PLAYLIST_TITLE_CHARACTERS, subject)
+}
+
+/** `description` when it is at most 5000 characters without `<` or `>`, as a playlist's is; `subject` names it in the refusal. */
+export function checkedPlaylistDescription(description: string, subject = "`description`"): string {
+  const length = lengthOf(description)
+  if (length > MAX_PLAYLIST_DESCRIPTION_CHARACTERS) {
+    throw refusal(`${subject} must be at most ${MAX_PLAYLIST_DESCRIPTION_CHARACTERS} characters, not ${length}`)
+  }
+  if (MARKUP.test(description)) throw refusal(`${subject} must not hold \`<\` or \`>\``)
+  return description
+}
+
+/** `note` when it is at most 280 characters, the note of a playlist's entry. */
+export function checkedPlaylistNote(note: string): string {
+  const length = lengthOf(note)
+  if (length > MAX_PLAYLIST_NOTE_CHARACTERS) {
+    throw refusal(`\`note\` must be at most ${MAX_PLAYLIST_NOTE_CHARACTERS} characters, not ${length}`)
+  }
+  return note
 }
 
 /** `description` when it is at most 5000 bytes in UTF-8 without `<` or `>`; `subject` names it in the refusal. */

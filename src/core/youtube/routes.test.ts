@@ -8,7 +8,7 @@ const UPLOAD_HOST = "www.googleapis.com"
 
 describe("YOUTUBE_ROUTES", () => {
   test("every route is a GET on a YouTube host, but the writes", () => {
-    const writes: Record<string, "PUT" | "POST"> = {
+    const writes: Record<string, "PUT" | "POST" | "DELETE"> = {
       videosUpdate: "PUT",
       thumbnailsSet: "POST",
       videosInsert: "POST",
@@ -18,6 +18,11 @@ describe("YOUTUBE_ROUTES", () => {
       captionsUpdate: "PUT",
       commentsInsert: "POST",
       commentsModerate: "POST",
+      playlistsInsert: "POST",
+      playlistsUpdate: "PUT",
+      playlistItemsInsert: "POST",
+      playlistItemsUpdate: "PUT",
+      playlistItemsDelete: "DELETE",
     }
     const uploads = ["thumbnailsSet", "videosInsert", "videosInsertChunk", "captionsInsert", "captionsUpdateMedia"]
     for (const [name, route] of Object.entries(YOUTUBE_ROUTES)) {
@@ -49,6 +54,11 @@ describe("YOUTUBE_ROUTES", () => {
       "captionsUpdate",
       "commentsInsert",
       "commentsModerate",
+      "playlistsInsert",
+      "playlistsUpdate",
+      "playlistItemsInsert",
+      "playlistItemsUpdate",
+      "playlistItemsDelete",
     ] as const
     for (const name of [...names, ...more]) {
       expect(YOUTUBE_ROUTES[name].scopes).toEqual([YOUTUBE_SCOPE])
@@ -95,6 +105,12 @@ describe("YOUTUBE_ROUTES", () => {
       ).toString(),
     ).toBe(
       "https://youtube.googleapis.com/youtube/v3/comments/setModerationStatus?id=a%2Cb&moderationStatus=rejected&banAuthor=true",
+    )
+    expect(routeUrl(YOUTUBE_ROUTES.playlistsUpdate, {}, { part: "snippet,status" }).toString()).toBe(
+      "https://youtube.googleapis.com/youtube/v3/playlists?part=snippet%2Cstatus",
+    )
+    expect(routeUrl(YOUTUBE_ROUTES.playlistItemsDelete, {}, { id: "item" }).toString()).toBe(
+      "https://youtube.googleapis.com/youtube/v3/playlistItems?id=item",
     )
     expect(routeUrl(YOUTUBE_ROUTES.playlistItems).toString()).toBe(
       "https://youtube.googleapis.com/youtube/v3/playlistItems",

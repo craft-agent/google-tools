@@ -1,5 +1,16 @@
 import { describe, expect, test } from "bun:test"
-import { captionId, channelRef, commentId, commentIds, pageToken, playlistId, threadId, threadOf, videoId } from "./ids"
+import {
+  captionId,
+  channelRef,
+  commentId,
+  commentIds,
+  pageToken,
+  playlistId,
+  playlistItemId,
+  threadId,
+  threadOf,
+  videoId,
+} from "./ids"
 
 const VIDEO = "dQw4w9WgXcQ"
 const CHANNEL = "UC" + "a".repeat(22)
@@ -131,6 +142,19 @@ describe("captionId", () => {
 
   test.each(["", "short", "a".repeat(301), "AUieDaZ made", "AUieDaZ/made"])("%p is refused", (id) => {
     expect(() => captionId(id)).toThrow(/is not a caption track id/)
+  })
+})
+
+describe("playlistItemId", () => {
+  test.each(["UExtYWRlVXBFbnRyeTAwMDE", "a".repeat(10), "a".repeat(200), "UEx_made=up.id-1"])(
+    "%s is a playlist item id",
+    (id) => {
+      expect(playlistItemId(id)).toBe(id)
+    },
+  )
+
+  test.each(["", "short", "a".repeat(201), "UExtYWRl VXBF", "UExtYWRl/VXBF"])("%p is refused", (id) => {
+    expect(() => playlistItemId(id)).toThrow(/is not a playlist item id/)
   })
 })
 
