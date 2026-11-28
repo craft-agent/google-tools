@@ -54,6 +54,7 @@ provides_tools:
   - google_youtube_comment_moderate
   - google_youtube_comment_reject
   - google_youtube_comment_reply
+  - google_youtube_playlist_create
   - google_youtube_privacy_set
   - google_youtube_read
   - google_youtube_thumbnail_set

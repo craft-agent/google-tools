@@ -148,6 +148,8 @@ export const YOUTUBE_TRANSLATIONS: Translations = {
     [YOUTUBE_WORDS.undoNone]: "できません: 拒否したコメントは再び公開できません",
     [YOUTUBE_WORDS.ban]: "ブロック",
     [YOUTUBE_WORDS.banYes]: "する: 投稿者の以降のコメントはチャンネルに表示されません",
+    "Create YouTube playlist": "YouTube 再生リストを作成する",
+    "About to create a YouTube playlist": "YouTube 再生リストを作成しようとしています",
     [YOUTUBE_WORDS.playlistCreate]: "再生リスト {title} を作成しようとしています",
     [YOUTUBE_WORDS.playlistEdit]: "再生リスト {title} を編集しようとしています",
     [YOUTUBE_WORDS.playlistAdd]: "{video} を再生リスト {playlist} に追加しようとしています",

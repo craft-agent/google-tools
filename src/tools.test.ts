@@ -94,6 +94,7 @@ describe("the YouTube writes", () => {
     ["google_youtube_comment_reply", "add", false, false],
     ["google_youtube_comment_moderate", "overwrite", true, true],
     ["google_youtube_comment_reject", "administrative", true, false],
+    ["google_youtube_playlist_create", "add", false, false],
   ] as const
 
   test.each(WRITES)(
