@@ -42,6 +42,7 @@ import { googleSheetsRestructure } from "./core/sheets/restructure"
 import { googleSheetsTabAdd } from "./core/sheets/tab-add"
 import { googleSheetsTransform } from "./core/sheets/transform"
 import { googleYoutubeRead } from "./core/youtube/read"
+import { googleYoutubeVideoEdit } from "./core/youtube/video-edit"
 
 /** Every tool spec of the package; entry points register their tools from this list. */
 export const ALL_TOOLS: ToolSpec[] = [
@@ -88,4 +89,5 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleRunServiceDelete,
   googleRunJobDelete,
   googleYoutubeRead,
+  googleYoutubeVideoEdit,
 ]
