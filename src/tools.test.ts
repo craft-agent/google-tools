@@ -86,6 +86,7 @@ describe("the YouTube read", () => {
 describe("the YouTube writes", () => {
   const WRITES = [
     ["google_youtube_video_edit", "overwrite", true, true],
+    ["google_youtube_privacy_set", "administrative", true, false],
   ] as const
 
   test.each(WRITES)(

@@ -41,6 +41,7 @@ import { googleSheetsRead } from "./core/sheets/read"
 import { googleSheetsRestructure } from "./core/sheets/restructure"
 import { googleSheetsTabAdd } from "./core/sheets/tab-add"
 import { googleSheetsTransform } from "./core/sheets/transform"
+import { googleYoutubePrivacySet } from "./core/youtube/privacy"
 import { googleYoutubeRead } from "./core/youtube/read"
 import { googleYoutubeVideoEdit } from "./core/youtube/video-edit"
 
@@ -90,4 +91,5 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleRunJobDelete,
   googleYoutubeRead,
   googleYoutubeVideoEdit,
+  googleYoutubePrivacySet,
 ]

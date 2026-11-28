@@ -49,6 +49,7 @@ provides_tools:
   - google_sheets_restructure
   - google_sheets_tab_add
   - google_sheets_transform
+  - google_youtube_privacy_set
   - google_youtube_read
   - google_youtube_video_edit
 provides_hooks:

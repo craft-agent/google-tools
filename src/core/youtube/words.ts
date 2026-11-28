@@ -6,10 +6,15 @@ export const YOUTUBE_WORDS = {
   privacy: "Privacy",
   fields: "Fields",
   newValues: "New values",
+  now: "Now",
   public: "public",
   unlisted: "unlisted",
   private: "private",
   privateUntil: "private until {time}",
+  makePublic: "About to make {title} public",
+  makeUnlisted: "About to make {title} unlisted",
+  makePrivate: "About to make {title} private",
+  schedule: "About to schedule {title} for {time}",
 } as const
 
 /** The translations of the YouTube tools' words: their titles, intents, headline templates, fact labels, value templates and text labels. */
@@ -21,9 +26,16 @@ export const YOUTUBE_TRANSLATIONS: Translations = {
     [YOUTUBE_WORDS.privacy]: "公開設定",
     [YOUTUBE_WORDS.fields]: "変更する項目",
     [YOUTUBE_WORDS.newValues]: "新しい値",
+    [YOUTUBE_WORDS.now]: "現在",
     [YOUTUBE_WORDS.public]: "公開",
     [YOUTUBE_WORDS.unlisted]: "限定公開",
     [YOUTUBE_WORDS.private]: "非公開",
     [YOUTUBE_WORDS.privateUntil]: "{time} まで非公開",
+    "Set YouTube video privacy": "YouTube 動画の公開設定を変更する",
+    "About to change who can watch a YouTube video": "YouTube 動画を誰が見られるかを変更しようとしています",
+    [YOUTUBE_WORDS.makePublic]: "{title} を公開しようとしています",
+    [YOUTUBE_WORDS.makeUnlisted]: "{title} を限定公開にしようとしています",
+    [YOUTUBE_WORDS.makePrivate]: "{title} を非公開にしようとしています",
+    [YOUTUBE_WORDS.schedule]: "{title} を {time} に公開予約しようとしています",
   },
 }
