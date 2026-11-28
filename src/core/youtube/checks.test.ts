@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { ToolError } from "../errors"
 import {
+  checkedCaptionName,
   checkedCategory,
   checkedDescription,
   checkedLanguage,
@@ -30,6 +31,20 @@ describe("checkedTitle and checkedDescription", () => {
   test("refuse < and > in either, and a blank title", () => {
     for (const call of [() => checkedTitle("<b>"), () => checkedDescription("a>b"), () => checkedTitle(" ")]) {
       expect(refused(call)).toBe("invalid_argument")
+    }
+  })
+})
+
+describe("checkedCaptionName", () => {
+  test("takes an empty name and one of 150 characters, and counts characters, not bytes", () => {
+    expect(refused(() => checkedCaptionName(""))).toBe("accepted")
+    expect(refused(() => checkedCaptionName("😀".repeat(150)))).toBe("accepted")
+    expect(refused(() => checkedCaptionName("😀".repeat(151)))).toBe("invalid_argument")
+  })
+
+  test("refuses a control character", () => {
+    for (const name of ["a\nb", "a\u0000b", "a\tb", "a\u007fb"]) {
+      expect(refused(() => checkedCaptionName(name))).toBe("invalid_argument")
     }
   })
 })

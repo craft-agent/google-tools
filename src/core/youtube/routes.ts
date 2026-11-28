@@ -47,6 +47,22 @@ export const YOUTUBE_ROUTES = {
     path: `/upload${DATA_PATH}/videos`,
     scopes: FORCE_SSL_SCOPES,
   },
+  /** `captions.insert` as a multipart upload: the track's metadata and its file in one request. */
+  captionsInsert: {
+    method: "POST",
+    host: UPLOAD_HOST,
+    path: `/upload${DATA_PATH}/captions`,
+    scopes: FORCE_SSL_SCOPES,
+  },
+  /** `captions.update` as a multipart upload, for a track given a new file. */
+  captionsUpdateMedia: {
+    method: "PUT",
+    host: UPLOAD_HOST,
+    path: `/upload${DATA_PATH}/captions`,
+    scopes: FORCE_SSL_SCOPES,
+  },
+  /** `captions.update` with no file, which changes the track's draft state alone. */
+  captionsUpdate: { method: "PUT", host: YOUTUBE_HOST, path: `${DATA_PATH}/captions`, scopes: FORCE_SSL_SCOPES },
   /** `reports.query` of the Analytics API. */
   analytics: {
     method: "GET",

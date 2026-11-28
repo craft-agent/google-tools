@@ -11,6 +11,9 @@ export const MAX_DESCRIPTION_BYTES = 5000
 /** The most characters of a video's tags in all, as Google counts them. */
 export const MAX_TAG_CHARACTERS = 500
 
+/** The most characters of a caption track's name. */
+export const MAX_CAPTION_NAME_CHARACTERS = 150
+
 /** What Google adds to the count of a tag that holds a space, for the quotes it writes around it. */
 const QUOTED_TAG_EXTRA = 2
 
@@ -25,6 +28,7 @@ const TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.(\
 
 const MINUTE_MS = 60_000
 const MARKUP = /[<>]/
+const CONTROL_CHARACTERS = /\p{Cc}/u
 
 /** An `invalid_argument` that says nothing was sent: `message` without its final stop. */
 export function refusal(message: string): ToolError {
@@ -101,6 +105,15 @@ export function checkedLanguage(language: string, subject = "A language"): strin
     throw refusal(`${subject} ${shown(language)} is not a language tag such as \`en\` or \`pt-BR\``)
   }
   return language
+}
+
+/** `name` when it is at most 150 characters without control characters; the name may be empty. */
+export function checkedCaptionName(name: string): string {
+  if (lengthOf(name) > MAX_CAPTION_NAME_CHARACTERS) {
+    throw refusal(`\`name\` must be at most ${MAX_CAPTION_NAME_CHARACTERS} characters, not ${lengthOf(name)}`)
+  }
+  if (CONTROL_CHARACTERS.test(name)) throw refusal("`name` must not hold control characters")
+  return name
 }
 
 /** Whether the date and time of an RFC 3339 match are ones a calendar and a clock have. */
