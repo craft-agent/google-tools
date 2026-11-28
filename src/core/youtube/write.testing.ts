@@ -8,15 +8,22 @@ import { writeTargets } from "../targets"
 import { invoke, type ToolContext, type ToolOptions, type ToolSpec } from "../tool"
 import { googleYoutubeCaptionAdd } from "./caption-add"
 import { googleYoutubeCaptionUpdate } from "./caption-update"
+import { googleYoutubeCommentModerate } from "./comment-moderate"
+import { googleYoutubeCommentReject } from "./comment-reject"
+import { googleYoutubeCommentReply } from "./comment-reply"
 import { googleYoutubePrivacySet } from "./privacy"
 import {
   CAPTIONS_URL,
   CHANNEL,
   CHANNELS_URL,
+  COMMENTS_URL,
+  COMMENT_THREADS_URL,
+  THREAD,
   VIDEO,
   VIDEOS_URL,
   YOUTUBE_CREDENTIAL,
   cleanUp as cleanUpState,
+  commentResource,
   fixture,
   requestLine,
   respond,
@@ -29,9 +36,12 @@ import { googleYoutubeVideoEdit } from "./video-edit"
 export {
   CHANNEL,
   CHANNELS_URL,
+  COMMENTS_URL,
+  COMMENT_THREADS_URL,
   OTHER_CHANNEL,
   OTHER_VIDEO,
   READ_ONLY_CREDENTIAL,
+  THREAD,
   VIDEO,
   VIDEOS_URL,
   freshTokens,
@@ -176,6 +186,65 @@ export const captionUpdateHandler = (
   },
 ): FakeHandler => ({ method: "PUT", url: CAPTIONS_URL, reply })
 
+/** Made-up ids of the comments the made-up video has: a second thread, and a reply to the first. */
+export const OTHER_THREAD = "UgxMadeUpThreadId0002"
+export const REPLY = `${THREAD}.MadeUpReplyId01`
+
+/** The id of the reply the made-up insert makes. */
+export const NEW_REPLY = `${THREAD}.MadeUpNewReply`
+
+/** A thread's top-level comment as `comments.list` gives it: on the made-up video, published, by someone else. */
+export const topComment = (id = THREAD, text = "A made-up comment.", snippet: Record<string, unknown> = {}) =>
+  commentResource(id, text, { videoId: VIDEO, moderationStatus: "published", ...snippet })
+
+/** A reply as `comments.list` gives it: no video, but its thread. */
+export const replyComment = (id = REPLY, text = "A made-up reply.", snippet: Record<string, unknown> = {}) =>
+  commentResource(id, text, { parentId: THREAD, authorDisplayName: "Another one", ...snippet })
+
+/** A thread as `commentThreads.list` gives it with `snippet`; `snippet` is laid over the made-up one. */
+export const threadResource = (id = THREAD, text = "A made-up comment.", snippet: Record<string, unknown> = {}) => ({
+  id,
+  snippet: { videoId: VIDEO, canReply: true, topLevelComment: topComment(id, text), totalReplyCount: 0, ...snippet },
+})
+
+/** What a handler for a list by `id` answers: the items whose ids the request asks for. */
+const askedFor = (items: { id: string }[]) => (request: FakeRequest) => ({
+  json: { items: items.filter(({ id }) => request.url.searchParams.get("id")?.split(",").includes(id)) },
+})
+
+/** `GET` of the comment list, answering the comments given among those asked for by `id`: the made-up thread's comment, another thread's and a reply by default. */
+export const commentsHandler = (...comments: { id: string }[]): FakeHandler =>
+  respond(
+    COMMENTS_URL,
+    askedFor(
+      comments.length === 0 ? [topComment(), topComment(OTHER_THREAD, "Another comment."), replyComment()] : comments,
+    ),
+  )
+
+/** `GET` of the thread list, answering the threads given among those asked for by `id`: the two made-up ones by default. */
+export const threadsHandler = (...threads: { id: string }[]): FakeHandler =>
+  respond(
+    COMMENT_THREADS_URL,
+    askedFor(threads.length === 0 ? [threadResource(), threadResource(OTHER_THREAD, "Another comment.")] : threads),
+  )
+
+/** `POST` of a reply, answering `reply`; by default a reply with the parent and the text the body gave. */
+export const commentInsertHandler = (
+  reply: FakeHandler["reply"] = (request) => {
+    const { snippet } = request.json as { snippet: { parentId: string; textOriginal: string } }
+    return {
+      json: commentResource(`${snippet.parentId}.MadeUpNewReply`, snippet.textOriginal, { parentId: snippet.parentId }),
+    }
+  },
+): FakeHandler => ({ method: "POST", url: COMMENTS_URL, reply })
+
+/** `POST` of a moderation, answering `reply`; by default Google's 204. */
+export const moderateHandler = (reply: FakeHandler["reply"] = { status: 204 }): FakeHandler => ({
+  method: "POST",
+  url: `${COMMENTS_URL}/setModerationStatus`,
+  reply,
+})
+
 /** One part of a `multipart/related` body: its content type, its bytes and, for JSON, its value. */
 export type RelatedPart = { type: string; bytes: Buffer; json?: unknown }
 
@@ -256,6 +325,10 @@ export async function writeFixture(
       captionInsertHandler(),
       captionUpdateMediaHandler(),
       captionUpdateHandler(),
+      commentsHandler(),
+      threadsHandler(),
+      commentInsertHandler(),
+      moderateHandler(),
     ],
     options.credential === undefined ? YOUTUBE_CREDENTIAL : options.credential,
   )
@@ -276,6 +349,9 @@ export async function writeFixture(
     thumbnail: bound(googleYoutubeThumbnailSet, ctx, { video: VIDEO }),
     captionAdd: bound(googleYoutubeCaptionAdd, ctx, { video: VIDEO, language: "en" }),
     captionUpdate: bound(googleYoutubeCaptionUpdate, ctx, { video: VIDEO, caption: TRACK }),
+    commentReply: bound(googleYoutubeCommentReply, ctx, { thread: THREAD, text: "Thanks for watching!" }),
+    commentModerate: bound(googleYoutubeCommentModerate, ctx, { comments: [THREAD], moderation: "publish" }),
+    commentReject: bound(googleYoutubeCommentReject, ctx, { comments: [THREAD] }),
     /** The requests that changed something. */
     writes: () => h.calls().filter((request) => request.method !== "GET"),
     /** What the fake received, as `METHOD url`. */
