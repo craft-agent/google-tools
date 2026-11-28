@@ -11,6 +11,11 @@ import { googleYoutubeCaptionUpdate } from "./caption-update"
 import { googleYoutubeCommentModerate } from "./comment-moderate"
 import { googleYoutubeCommentReject } from "./comment-reject"
 import { googleYoutubeCommentReply } from "./comment-reply"
+import { googleYoutubePlaylistAdd } from "./playlist-add"
+import { googleYoutubePlaylistCreate } from "./playlist-create"
+import { googleYoutubePlaylistEdit } from "./playlist-edit"
+import { googleYoutubePlaylistMove } from "./playlist-move"
+import { googleYoutubePlaylistRemove } from "./playlist-remove"
 import { googleYoutubePrivacySet } from "./privacy"
 import {
   CAPTIONS_URL,
@@ -18,7 +23,11 @@ import {
   CHANNELS_URL,
   COMMENTS_URL,
   COMMENT_THREADS_URL,
+  PLAYLIST,
+  PLAYLISTS_URL,
+  PLAYLIST_ITEMS_URL,
   THREAD,
+  UPLOADS,
   VIDEO,
   VIDEOS_URL,
   YOUTUBE_CREDENTIAL,
@@ -40,8 +49,12 @@ export {
   COMMENT_THREADS_URL,
   OTHER_CHANNEL,
   OTHER_VIDEO,
+  PLAYLIST,
+  PLAYLISTS_URL,
+  PLAYLIST_ITEMS_URL,
   READ_ONLY_CREDENTIAL,
   THREAD,
+  UPLOADS,
   VIDEO,
   VIDEOS_URL,
   freshTokens,
@@ -101,8 +114,9 @@ export const writableVideo = (parts: Parts = {}) => ({
   localizations: parts.localizations ?? { ja: { title: "作り話の動画", description: "作り話です。" } },
 })
 
-/** `GET` of the label's own channel, answering `id`. */
-export const channelHandler = (id = CHANNEL): FakeHandler => respond(CHANNELS_URL, { json: { items: [{ id }] } })
+/** `GET` of the label's own channel, answering `id` and its uploads playlist. */
+export const channelHandler = (id = CHANNEL): FakeHandler =>
+  respond(CHANNELS_URL, { json: { items: [{ id, contentDetails: { relatedPlaylists: { uploads: UPLOADS } } }] } })
 
 /** `GET` of the video list, answering the videos given: one video, by default the made-up one. */
 export const videoHandler = (...videos: unknown[]): FakeHandler =>
@@ -245,6 +259,115 @@ export const moderateHandler = (reply: FakeHandler["reply"] = { status: 204 }): 
   reply,
 })
 
+/** The title of the made-up playlist. */
+export const PLAYLIST_TITLE = "A made-up playlist"
+
+/** Made-up ids: another channel's playlist, the playlist the made-up insert makes, and the entries of the made-up playlist. */
+export const OTHER_PLAYLIST = "PLotherMadeUpPlay01"
+export const NEW_PLAYLIST = "PLnewMadeUpPlaylist1"
+export const ITEM = "UExtYWRlVXBFbnRyeTAwMDE"
+export const OTHER_ITEM = "UExtYWRlVXBFbnRyeTAwMDI"
+
+/** The id of the entry the made-up insert makes. */
+export const NEW_ITEM = "UExtYWRlVXBFbnRyeU5ldw"
+
+type PlaylistParts = Parts & { contentDetails?: Record<string, unknown> }
+
+/**
+ * The made-up playlist as `playlists.list` gives it with `snippet`, `status`,
+ * `localizations` and `contentDetails`: public, of the label's channel, English,
+ * with a Japanese localization, three entries and fields the tools never send.
+ * Each part in `parts` is laid over its own.
+ */
+export const writablePlaylist = (parts: PlaylistParts = {}) => ({
+  id: PLAYLIST,
+  snippet: {
+    publishedAt: "2026-03-01T09:00:00Z",
+    channelId: CHANNEL,
+    title: PLAYLIST_TITLE,
+    description: "About made-up things.",
+    thumbnails: { default: { url: "https://i.ytimg.test/default.jpg" } },
+    channelTitle: "Made-up channel",
+    defaultLanguage: "en",
+    ...parts.snippet,
+  },
+  status: { privacyStatus: "public", podcastStatus: "unspecified", ...parts.status },
+  localizations: parts.localizations ?? { ja: { title: "作り話の再生リスト", description: "作り話です。" } },
+  contentDetails: { itemCount: 3, ...parts.contentDetails },
+})
+
+/**
+ * An entry of the made-up playlist as `playlistItems.list` gives it with
+ * `snippet` and `contentDetails`: the made-up video at position 1, with no
+ * note. Each part in `parts` is laid over its own.
+ */
+export const playlistEntry = (
+  id = ITEM,
+  parts: { snippet?: Record<string, unknown>; contentDetails?: Record<string, unknown> } = {},
+) => ({
+  id,
+  snippet: {
+    playlistId: PLAYLIST,
+    position: 1,
+    title: TITLE,
+    resourceId: { kind: "youtube#video", videoId: VIDEO },
+    channelId: CHANNEL,
+    ...parts.snippet,
+  },
+  contentDetails: { videoId: VIDEO, ...parts.contentDetails },
+})
+
+/** `GET` of the playlist list, answering the playlists given: the made-up one by default. */
+export const playlistHandler = (...playlists: unknown[]): FakeHandler =>
+  respond(PLAYLISTS_URL, { json: { items: playlists.length === 0 ? [writablePlaylist()] : playlists } })
+
+/** `GET` of the playlist entry list, answering the entries given among those asked for by `id`: the made-up one and another by default. */
+export const playlistEntriesHandler = (...entries: { id: string }[]): FakeHandler =>
+  respond(
+    PLAYLIST_ITEMS_URL,
+    askedFor(
+      entries.length === 0 ? [playlistEntry(), playlistEntry(OTHER_ITEM, { snippet: { position: 2 } })] : entries,
+    ),
+  )
+
+/** `POST` of a playlist, answering `reply`; by default the playlist the body gave, made with the id `NEW_PLAYLIST`. */
+export const playlistInsertHandler = (
+  reply: FakeHandler["reply"] = (request) => ({ json: { id: NEW_PLAYLIST, ...(request.json as object) } }),
+): FakeHandler => ({ method: "POST", url: PLAYLISTS_URL, reply })
+
+/** `PUT` of a playlist, answering `reply`; by default Google reports exactly the body it was sent. */
+export const playlistUpdateHandler = (
+  reply: FakeHandler["reply"] = (request) => ({ json: request.json }),
+): FakeHandler => ({
+  method: "PUT",
+  url: PLAYLISTS_URL,
+  reply,
+})
+
+/** `POST` of an entry, answering `reply`; by default the entry the body gave, made with the id `NEW_ITEM` and, with no position given, at position 3. */
+export const entryInsertHandler = (
+  reply: FakeHandler["reply"] = (request) => {
+    const { snippet } = request.json as { snippet: Record<string, unknown> }
+    return { json: { id: NEW_ITEM, snippet: { position: 3, ...snippet } } }
+  },
+): FakeHandler => ({ method: "POST", url: PLAYLIST_ITEMS_URL, reply })
+
+/** `PUT` of an entry, answering `reply`; by default Google reports exactly the body it was sent. */
+export const entryUpdateHandler = (
+  reply: FakeHandler["reply"] = (request) => ({ json: request.json }),
+): FakeHandler => ({
+  method: "PUT",
+  url: PLAYLIST_ITEMS_URL,
+  reply,
+})
+
+/** `DELETE` of an entry, answering `reply`; by default Google's 204. */
+export const entryDeleteHandler = (reply: FakeHandler["reply"] = { status: 204 }): FakeHandler => ({
+  method: "DELETE",
+  url: PLAYLIST_ITEMS_URL,
+  reply,
+})
+
 /** One part of a `multipart/related` body: its content type, its bytes and, for JSON, its value. */
 export type RelatedPart = { type: string; bytes: Buffer; json?: unknown }
 
@@ -329,6 +452,13 @@ export async function writeFixture(
       threadsHandler(),
       commentInsertHandler(),
       moderateHandler(),
+      playlistHandler(),
+      playlistEntriesHandler(),
+      playlistInsertHandler(),
+      playlistUpdateHandler(),
+      entryInsertHandler(),
+      entryUpdateHandler(),
+      entryDeleteHandler(),
     ],
     options.credential === undefined ? YOUTUBE_CREDENTIAL : options.credential,
   )
@@ -352,6 +482,12 @@ export async function writeFixture(
     commentReply: bound(googleYoutubeCommentReply, ctx, { thread: THREAD, text: "Thanks for watching!" }),
     commentModerate: bound(googleYoutubeCommentModerate, ctx, { comments: [THREAD], moderation: "publish" }),
     commentReject: bound(googleYoutubeCommentReject, ctx, { comments: [THREAD] }),
+    playlistCreate: bound(googleYoutubePlaylistCreate, ctx, { title: "A new playlist" }),
+    playlistEdit: bound(googleYoutubePlaylistEdit, ctx, { playlist: PLAYLIST }),
+    playlistAdd: bound(googleYoutubePlaylistAdd, ctx, { playlist: PLAYLIST, video: VIDEO }),
+    playlistMove: bound(googleYoutubePlaylistMove, ctx, { playlist: PLAYLIST, item: ITEM, position: 0 }),
+    playlistRemove: bound(googleYoutubePlaylistRemove, ctx, { playlist: PLAYLIST, item: ITEM }),
+    playlistPrivacy: bound(googleYoutubePrivacySet, ctx, { playlist: PLAYLIST }),
     /** The requests that changed something. */
     writes: () => h.calls().filter((request) => request.method !== "GET"),
     /** What the fake received, as `METHOD url`. */
