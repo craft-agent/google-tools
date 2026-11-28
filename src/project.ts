@@ -21,6 +21,7 @@ export const PROJECT = {
     upload_dirs: "paths",
     encrypt_dirs: "paths",
     age_recipients: "list",
+    youtube_upload_max_gib: { type: "number", integer: true, min: 1, max: 256 },
   } as Readonly<Record<string, OptionSpec>>,
   /** The environment variables the tools read besides the settings, which Codex forwards to the server after them. */
   toolVariables: ["XDG_STATE_HOME"] as readonly string[],
