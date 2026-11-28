@@ -97,6 +97,8 @@ describe("the YouTube writes", () => {
     ["google_youtube_playlist_create", "add", false, false],
     ["google_youtube_playlist_edit", "overwrite", true, true],
     ["google_youtube_playlist_add", "add", false, false],
+    ["google_youtube_playlist_move", "idempotent", false, true],
+    ["google_youtube_playlist_remove", "overwrite", true, true],
   ] as const
 
   test.each(WRITES)(

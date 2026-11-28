@@ -57,6 +57,8 @@ provides_tools:
   - google_youtube_playlist_add
   - google_youtube_playlist_create
   - google_youtube_playlist_edit
+  - google_youtube_playlist_move
+  - google_youtube_playlist_remove
   - google_youtube_privacy_set
   - google_youtube_read
   - google_youtube_thumbnail_set

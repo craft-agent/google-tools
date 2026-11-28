@@ -49,6 +49,8 @@ import { googleYoutubeCommentReply } from "./core/youtube/comment-reply"
 import { googleYoutubePlaylistAdd } from "./core/youtube/playlist-add"
 import { googleYoutubePlaylistCreate } from "./core/youtube/playlist-create"
 import { googleYoutubePlaylistEdit } from "./core/youtube/playlist-edit"
+import { googleYoutubePlaylistMove } from "./core/youtube/playlist-move"
+import { googleYoutubePlaylistRemove } from "./core/youtube/playlist-remove"
 import { googleYoutubePrivacySet } from "./core/youtube/privacy"
 import { googleYoutubeRead } from "./core/youtube/read"
 import { googleYoutubeThumbnailSet } from "./core/youtube/thumbnail"
@@ -112,4 +114,6 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleYoutubePlaylistCreate,
   googleYoutubePlaylistEdit,
   googleYoutubePlaylistAdd,
+  googleYoutubePlaylistMove,
+  googleYoutubePlaylistRemove,
 ]
