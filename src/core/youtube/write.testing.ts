@@ -8,6 +8,7 @@ import { writeTargets } from "../targets"
 import { invoke, type ToolContext, type ToolOptions, type ToolSpec } from "../tool"
 import { googleYoutubeCaptionAdd } from "./caption-add"
 import { googleYoutubeCaptionUpdate } from "./caption-update"
+import { googleYoutubeChannelEdit } from "./channel-edit"
 import { googleYoutubeCommentModerate } from "./comment-moderate"
 import { googleYoutubeCommentReject } from "./comment-reject"
 import { googleYoutubeCommentReply } from "./comment-reply"
@@ -39,6 +40,8 @@ import {
 } from "./read.testing"
 import { googleYoutubeThumbnailSet } from "./thumbnail"
 import { googleYoutubeVideoEdit } from "./video-edit"
+import { googleYoutubeWatermarkRemove } from "./watermark-remove"
+import { googleYoutubeWatermarkSet } from "./watermark-set"
 
 /** Fixtures the YouTube write tests share: the read fixtures with a label that may read and write, the label's channel and one of its videos as Google gives them, and the write tools bound to them. */
 
@@ -114,9 +117,76 @@ export const writableVideo = (parts: Parts = {}) => ({
   localizations: parts.localizations ?? { ja: { title: "作り話の動画", description: "作り話です。" } },
 })
 
-/** `GET` of the label's own channel, answering `id` and its uploads playlist. */
-export const channelHandler = (id = CHANNEL): FakeHandler =>
-  respond(CHANNELS_URL, { json: { items: [{ id, contentDetails: { relatedPlaylists: { uploads: UPLOADS } } }] } })
+/** The name of the made-up channel. */
+export const CHANNEL_TITLE = "Made-up channel"
+
+type ChannelParts = { snippet?: Record<string, unknown>; channel?: Record<string, unknown>; localizations?: unknown }
+
+/**
+ * The label's own channel as `channels.list` gives it with `snippet`,
+ * `brandingSettings`, `localizations` and `contentDetails`: Japanese, in
+ * Japan, with three keywords (one of them a phrase), a trailer, an English
+ * localization, and branding properties the tools never change (a banner and
+ * hints). The snippet and the branding settings' `channel` are laid over their
+ * own, so a property given as `undefined` is left out.
+ */
+export const writableChannel = (parts: ChannelParts = {}) => ({
+  id: CHANNEL,
+  snippet: {
+    title: CHANNEL_TITLE,
+    description: "A channel about made-up things.",
+    country: "JP",
+    defaultLanguage: "ja",
+    ...parts.snippet,
+  },
+  brandingSettings: {
+    channel: {
+      title: CHANNEL_TITLE,
+      description: "A channel about made-up things.",
+      keywords: 'made "made up" things',
+      country: "JP",
+      defaultLanguage: "ja",
+      unsubscribedTrailer: VIDEO,
+      trackingAnalyticsAccountId: "UA-0000000-1",
+      ...parts.channel,
+    },
+    image: { bannerExternalUrl: "https://yt3.ggpht.test/banner" },
+    hints: [{ property: "channel.banner.mobile.medium.url", value: "https://yt3.ggpht.test/mobile" }],
+  },
+  localizations: parts.localizations ?? { en: { title: CHANNEL_TITLE, description: "About made-up things." } },
+  contentDetails: { relatedPlaylists: { uploads: UPLOADS } },
+})
+
+/** `GET` of the label's own channel, answering the made-up one as `id`, or `channel` as it is. */
+export const channelHandler = (id = CHANNEL, channel: unknown = { ...writableChannel(), id }): FakeHandler =>
+  respond(CHANNELS_URL, { json: { items: [channel] } })
+
+/** `PUT` of a channel part, answering `reply`; by default Google reports exactly the body it was sent. */
+export const channelUpdateHandler = (
+  reply: FakeHandler["reply"] = (request) => ({ json: request.json }),
+): FakeHandler => ({
+  method: "PUT",
+  url: CHANNELS_URL,
+  reply,
+})
+
+/** The addresses of the watermark upload and of its removal. */
+export const WATERMARKS_SET_URL = "https://www.googleapis.com/upload/youtube/v3/watermarks/set"
+export const WATERMARKS_UNSET_URL = "https://youtube.googleapis.com/youtube/v3/watermarks/unset"
+
+/** `POST` of the watermark upload, answering `reply`; by default Google's 204. */
+export const watermarkSetHandler = (reply: FakeHandler["reply"] = { status: 204 }): FakeHandler => ({
+  method: "POST",
+  url: WATERMARKS_SET_URL,
+  reply,
+})
+
+/** `POST` of the watermark removal, answering `reply`; by default Google's 204. */
+export const watermarkUnsetHandler = (reply: FakeHandler["reply"] = { status: 204 }): FakeHandler => ({
+  method: "POST",
+  url: WATERMARKS_UNSET_URL,
+  reply,
+})
 
 /** `GET` of the video list, answering the videos given: one video, by default the made-up one. */
 export const videoHandler = (...videos: unknown[]): FakeHandler =>
@@ -441,6 +511,9 @@ export async function writeFixture(
     [
       ...(options.handlers ?? []),
       channelHandler(),
+      channelUpdateHandler(),
+      watermarkSetHandler(),
+      watermarkUnsetHandler(),
       videoHandler(),
       updateHandler(),
       thumbnailHandler(),
@@ -488,6 +561,9 @@ export async function writeFixture(
     playlistMove: bound(googleYoutubePlaylistMove, ctx, { playlist: PLAYLIST, item: ITEM, position: 0 }),
     playlistRemove: bound(googleYoutubePlaylistRemove, ctx, { playlist: PLAYLIST, item: ITEM }),
     playlistPrivacy: bound(googleYoutubePrivacySet, ctx, { playlist: PLAYLIST }),
+    channelEdit: bound(googleYoutubeChannelEdit, ctx, {}),
+    watermarkSet: bound(googleYoutubeWatermarkSet, ctx, {}),
+    watermarkRemove: bound(googleYoutubeWatermarkRemove, ctx, {}),
     /** The requests that changed something. */
     writes: () => h.calls().filter((request) => request.method !== "GET"),
     /** What the fake received, as `METHOD url`. */
