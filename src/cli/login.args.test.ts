@@ -28,7 +28,7 @@ describe("login arguments", () => {
 
     expect(run.code).toBe(EXIT_USAGE)
     expect(run.stderr).toContain(
-      "Option --toolsets is required; known toolsets: account, sheets, gmail, drive, comments, run.",
+      "Option --toolsets is required; known toolsets: account, sheets, gmail, drive, comments, run, youtube.",
     )
     expect(await readdir(stateDir)).toEqual([])
   })

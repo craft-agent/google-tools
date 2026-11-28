@@ -49,6 +49,8 @@ export const HOSTS: readonly string[] = [
   "run.googleapis.com",
   "sheets.googleapis.com",
   "www.googleapis.com",
+  "youtube.googleapis.com",
+  "youtubeanalytics.googleapis.com",
 ]
 
 /** The OAuth endpoints. The authorize page is opened by the person and the token and revoke calls take no access token; userinfo accepts a token holding `openid` or `email`, the two being equally narrow. */
