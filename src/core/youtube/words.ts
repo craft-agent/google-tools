@@ -18,6 +18,11 @@ export const YOUTUBE_WORDS = {
   thumbnail: "About to set the thumbnail of {title}",
   from: "From",
   type: "Type",
+  videoUpload: "About to upload {title}",
+  madeForKids: "Made for kids",
+  yes: "yes",
+  no: "no",
+  description: "Description",
 } as const
 
 /** The translations of the YouTube tools' words: their titles, intents, headline templates, fact labels, value templates and text labels. */
@@ -45,5 +50,12 @@ export const YOUTUBE_TRANSLATIONS: Translations = {
     [YOUTUBE_WORDS.thumbnail]: "{title} のサムネイルを設定しようとしています",
     [YOUTUBE_WORDS.from]: "元の場所",
     [YOUTUBE_WORDS.type]: "種類",
+    "Upload YouTube video": "YouTube 動画をアップロードする",
+    "About to upload a YouTube video": "YouTube 動画をアップロードしようとしています",
+    [YOUTUBE_WORDS.videoUpload]: "{title} をアップロードしようとしています",
+    [YOUTUBE_WORDS.madeForKids]: "子ども向け",
+    [YOUTUBE_WORDS.yes]: "はい",
+    [YOUTUBE_WORDS.no]: "なし",
+    [YOUTUBE_WORDS.description]: "説明",
   },
 }

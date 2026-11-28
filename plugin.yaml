@@ -53,6 +53,7 @@ provides_tools:
   - google_youtube_read
   - google_youtube_thumbnail_set
   - google_youtube_video_edit
+  - google_youtube_video_upload
 provides_hooks:
   - pre_tool_call
 config_schema:

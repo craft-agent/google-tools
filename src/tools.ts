@@ -45,6 +45,7 @@ import { googleYoutubePrivacySet } from "./core/youtube/privacy"
 import { googleYoutubeRead } from "./core/youtube/read"
 import { googleYoutubeThumbnailSet } from "./core/youtube/thumbnail"
 import { googleYoutubeVideoEdit } from "./core/youtube/video-edit"
+import { googleYoutubeVideoUpload } from "./core/youtube/video-upload"
 
 /** Every tool spec of the package; entry points register their tools from this list. */
 export const ALL_TOOLS: ToolSpec[] = [
@@ -94,4 +95,5 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleYoutubeVideoEdit,
   googleYoutubePrivacySet,
   googleYoutubeThumbnailSet,
+  googleYoutubeVideoUpload,
 ]
