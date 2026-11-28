@@ -3,6 +3,7 @@ import type { Credential } from "../google/credentials"
 import type { FakeHandler } from "../google/fake-google.testing"
 import { writeTargets } from "../targets"
 import { invoke, type ToolContext, type ToolSpec } from "../tool"
+import { googleYoutubePrivacySet } from "./privacy"
 import {
   CHANNEL,
   CHANNELS_URL,
@@ -118,6 +119,7 @@ export async function writeFixture(options: { handlers?: FakeHandler[]; credenti
   return {
     ...h,
     edit: bound(googleYoutubeVideoEdit, h.ctx, { video: VIDEO }),
+    privacy: bound(googleYoutubePrivacySet, h.ctx, { video: VIDEO }),
     /** The requests that changed something. */
     writes: () => h.calls().filter((request) => request.method !== "GET"),
     /** What the fake received, as `METHOD url`. */
