@@ -43,6 +43,8 @@ import { googleSheetsTabAdd } from "./core/sheets/tab-add"
 import { googleSheetsTransform } from "./core/sheets/transform"
 import { googleYoutubeCaptionAdd } from "./core/youtube/caption-add"
 import { googleYoutubeCaptionUpdate } from "./core/youtube/caption-update"
+import { googleYoutubeCommentModerate } from "./core/youtube/comment-moderate"
+import { googleYoutubeCommentReject } from "./core/youtube/comment-reject"
 import { googleYoutubeCommentReply } from "./core/youtube/comment-reply"
 import { googleYoutubePrivacySet } from "./core/youtube/privacy"
 import { googleYoutubeRead } from "./core/youtube/read"
@@ -102,4 +104,6 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleYoutubeCaptionAdd,
   googleYoutubeCaptionUpdate,
   googleYoutubeCommentReply,
+  googleYoutubeCommentModerate,
+  googleYoutubeCommentReject,
 ]
