@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import type { z } from "zod"
 import type { Credential } from "../google/credentials"
 import type { FakeHandler } from "../google/fake-google.testing"
@@ -10,10 +13,12 @@ import {
   VIDEO,
   VIDEOS_URL,
   YOUTUBE_CREDENTIAL,
+  cleanUp as cleanUpState,
   fixture,
   requestLine,
   respond,
 } from "./read.testing"
+import { googleYoutubeThumbnailSet } from "./thumbnail"
 import { googleYoutubeVideoEdit } from "./video-edit"
 
 /** Fixtures the YouTube write tests share: the read fixtures with a label that may read and write, the label's channel and one of its videos as Google gives them, and the write tools bound to them. */
@@ -26,7 +31,6 @@ export {
   READ_ONLY_CREDENTIAL,
   VIDEO,
   VIDEOS_URL,
-  cleanUp,
   freshTokens,
   refusal,
   requestLine,
@@ -35,6 +39,16 @@ export {
 
 /** The title of the made-up video. */
 export const TITLE = "A made-up video"
+
+/** The address of the thumbnail upload. */
+export const THUMBNAILS_URL = "https://www.googleapis.com/upload/youtube/v3/thumbnails/set"
+
+/** The thumbnails the made-up upload answers with: three sizes, one of them with no size given. */
+const THUMBNAILS = {
+  default: { url: "https://i.ytimg.test/default.jpg", width: 120, height: 90 },
+  medium: { url: "https://i.ytimg.test/mqdefault.jpg", width: 320, height: 180 },
+  high: { url: "https://i.ytimg.test/hqdefault.jpg" },
+}
 
 type Parts = { snippet?: Record<string, unknown>; status?: Record<string, unknown>; localizations?: unknown }
 
@@ -91,6 +105,21 @@ export const updateHandler = (reply: FakeHandler["reply"] = (request) => ({ json
   reply,
 })
 
+/** `POST` of the thumbnail upload, answering `reply`; by default one thumbnail of each size Google makes. */
+export const thumbnailHandler = (reply: FakeHandler["reply"] = { json: { items: [THUMBNAILS] } }): FakeHandler => ({
+  method: "POST",
+  url: THUMBNAILS_URL,
+  reply,
+})
+
+const madeDirs: string[] = []
+
+/** Removes the fixtures' state and the upload directories they made. */
+export async function cleanUp(): Promise<void> {
+  await cleanUpState()
+  for (const dir of madeDirs.splice(0)) await rm(dir, { recursive: true, force: true })
+}
+
 /** A tool bound to a fixture's context: its call, its prompt and its targets. */
 function bound<I extends z.ZodObject<any>, O extends z.ZodObject<any>>(
   spec: ToolSpec<I, O>,
@@ -111,15 +140,37 @@ function bound<I extends z.ZodObject<any>, O extends z.ZodObject<any>>(
  * `writableVideo()`) and an update that echoes its body, then `handlers` first,
  * so a test can answer otherwise; the write tools are bound to them for `VIDEO`.
  */
-export async function writeFixture(options: { handlers?: FakeHandler[]; credential?: Credential | null } = {}) {
+export async function writeFixture(
+  options: {
+    handlers?: FakeHandler[]
+    credential?: Credential | null
+    /** The files of the upload directory `upload_dirs` names (name to content). */
+    files?: Record<string, string | Uint8Array>
+    /** What `upload_dirs` names, given the upload directory; default that directory. */
+    uploadDirs?: (uploadDir: string) => string[]
+    /** The package's other settings (`encrypt_dirs`), given the upload directory. */
+    settings?: (uploadDir: string) => Record<string, readonly string[]>
+  } = {},
+) {
   const h = await fixture(
-    [...(options.handlers ?? []), channelHandler(), videoHandler(), updateHandler()],
+    [...(options.handlers ?? []), channelHandler(), videoHandler(), updateHandler(), thumbnailHandler()],
     options.credential === undefined ? YOUTUBE_CREDENTIAL : options.credential,
   )
+  const uploadDir = join(await realpath(await mkdtemp(join(tmpdir(), "youtube-upload-"))), "outbox")
+  madeDirs.push(uploadDir)
+  await mkdir(uploadDir)
+  for (const [name, content] of Object.entries(options.files ?? {})) await writeFile(join(uploadDir, name), content)
+  const ctx = {
+    ...h.ctx,
+    options: { upload_dirs: options.uploadDirs?.(uploadDir) ?? [uploadDir], ...options.settings?.(uploadDir) },
+  }
   return {
     ...h,
-    edit: bound(googleYoutubeVideoEdit, h.ctx, { video: VIDEO }),
-    privacy: bound(googleYoutubePrivacySet, h.ctx, { video: VIDEO }),
+    ctx,
+    uploadDir,
+    edit: bound(googleYoutubeVideoEdit, ctx, { video: VIDEO }),
+    privacy: bound(googleYoutubePrivacySet, ctx, { video: VIDEO }),
+    thumbnail: bound(googleYoutubeThumbnailSet, ctx, { video: VIDEO }),
     /** The requests that changed something. */
     writes: () => h.calls().filter((request) => request.method !== "GET"),
     /** What the fake received, as `METHOD url`. */
