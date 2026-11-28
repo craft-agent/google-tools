@@ -185,6 +185,8 @@ export const YOUTUBE_TRANSLATIONS: Translations = {
     [YOUTUBE_WORDS.makePlaylistPublic]: "再生リスト {title} を公開しようとしています",
     [YOUTUBE_WORDS.makePlaylistUnlisted]: "再生リスト {title} を限定公開にしようとしています",
     [YOUTUBE_WORDS.makePlaylistPrivate]: "再生リスト {title} を非公開にしようとしています",
+    "Edit YouTube channel": "YouTube チャンネルを編集する",
+    "About to edit a YouTube channel's settings": "YouTube チャンネルの設定を編集しようとしています",
     [YOUTUBE_WORDS.channelEdit]: "チャンネル {title} を編集しようとしています",
     [YOUTUBE_WORDS.watermarkSet]: "チャンネル {channel} の透かしを設定しようとしています",
     [YOUTUBE_WORDS.watermarkRemove]: "チャンネル {channel} の透かしを削除しようとしています",

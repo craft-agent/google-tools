@@ -43,6 +43,7 @@ import { googleSheetsTabAdd } from "./core/sheets/tab-add"
 import { googleSheetsTransform } from "./core/sheets/transform"
 import { googleYoutubeCaptionAdd } from "./core/youtube/caption-add"
 import { googleYoutubeCaptionUpdate } from "./core/youtube/caption-update"
+import { googleYoutubeChannelEdit } from "./core/youtube/channel-edit"
 import { googleYoutubeCommentModerate } from "./core/youtube/comment-moderate"
 import { googleYoutubeCommentReject } from "./core/youtube/comment-reject"
 import { googleYoutubeCommentReply } from "./core/youtube/comment-reply"
@@ -116,4 +117,5 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleYoutubePlaylistAdd,
   googleYoutubePlaylistMove,
   googleYoutubePlaylistRemove,
+  googleYoutubeChannelEdit,
 ]
