@@ -5,7 +5,7 @@ import type { z } from "zod"
 import type { Credential } from "../google/credentials"
 import type { FakeHandler } from "../google/fake-google.testing"
 import { writeTargets } from "../targets"
-import { invoke, type ToolContext, type ToolSpec } from "../tool"
+import { invoke, type ToolContext, type ToolOptions, type ToolSpec } from "../tool"
 import { googleYoutubePrivacySet } from "./privacy"
 import {
   CHANNEL,
@@ -148,8 +148,8 @@ export async function writeFixture(
     files?: Record<string, string | Uint8Array>
     /** What `upload_dirs` names, given the upload directory; default that directory. */
     uploadDirs?: (uploadDir: string) => string[]
-    /** The package's other settings (`encrypt_dirs`), given the upload directory. */
-    settings?: (uploadDir: string) => Record<string, readonly string[]>
+    /** The package's other settings (`encrypt_dirs`, `youtube_upload_max_gib`), given the upload directory. */
+    settings?: (uploadDir: string) => ToolOptions
   } = {},
 ) {
   const h = await fixture(
