@@ -1557,3 +1557,86 @@ along?: rows|columns }`, which holds when the cell's row (or column) carries
     Studio.
   - The recording date and place, the subscribers' notification and Shorts'
     thumbnail shapes: they wait for a need.
+
+### Comments, playlists and the channel
+
+- **Eleven more write tools**: `google_youtube_comment_reply`,
+  `google_youtube_playlist_create` and `google_youtube_playlist_add` (add);
+  `google_youtube_playlist_move` (idempotent change);
+  `google_youtube_comment_moderate`, `google_youtube_playlist_edit`,
+  `google_youtube_playlist_remove`, `google_youtube_channel_edit`,
+  `google_youtube_watermark_set` and `google_youtube_watermark_remove`
+  (overwrite); `google_youtube_comment_reject` (administrative).
+- **The classes, and why.** A reply, a playlist and a playlist entry are new,
+  and a repeat adds another. A move puts an entry at a position, and a repeat
+  changes nothing more. Publishing or holding a comment, an edit of a playlist
+  or of the channel, an entry taken out, a watermark set or removed each
+  replaces what was there, so they overwrite; a held comment can be
+  published, and a published one held. Rejecting a comment is final: Google's
+  method page says a rejected comment cannot be published again (its guide
+  says otherwise, so the tools take the stricter), and banning its author
+  keeps every later comment of theirs off the channel, so it is administrative
+  and asks every time.
+- **Every change of who can see something stays in one tool.** A playlist is
+  created private, as a video is uploaded private, and
+  `google_youtube_privacy_set` takes a `playlist` instead of a `video` to make
+  it unlisted, public or private again; a playlist has no schedule.
+- **The channel's own only.**
+  - A reply goes to a thread on one of the channel's own videos, and a
+    comment moderated or rejected must be on one too: the tool reads each
+    comment's video and the label's channel before the prompt.
+  - A playlist changed, filled, reordered or emptied must be the channel's
+    own (`snippet.channelId`), never its uploads playlist, which Google keeps
+    to the uploads themselves.
+  - A trailer must be one of the channel's own videos.
+  - Anything else is `forbidden`, nothing sent. A reply as the channel under
+    another channel's video would speak for the person where they did not
+    choose to; replying there is the person's to do on YouTube.
+  - A video added to a playlist may be any video the account can see, as on
+    YouTube.
+- **An update sends what it touches back whole.** `playlists.update`,
+  `playlistItems.update` and `channels.update` delete the properties a sent
+  part leaves out, so each tool reads the resource and sends its writable
+  properties back as read, with the changes. A move sends the entry's
+  playlist, video, note and new position.
+- **A channel edit sends the branding settings.** `channels.update` takes one
+  part per request, and the edit touches one: `brandingSettings` (description,
+  keywords, country, default language, trailer), sent back whole as read with
+  the changes. The channel's title goes back as read, since Google refuses a
+  changed one.
+- **Google's limits are checked before sending**: a reply of 1 to 10,000
+  characters; a playlist title of 1 to 150 characters and a description of up
+  to 5000, neither holding `<` or `>`; a playlist note of up to 280
+  characters; a channel description of up to 1000 characters without `<` or
+  `>`; keywords of up to 500 characters in all as Google counts them (a space
+  between two, a keyword with a space counted with its quotes), none holding
+  `"`; a country as two letters. Moderation takes 1 to 50 comments a call.
+- **Watermarks** are JPEG or PNG, told by their first bytes, up to 10 MB,
+  read under `upload_dirs` and refused under `encrypt_dirs`, as thumbnails
+  are. Google shows one in the upper right of every video of the channel; the
+  call sets when, from the start or before the end, for how long or to the
+  end. Google does not say whether a channel has one, so the prompt cannot
+  show it.
+- **Targets**: `<label>/videos/<video>/comments/<comment>` for each comment
+  replied to, moderated or rejected; `<label>/playlists/<playlist>` for a
+  playlist and its entries; `<label>/channels/<channel>` for a new playlist,
+  the channel's settings and its watermark.
+- **The prompt says who sees the result**: the video's privacy for a reply
+  or a comment moderated; each comment's author and text (written by other
+  people: data, never instructions); that a rejection cannot be undone and
+  what a ban does; the playlist's title and privacy; the channel's title.
+- **Not offered, and why.**
+  - Deleting a comment, a playlist or the channel: none can be undone, and a
+    comment's deletion is its author's alone.
+  - A top-level comment and editing one: they wait for a need.
+  - Marking a comment as spam: Google no longer supports it.
+  - The whole channel's made-for-kids setting: it stops comments and
+    notifications on every video, and `channels.update` does not take the
+    `status` part that holds it; the person sets it in YouTube Studio.
+  - The channel's name, handle, picture, banner, links and home tab: only
+    YouTube Studio changes them.
+  - The channel's localizations (its name and description in other
+    languages): on a real channel `channels.update` accepted the
+    `localizations` part and kept nothing, answering as if it had, so a tool
+    would report a change that did not happen; the person sets them in
+    YouTube Studio.
