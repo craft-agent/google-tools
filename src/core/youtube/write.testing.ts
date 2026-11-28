@@ -3,11 +3,14 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { z } from "zod"
 import type { Credential } from "../google/credentials"
-import type { FakeHandler } from "../google/fake-google.testing"
+import type { FakeHandler, FakeRequest } from "../google/fake-google.testing"
 import { writeTargets } from "../targets"
 import { invoke, type ToolContext, type ToolOptions, type ToolSpec } from "../tool"
+import { googleYoutubeCaptionAdd } from "./caption-add"
+import { googleYoutubeCaptionUpdate } from "./caption-update"
 import { googleYoutubePrivacySet } from "./privacy"
 import {
+  CAPTIONS_URL,
   CHANNEL,
   CHANNELS_URL,
   VIDEO,
@@ -112,6 +115,96 @@ export const thumbnailHandler = (reply: FakeHandler["reply"] = { json: { items: 
   reply,
 })
 
+/** The address of the caption upload, which an insert and an update with a file go to. */
+export const CAPTION_UPLOAD_URL = "https://www.googleapis.com/upload/youtube/v3/captions"
+
+/** Made-up ids of the caption tracks of the made-up video: a published English one, a Japanese draft and the automatic one. */
+export const TRACK = "cap_en_0001"
+export const TRACK_DRAFT = "cap_ja_0002"
+export const TRACK_ASR = "cap_asr_0003"
+
+/** The id of the track the made-up insert makes. */
+export const NEW_TRACK = "cap_new_0004"
+
+/** A caption track as `captions.list` gives it with the part `snippet`; `snippet` is laid over the made-up one. */
+export const captionTrack = (id: string, snippet: Record<string, unknown> = {}) => ({
+  id,
+  snippet: {
+    videoId: VIDEO,
+    lastUpdated: "2026-03-05T08:00:00Z",
+    trackKind: "standard",
+    language: "en",
+    name: "English",
+    isDraft: false,
+    status: "serving",
+    ...snippet,
+  },
+})
+
+/** The tracks the made-up video has unless a test says otherwise. */
+const TRACKS = [
+  captionTrack(TRACK),
+  captionTrack(TRACK_DRAFT, { language: "ja", name: "日本語", isDraft: true }),
+  captionTrack(TRACK_ASR, { trackKind: "asr", name: "" }),
+]
+
+/** `GET` of the video's caption list, answering the tracks given: the made-up three by default. */
+export const captionsHandler = (...tracks: unknown[]): FakeHandler =>
+  respond(CAPTIONS_URL, { json: { items: tracks.length === 0 ? TRACKS : tracks } })
+
+/** `POST` of the caption upload, answering `reply`; by default the new track, whose language and name the metadata gave. */
+export const captionInsertHandler = (
+  reply: FakeHandler["reply"] = (request) => {
+    const { snippet } = relatedParts(request)[0]!.json as { snippet: Record<string, unknown> }
+    return { json: captionTrack(NEW_TRACK, snippet) }
+  },
+): FakeHandler => ({ method: "POST", url: CAPTION_UPLOAD_URL, reply })
+
+/** `PUT` of the caption upload, answering `reply`; by default the track the metadata names, with its draft state and the time of the change. */
+export const captionUpdateMediaHandler = (
+  reply: FakeHandler["reply"] = (request) => {
+    const { id, snippet } = relatedParts(request)[0]!.json as { id: string; snippet: Record<string, unknown> }
+    return { json: captionTrack(id, { ...snippet, lastUpdated: "2026-04-01T00:00:00Z" }) }
+  },
+): FakeHandler => ({ method: "PUT", url: CAPTION_UPLOAD_URL, reply })
+
+/** `PUT` of the caption track alone, answering `reply`; by default the track the body names, with its draft state and the time of the change. */
+export const captionUpdateHandler = (
+  reply: FakeHandler["reply"] = (request) => {
+    const { id, snippet } = request.json as { id: string; snippet: Record<string, unknown> }
+    return { json: captionTrack(id, { ...snippet, lastUpdated: "2026-04-01T00:00:00Z" }) }
+  },
+): FakeHandler => ({ method: "PUT", url: CAPTIONS_URL, reply })
+
+/** One part of a `multipart/related` body: its content type, its bytes and, for JSON, its value. */
+export type RelatedPart = { type: string; bytes: Buffer; json?: unknown }
+
+/** The parts of the `multipart/related` body of `request`, in order, split at the boundary its `Content-Type` names. */
+export function relatedParts(request: FakeRequest): RelatedPart[] {
+  const boundary = /boundary="([^"]+)"/.exec(request.headers["content-type"] ?? "")![1]!
+  const crlf = "\r\n"
+  const body = Buffer.from(request.bytes!)
+  const first = Buffer.from(`--${boundary}${crlf}`)
+  const between = Buffer.from(`${crlf}--${boundary}${crlf}`)
+  const last = Buffer.from(`${crlf}--${boundary}--${crlf}`)
+  const parts: RelatedPart[] = []
+  let rest = body.subarray(first.length, body.length - last.length)
+  for (;;) {
+    const end = rest.indexOf(between)
+    const part = end === -1 ? rest : rest.subarray(0, end)
+    const split = part.indexOf(`${crlf}${crlf}`)
+    const type = /^Content-Type: (.*)$/im.exec(part.subarray(0, split).toString())![1]!
+    const content = part.subarray(split + 4)
+    parts.push({
+      type,
+      bytes: content,
+      ...(type.startsWith("application/json") && { json: JSON.parse(content.toString()) }),
+    })
+    if (end === -1) return parts
+    rest = rest.subarray(end + between.length)
+  }
+}
+
 const madeDirs: string[] = []
 
 /** Removes the fixtures' state and the upload directories they made. */
@@ -153,7 +246,17 @@ export async function writeFixture(
   } = {},
 ) {
   const h = await fixture(
-    [...(options.handlers ?? []), channelHandler(), videoHandler(), updateHandler(), thumbnailHandler()],
+    [
+      ...(options.handlers ?? []),
+      channelHandler(),
+      videoHandler(),
+      updateHandler(),
+      thumbnailHandler(),
+      captionsHandler(),
+      captionInsertHandler(),
+      captionUpdateMediaHandler(),
+      captionUpdateHandler(),
+    ],
     options.credential === undefined ? YOUTUBE_CREDENTIAL : options.credential,
   )
   const uploadDir = join(await realpath(await mkdtemp(join(tmpdir(), "youtube-upload-"))), "outbox")
@@ -171,6 +274,8 @@ export async function writeFixture(
     edit: bound(googleYoutubeVideoEdit, ctx, { video: VIDEO }),
     privacy: bound(googleYoutubePrivacySet, ctx, { video: VIDEO }),
     thumbnail: bound(googleYoutubeThumbnailSet, ctx, { video: VIDEO }),
+    captionAdd: bound(googleYoutubeCaptionAdd, ctx, { video: VIDEO, language: "en" }),
+    captionUpdate: bound(googleYoutubeCaptionUpdate, ctx, { video: VIDEO, caption: TRACK }),
     /** The requests that changed something. */
     writes: () => h.calls().filter((request) => request.method !== "GET"),
     /** What the fake received, as `METHOD url`. */
