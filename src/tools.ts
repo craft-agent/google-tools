@@ -41,6 +41,8 @@ import { googleSheetsRead } from "./core/sheets/read"
 import { googleSheetsRestructure } from "./core/sheets/restructure"
 import { googleSheetsTabAdd } from "./core/sheets/tab-add"
 import { googleSheetsTransform } from "./core/sheets/transform"
+import { googleYoutubeCaptionAdd } from "./core/youtube/caption-add"
+import { googleYoutubeCaptionUpdate } from "./core/youtube/caption-update"
 import { googleYoutubePrivacySet } from "./core/youtube/privacy"
 import { googleYoutubeRead } from "./core/youtube/read"
 import { googleYoutubeThumbnailSet } from "./core/youtube/thumbnail"
@@ -96,4 +98,6 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleYoutubePrivacySet,
   googleYoutubeThumbnailSet,
   googleYoutubeVideoUpload,
+  googleYoutubeCaptionAdd,
+  googleYoutubeCaptionUpdate,
 ]
