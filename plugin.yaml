@@ -51,6 +51,7 @@ provides_tools:
   - google_sheets_transform
   - google_youtube_privacy_set
   - google_youtube_read
+  - google_youtube_thumbnail_set
   - google_youtube_video_edit
 provides_hooks:
   - pre_tool_call

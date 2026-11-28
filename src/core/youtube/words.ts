@@ -15,6 +15,9 @@ export const YOUTUBE_WORDS = {
   makeUnlisted: "About to make {title} unlisted",
   makePrivate: "About to make {title} private",
   schedule: "About to schedule {title} for {time}",
+  thumbnail: "About to set the thumbnail of {title}",
+  from: "From",
+  type: "Type",
 } as const
 
 /** The translations of the YouTube tools' words: their titles, intents, headline templates, fact labels, value templates and text labels. */
@@ -37,5 +40,10 @@ export const YOUTUBE_TRANSLATIONS: Translations = {
     [YOUTUBE_WORDS.makeUnlisted]: "{title} を限定公開にしようとしています",
     [YOUTUBE_WORDS.makePrivate]: "{title} を非公開にしようとしています",
     [YOUTUBE_WORDS.schedule]: "{title} を {time} に公開予約しようとしています",
+    "Set YouTube thumbnail": "YouTube サムネイルを設定する",
+    "About to set a YouTube video's thumbnail": "YouTube 動画のサムネイルを設定しようとしています",
+    [YOUTUBE_WORDS.thumbnail]: "{title} のサムネイルを設定しようとしています",
+    [YOUTUBE_WORDS.from]: "元の場所",
+    [YOUTUBE_WORDS.type]: "種類",
   },
 }

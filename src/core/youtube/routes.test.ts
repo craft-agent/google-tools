@@ -4,12 +4,14 @@ import { YOUTUBE_ROUTES } from "./routes"
 import { YOUTUBE_ANALYTICS_READ_SCOPE, YOUTUBE_READ_SCOPE, YOUTUBE_SCOPE } from "./scopes"
 
 const DATA_HOSTS = ["youtube.googleapis.com", "youtubeanalytics.googleapis.com"]
+const UPLOAD_HOST = "www.googleapis.com"
 
 describe("YOUTUBE_ROUTES", () => {
-  test("every route is a GET on a YouTube host, but the video update", () => {
+  test("every route is a GET on a YouTube host, but the video update and the thumbnail upload", () => {
+    const writes: Record<string, "PUT" | "POST"> = { videosUpdate: "PUT", thumbnailsSet: "POST" }
     for (const [name, route] of Object.entries(YOUTUBE_ROUTES)) {
-      expect(route.method).toBe(name === "videosUpdate" ? "PUT" : "GET")
-      expect(DATA_HOSTS).toContain(route.host)
+      expect(route.method).toBe(writes[name] ?? "GET")
+      expect(name === "thumbnailsSet" ? [UPLOAD_HOST] : DATA_HOSTS).toContain(route.host)
       expect(HOSTS).toContain(route.host)
     }
   })
@@ -26,8 +28,8 @@ describe("YOUTUBE_ROUTES", () => {
     }
   })
 
-  test("comments, caption tracks and the video update take force-ssl alone", () => {
-    for (const name of ["commentThreads", "comments", "captions", "videosUpdate"] as const) {
+  test("comments, caption tracks, the video update and the thumbnail upload take force-ssl alone", () => {
+    for (const name of ["commentThreads", "comments", "captions", "videosUpdate", "thumbnailsSet"] as const) {
       expect(YOUTUBE_ROUTES[name].scopes).toEqual([YOUTUBE_SCOPE])
     }
   })
@@ -42,6 +44,9 @@ describe("YOUTUBE_ROUTES", () => {
     )
     expect(routeUrl(YOUTUBE_ROUTES.videosUpdate, {}, { part: "snippet,status" }).toString()).toBe(
       "https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2Cstatus",
+    )
+    expect(routeUrl(YOUTUBE_ROUTES.thumbnailsSet, {}, { videoId: "abc", uploadType: "media" }).toString()).toBe(
+      "https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=abc&uploadType=media",
     )
     expect(routeUrl(YOUTUBE_ROUTES.playlistItems).toString()).toBe(
       "https://youtube.googleapis.com/youtube/v3/playlistItems",

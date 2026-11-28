@@ -43,6 +43,7 @@ import { googleSheetsTabAdd } from "./core/sheets/tab-add"
 import { googleSheetsTransform } from "./core/sheets/transform"
 import { googleYoutubePrivacySet } from "./core/youtube/privacy"
 import { googleYoutubeRead } from "./core/youtube/read"
+import { googleYoutubeThumbnailSet } from "./core/youtube/thumbnail"
 import { googleYoutubeVideoEdit } from "./core/youtube/video-edit"
 
 /** Every tool spec of the package; entry points register their tools from this list. */
@@ -92,4 +93,5 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleYoutubeRead,
   googleYoutubeVideoEdit,
   googleYoutubePrivacySet,
+  googleYoutubeThumbnailSet,
 ]
