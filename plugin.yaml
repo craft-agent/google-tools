@@ -51,11 +51,22 @@ provides_tools:
   - google_sheets_transform
   - google_youtube_caption_add
   - google_youtube_caption_update
+  - google_youtube_channel_edit
+  - google_youtube_comment_moderate
+  - google_youtube_comment_reject
+  - google_youtube_comment_reply
+  - google_youtube_playlist_add
+  - google_youtube_playlist_create
+  - google_youtube_playlist_edit
+  - google_youtube_playlist_move
+  - google_youtube_playlist_remove
   - google_youtube_privacy_set
   - google_youtube_read
   - google_youtube_thumbnail_set
   - google_youtube_video_edit
   - google_youtube_video_upload
+  - google_youtube_watermark_remove
+  - google_youtube_watermark_set
 provides_hooks:
   - pre_tool_call
 config_schema:

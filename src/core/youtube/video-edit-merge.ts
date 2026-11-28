@@ -1,5 +1,6 @@
 import { canonicalJson } from "../pin"
-import { checkedTagTotal, refusal } from "./checks"
+import { checkedTagTotal } from "./checks"
+import { mergedLocalizations } from "./localizations"
 import type { ChangeValue, YoutubeVideoEditArgs } from "./video-edit-args"
 import type { VideoSnippet, VideoState, VideoStatus } from "./video-state"
 
@@ -110,35 +111,6 @@ function mergedStatus(read: VideoStatus, args: YoutubeVideoEditArgs): VideoStatu
   return status
 }
 
-/**
- * The localizations after the edit: the video's, without the languages
- * removed, each language set merged over its entry. A language the video lacks
- * needs a title, and the video needs a default language once it has any
- * localization, which `defaultLanguage` is.
- */
-function mergedLocalizations(
-  state: VideoState,
-  args: YoutubeVideoEditArgs,
-  defaultLanguage: string | undefined,
-): VideoState["localizations"] {
-  if (args.set_localizations === undefined && args.remove_localizations === undefined) return state.localizations
-  const localizations = { ...state.localizations }
-  for (const language of args.remove_localizations ?? []) delete localizations[language]
-  for (const [language, set] of Object.entries(args.set_localizations ?? {})) {
-    const existing = state.localizations[language]
-    if (existing === undefined && set.title === undefined) {
-      throw refusal(`The localization \`${language}\` is new, so it needs a \`title\``)
-    }
-    localizations[language] = { ...existing, ...set }
-  }
-  if (Object.keys(localizations).length > 0 && defaultLanguage === undefined) {
-    throw refusal(
-      "Localizations need the video's default language, and the video has none; give `default_language` in the same call",
-    )
-  }
-  return localizations
-}
-
 /** The video as it is once `args` are applied to `state`; `invalid_argument` for a change Google's rules refuse. */
 export function mergedState(state: VideoState, args: YoutubeVideoEditArgs): VideoState {
   const snippet = mergedSnippet(state.snippet, args)
@@ -146,13 +118,13 @@ export function mergedState(state: VideoState, args: YoutubeVideoEditArgs): Vide
     id: state.id,
     snippet,
     status: mergedStatus(state.status, args),
-    localizations: mergedLocalizations(state, args, snippet.defaultLanguage),
+    localizations: mergedLocalizations(state.localizations, args, snippet.defaultLanguage, "video"),
   }
 }
 
-/** A language's localization as a result reads it, `null` for none. */
-function localizationValue(state: VideoState, language: string): ChangeValue {
-  const found = state.localizations[language]
+/** A language's localization among `localizations` as a result reads it, `null` for none. */
+export function localizationValue(localizations: VideoState["localizations"], language: string): ChangeValue {
+  const found = localizations[language]
   return found === undefined ? null : { title: found.title ?? "", description: found.description ?? "" }
 }
 
@@ -168,8 +140,8 @@ export function changedFields(before: VideoState, after: VideoState, args: Youtu
   const localized = [...languages].map((language): FieldChange => ({
     part: "localizations",
     field: `localization ${language}`,
-    before: localizationValue(before, language),
-    after: localizationValue(after, language),
+    before: localizationValue(before.localizations, language),
+    after: localizationValue(after.localizations, language),
   }))
   return [...named, ...localized].filter((change) => canonicalJson(change.before) !== canonicalJson(change.after))
 }
@@ -182,5 +154,7 @@ export function reportedChanges(changes: readonly FieldChange[], state: VideoSta
 /** The value of the field named `field` (an argument's name, or `localization <language>`) in `state`. */
 function valueOf(field: string, state: VideoState): ChangeValue {
   const named = FIELDS.find((candidate) => candidate.name === field)
-  return named === undefined ? localizationValue(state, field.slice("localization ".length)) : named.read(state)
+  return named === undefined
+    ? localizationValue(state.localizations, field.slice("localization ".length))
+    : named.read(state)
 }

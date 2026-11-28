@@ -91,6 +91,17 @@ describe("the YouTube writes", () => {
     ["google_youtube_video_upload", "add", false, false],
     ["google_youtube_caption_add", "add", false, false],
     ["google_youtube_caption_update", "overwrite", true, true],
+    ["google_youtube_comment_reply", "add", false, false],
+    ["google_youtube_comment_moderate", "overwrite", true, true],
+    ["google_youtube_comment_reject", "administrative", true, false],
+    ["google_youtube_playlist_create", "add", false, false],
+    ["google_youtube_playlist_edit", "overwrite", true, true],
+    ["google_youtube_playlist_add", "add", false, false],
+    ["google_youtube_playlist_move", "idempotent", false, true],
+    ["google_youtube_playlist_remove", "overwrite", true, true],
+    ["google_youtube_channel_edit", "overwrite", true, true],
+    ["google_youtube_watermark_set", "overwrite", true, true],
+    ["google_youtube_watermark_remove", "overwrite", true, true],
   ] as const
 
   test.each(WRITES)(

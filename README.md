@@ -384,27 +384,46 @@ means a service, job, revision, execution or operation does not exist.
 
 Off by default. Reads public YouTube, a video's caption tracks and, for the
 channel a label was logged in for, its own uploads and analytics; edits,
-publishes, uploads and captions the channel's own videos.
+publishes, uploads and captions the channel's own videos; answers and
+moderates their comments; manages the channel's playlists; and changes the
+channel's settings and watermark.
 
-| Tool                            | What it does                                                                                                                                                                                                                                                                                   | Class          |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| `google_youtube_read`           | `search`: videos, channels or playlists. `videos`, `channels`: by id, handle or address. `playlist`: a playlist and its items. `comments`: a video's threads or a thread's replies. `my_channel`, `my_videos`: the channel and its uploads. `captions`: a video's tracks. `analytics`: reports | read           |
-| `google_youtube_video_upload`   | uploads a video from `upload_dirs`, always private                                                                                                                                                                                                                                             | add            |
-| `google_youtube_caption_add`    | adds a caption track from a file that carries its timings                                                                                                                                                                                                                                      | add            |
-| `google_youtube_video_edit`     | changes a video's title, description, tags, category, languages, license, embedding, flags and localizations                                                                                                                                                                                   | overwrite      |
-| `google_youtube_thumbnail_set`  | sets a video's custom thumbnail from a JPEG or PNG                                                                                                                                                                                                                                             | overwrite      |
-| `google_youtube_caption_update` | replaces a caption track's file or changes whether it is a draft                                                                                                                                                                                                                               | overwrite      |
-| `google_youtube_privacy_set`    | makes a video private, unlisted or public, or schedules it                                                                                                                                                                                                                                     | administrative |
+| Tool                              | What it does                                                                                                                                                                                                                                                                                   | Class          |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| `google_youtube_read`             | `search`: videos, channels or playlists. `videos`, `channels`: by id, handle or address. `playlist`: a playlist and its items. `comments`: a video's threads or a thread's replies. `my_channel`, `my_videos`: the channel and its uploads. `captions`: a video's tracks. `analytics`: reports | read           |
+| `google_youtube_video_upload`     | uploads a video from `upload_dirs`, always private                                                                                                                                                                                                                                             | add            |
+| `google_youtube_caption_add`      | adds a caption track from a file that carries its timings                                                                                                                                                                                                                                      | add            |
+| `google_youtube_video_edit`       | changes a video's title, description, tags, category, languages, license, embedding, flags and localizations                                                                                                                                                                                   | overwrite      |
+| `google_youtube_thumbnail_set`    | sets a video's custom thumbnail from a JPEG or PNG                                                                                                                                                                                                                                             | overwrite      |
+| `google_youtube_caption_update`   | replaces a caption track's file or changes whether it is a draft                                                                                                                                                                                                                               | overwrite      |
+| `google_youtube_privacy_set`      | makes a video or a playlist private, unlisted or public, or schedules a video                                                                                                                                                                                                                  | administrative |
+| `google_youtube_comment_reply`    | replies as the channel to a comment thread on one of its videos                                                                                                                                                                                                                                | add            |
+| `google_youtube_comment_moderate` | publishes comments or holds them for review                                                                                                                                                                                                                                                    | overwrite      |
+| `google_youtube_comment_reject`   | rejects comments for good, optionally banning their authors                                                                                                                                                                                                                                    | administrative |
+| `google_youtube_playlist_create`  | creates a playlist, always private                                                                                                                                                                                                                                                             | add            |
+| `google_youtube_playlist_edit`    | changes a playlist's title, description, default language and localizations                                                                                                                                                                                                                    | overwrite      |
+| `google_youtube_playlist_add`     | adds a video to a playlist, at a position and with a note                                                                                                                                                                                                                                      | add            |
+| `google_youtube_playlist_move`    | moves a playlist entry to another position                                                                                                                                                                                                                                                     | idempotent     |
+| `google_youtube_playlist_remove`  | takes an entry out of a playlist; the video stays                                                                                                                                                                                                                                              | overwrite      |
+| `google_youtube_channel_edit`     | changes the channel's description, keywords, country, default language and trailer                                                                                                                                                                                                             | overwrite      |
+| `google_youtube_watermark_set`    | sets the watermark shown on every video from a JPEG or PNG                                                                                                                                                                                                                                     | overwrite      |
+| `google_youtube_watermark_remove` | removes the watermark                                                                                                                                                                                                                                                                          | overwrite      |
 
-The writes reach the channel's own videos only; another channel's video is
-refused before anything is sent. An upload always goes up private, since
+The writes reach the channel's own videos, comments, playlists and trailer
+only; another channel's is refused before anything is sent, and so is the
+uploads playlist. Replies go only to threads on the channel's own videos, and
+a rejected comment cannot be published again. A playlist is created private
+and, like a video, made unlisted or public with `google_youtube_privacy_set`. An upload always goes up private, since
 Google makes a video sent without a privacy public, and
 `google_youtube_privacy_set` publishes it once the person has seen it; it is
 administrative, so it asks every time. Files come from `upload_dirs` and are
 pinned to what the prompt showed; a file under `encrypt_dirs` is refused,
 since YouTube would hold only ciphertext. A video is at most 2 GiB, or what
 `youtube_upload_max_gib` sets; uploads come from a bucket of their own, 100 a
-day by default. Nothing deletes a video or a caption track.
+day by default. Nothing deletes a video, a caption track, a comment or a
+playlist; marking spam and the whole channel's made-for-kids setting are not
+offered, and the channel's name, handle, picture, banner, links, home tab
+and translations stay with YouTube Studio.
 
 The toolset asks for `youtube.readonly` and `yt-analytics.readonly` to read
 and `youtube.force-ssl` to write. Google serves comments and caption tracks

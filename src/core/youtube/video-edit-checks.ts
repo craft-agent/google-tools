@@ -1,33 +1,10 @@
 import { checkedCategory, checkedDescription, checkedLanguage, checkedTags, checkedTitle, refusal } from "./checks"
-import { MAX_LOCALIZATIONS, type YoutubeVideoEditArgs } from "./video-edit-args"
+import { checkLocalizations } from "./localizations"
+import type { YoutubeVideoEditArgs } from "./video-edit-args"
 
 /** The tags both added and removed, if any. */
 const contradiction = (added: readonly string[], removed: readonly string[]) =>
   added.find((tag) => removed.includes(tag))
-
-/** The localizations an edit sets and removes, each language checked as a language tag and given something to set. */
-function checkLocalizations(args: YoutubeVideoEditArgs): void {
-  const sets = Object.entries(args.set_localizations ?? {})
-  if (sets.length > MAX_LOCALIZATIONS) {
-    throw refusal(`\`set_localizations\` names ${sets.length} languages, at most ${MAX_LOCALIZATIONS} are allowed`)
-  }
-  for (const [language, set] of sets) {
-    checkedLanguage(language, "A `set_localizations` language")
-    if (set.title === undefined && set.description === undefined) {
-      throw refusal(`The localization \`${language}\` sets neither a title nor a description`)
-    }
-    if (set.title !== undefined) checkedTitle(set.title, `The title of the \`${language}\` localization`)
-    if (set.description !== undefined) {
-      checkedDescription(set.description, `The description of the \`${language}\` localization`)
-    }
-  }
-  for (const language of args.remove_localizations ?? []) {
-    checkedLanguage(language, "A `remove_localizations` language")
-    if (args.set_localizations !== undefined && Object.hasOwn(args.set_localizations, language)) {
-      throw refusal(`The language \`${language}\` is both set and removed`)
-    }
-  }
-}
 
 /**
  * Refuses, before anything is read or sent, an edit that changes nothing, adds
@@ -49,5 +26,5 @@ export function checkEdit(args: YoutubeVideoEditArgs): void {
   if (args.add_tags !== undefined) checkedTags(args.add_tags)
   const both = contradiction(args.add_tags ?? [], args.remove_tags ?? [])
   if (both !== undefined) throw refusal(`The tag ${JSON.stringify(both)} is both added and removed`)
-  checkLocalizations(args)
+  checkLocalizations(args, { title: checkedTitle, description: checkedDescription })
 }

@@ -2,11 +2,11 @@ import { parseReply } from "../sheets/reply"
 import { defineTool, type ToolContext } from "../tool"
 import { MAX_DESCRIPTION_BYTES, MAX_TAG_CHARACTERS, MAX_TITLE_CHARACTERS } from "./checks"
 import { youtubeError } from "./errors"
+import { MAX_LOCALIZATIONS } from "./localizations"
 import { YOUTUBE_ROUTES } from "./routes"
 import { YOUTUBE_TOOLSET } from "./scopes"
 import { videoTargets } from "./target"
 import {
-  MAX_LOCALIZATIONS,
   youtubeVideoEditInput,
   youtubeVideoEditOutput,
   type YoutubeVideoEditArgs,

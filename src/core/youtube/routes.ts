@@ -63,6 +63,56 @@ export const YOUTUBE_ROUTES = {
   },
   /** `captions.update` with no file, which changes the track's draft state alone. */
   captionsUpdate: { method: "PUT", host: YOUTUBE_HOST, path: `${DATA_PATH}/captions`, scopes: FORCE_SSL_SCOPES },
+  /** `comments.insert`, which here makes a reply to a thread. */
+  commentsInsert: { method: "POST", host: YOUTUBE_HOST, path: `${DATA_PATH}/comments`, scopes: FORCE_SSL_SCOPES },
+  /** `comments.setModerationStatus`, which publishes, holds or rejects the comments of the `id` query and answers 204. */
+  commentsModerate: {
+    method: "POST",
+    host: YOUTUBE_HOST,
+    path: `${DATA_PATH}/comments/setModerationStatus`,
+    scopes: FORCE_SSL_SCOPES,
+  },
+  /** `playlists.insert`, which makes a playlist. */
+  playlistsInsert: { method: "POST", host: YOUTUBE_HOST, path: `${DATA_PATH}/playlists`, scopes: FORCE_SSL_SCOPES },
+  /** `playlists.update`, which replaces every writable property of the parts it is sent. */
+  playlistsUpdate: { method: "PUT", host: YOUTUBE_HOST, path: `${DATA_PATH}/playlists`, scopes: FORCE_SSL_SCOPES },
+  /** `playlistItems.insert`, which adds a video to a playlist. */
+  playlistItemsInsert: {
+    method: "POST",
+    host: YOUTUBE_HOST,
+    path: `${DATA_PATH}/playlistItems`,
+    scopes: FORCE_SSL_SCOPES,
+  },
+  /** `playlistItems.update`, which replaces every writable property of the parts it is sent. */
+  playlistItemsUpdate: {
+    method: "PUT",
+    host: YOUTUBE_HOST,
+    path: `${DATA_PATH}/playlistItems`,
+    scopes: FORCE_SSL_SCOPES,
+  },
+  /** `playlistItems.delete`, which takes the entry of the `id` query out of its playlist and answers 204. */
+  playlistItemsDelete: {
+    method: "DELETE",
+    host: YOUTUBE_HOST,
+    path: `${DATA_PATH}/playlistItems`,
+    scopes: FORCE_SSL_SCOPES,
+  },
+  /** `channels.update`, which replaces every writable property of the one part it is sent. */
+  channelsUpdate: { method: "PUT", host: YOUTUBE_HOST, path: `${DATA_PATH}/channels`, scopes: FORCE_SSL_SCOPES },
+  /** `watermarks.set` as a multipart upload: the timing and the image in one request. */
+  watermarksSet: {
+    method: "POST",
+    host: UPLOAD_HOST,
+    path: `/upload${DATA_PATH}/watermarks/set`,
+    scopes: FORCE_SSL_SCOPES,
+  },
+  /** `watermarks.unset`, which takes the watermark of the `channelId` query off the channel and answers 204. */
+  watermarksUnset: {
+    method: "POST",
+    host: YOUTUBE_HOST,
+    path: `${DATA_PATH}/watermarks/unset`,
+    scopes: FORCE_SSL_SCOPES,
+  },
   /** `reports.query` of the Analytics API. */
   analytics: {
     method: "GET",

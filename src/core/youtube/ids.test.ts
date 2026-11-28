@@ -1,5 +1,16 @@
 import { describe, expect, test } from "bun:test"
-import { captionId, channelRef, commentId, pageToken, playlistId, videoId } from "./ids"
+import {
+  captionId,
+  channelRef,
+  commentId,
+  commentIds,
+  pageToken,
+  playlistId,
+  playlistItemId,
+  threadId,
+  threadOf,
+  videoId,
+} from "./ids"
 
 const VIDEO = "dQw4w9WgXcQ"
 const CHANNEL = "UC" + "a".repeat(22)
@@ -93,6 +104,37 @@ describe("commentId", () => {
   })
 })
 
+describe("threadId", () => {
+  test("a comment id without a `.` is a thread's", () => {
+    expect(threadId("Ugx_abc-1")).toBe("Ugx_abc-1")
+  })
+
+  test("a reply's id is refused, saying where replies go", () => {
+    expect(() => threadId("Ugx_abc.def-1")).toThrow(/is a reply's id; a reply goes to the thread's top-level comment/)
+  })
+
+  test("a value that is no comment id is refused as one", () => {
+    expect(() => threadId("a/b")).toThrow(/is not a comment id/)
+  })
+})
+
+describe("commentIds", () => {
+  test("keeps the first of each repeated id, in order", () => {
+    expect(commentIds(["b", "a.1", "b", "a.1", "c"])).toEqual(["b", "a.1", "c"])
+  })
+
+  test("refuses the first value that is no comment id", () => {
+    expect(() => commentIds(["a", "b/c", "d e"])).toThrow(/"b\/c" is not a comment id/)
+  })
+})
+
+describe("threadOf", () => {
+  test("is a reply's id up to its `.`, and a thread's id as it is", () => {
+    expect(threadOf("Ugx_abc.def-1")).toBe("Ugx_abc")
+    expect(threadOf("Ugx_abc")).toBe("Ugx_abc")
+  })
+})
+
 describe("captionId", () => {
   test.each(["AUieDaZ_made-up.id=", "a".repeat(8), "a".repeat(300)])("%s is a caption track id", (id) => {
     expect(captionId(id)).toBe(id)
@@ -100,6 +142,19 @@ describe("captionId", () => {
 
   test.each(["", "short", "a".repeat(301), "AUieDaZ made", "AUieDaZ/made"])("%p is refused", (id) => {
     expect(() => captionId(id)).toThrow(/is not a caption track id/)
+  })
+})
+
+describe("playlistItemId", () => {
+  test.each(["UExtYWRlVXBFbnRyeTAwMDE", "a".repeat(10), "a".repeat(200), "UEx_made=up.id-1"])(
+    "%s is a playlist item id",
+    (id) => {
+      expect(playlistItemId(id)).toBe(id)
+    },
+  )
+
+  test.each(["", "short", "a".repeat(201), "UExtYWRl VXBF", "UExtYWRl/VXBF"])("%p is refused", (id) => {
+    expect(() => playlistItemId(id)).toThrow(/is not a playlist item id/)
   })
 })
 

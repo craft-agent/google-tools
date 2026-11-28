@@ -2,26 +2,41 @@ import type { GoogleSession } from "../google/session"
 import { requireRuntime } from "../runtime"
 import type { ToolContext } from "../tool"
 import { checkedPublishAt, refusal } from "./checks"
-import { videoId } from "./ids"
+import { playlistId, videoId } from "./ids"
+import { ownPlaylist } from "./own-playlist"
 import { ownVideo } from "./own-video"
+import type { PlaylistState, PlaylistStatus } from "./playlist-state"
 import type { PrivacyState, VideoPrivacy, YoutubePrivacyArgs } from "./privacy-args"
 import { YOUTUBE_ROUTES } from "./routes"
 import type { VideoState, VideoStatus } from "./video-state"
 import { youtubeWriteSession } from "./write-session"
 
-/** The privacy and schedule a call asks for: a schedule keeps the video private until it. */
+/** The privacy and schedule a call asks for: a schedule keeps the video private until it; a playlist has none. */
 export type PrivacyAsk = { privacy: VideoPrivacy; publish_at: string | null }
 
-/** A privacy change planned: the privacy and schedule asked for, the video as it was and the status sent. */
-export type PrivacyPlan = {
+/** What every privacy change planned holds: the session, the privacy and schedule asked for, and the body sent. */
+type PrivacyPlanBase = {
   session: GoogleSession
-  video: string
-  /** The video as it was read. */
-  before: VideoState
   requested: PrivacyAsk
-  /** The body of the update: the video's id and its whole `status`. */
+  /** The body of the update: the id and the whole `status` (and, for a playlist, the whole `snippet`). */
   body: Record<string, unknown>
 }
+
+/** A privacy change of a video planned: the video as it was read. */
+export type VideoPrivacyPlan = PrivacyPlanBase & {
+  kind: "video"
+  video: string
+  before: VideoState
+}
+
+/** A privacy change of a playlist planned: the playlist as it was read. */
+export type PlaylistPrivacyPlan = PrivacyPlanBase & {
+  kind: "playlist"
+  playlist: string
+  before: PlaylistState
+}
+
+export type PrivacyPlan = VideoPrivacyPlan | PlaylistPrivacyPlan
 
 /** Whether two schedules are the same instant, or both none. */
 export function sameSchedule(a: string | null, b: string | null): boolean {
@@ -74,14 +89,39 @@ function alreadyThere({ privacy, publish_at }: PrivacyAsk): string {
 }
 
 /**
- * Checks the arguments (one of the two, a schedule in the future) and the
- * label's scopes before anything is read, then reads the label's channel and
- * the video, which must be the channel's own, and plans the update of its
- * whole `status`. A request that leaves the privacy and schedule as they are
- * is `invalid_argument`.
+ * What a privacy change is of: exactly one of `video` and `playlist`, as the
+ * call gave it; any other call is `invalid_argument`.
  */
-export async function planPrivacy(args: YoutubePrivacyArgs, ctx: ToolContext): Promise<PrivacyPlan> {
-  const video = videoId(args.video)
+export function privacySubject({
+  video,
+  playlist,
+}: Pick<YoutubePrivacyArgs, "video" | "playlist">): { video: string } | { playlist: string } {
+  if (video !== undefined && playlist === undefined) return { video }
+  if (playlist !== undefined && video === undefined) return { playlist }
+  throw refusal("Give exactly one of `video` and `playlist`")
+}
+
+/** The privacy `args` ask for a playlist, which has no schedule: `privacy` alone. */
+function requestedPlaylistPrivacy({ privacy, publish_at: time }: YoutubePrivacyArgs): PrivacyAsk {
+  if (time !== undefined) throw refusal("`publish_at` schedules a video; a playlist has no schedule")
+  if (privacy === undefined) throw refusal("Give `privacy` to change a playlist")
+  return { privacy, publish_at: null }
+}
+
+/** The playlist's whole `status` as read, with the privacy asked for; the podcast status goes only when it is `enabled` or `disabled`, which Google takes, not `unspecified`. */
+function playlistStatusBody({ podcastStatus }: PlaylistStatus, { privacy }: PrivacyAsk) {
+  return {
+    privacyStatus: privacy,
+    ...((podcastStatus === "enabled" || podcastStatus === "disabled") && { podcastStatus }),
+  }
+}
+
+/**
+ * Reads the label's channel and the video, which must be the channel's own,
+ * and plans the update of its whole `status`. A request that leaves the
+ * privacy and schedule as they are is `invalid_argument`.
+ */
+async function planVideoPrivacy(video: string, args: YoutubePrivacyArgs, ctx: ToolContext): Promise<VideoPrivacyPlan> {
   const requested = requestedPrivacy(args, () => requireRuntime(ctx, "YouTube writes").runtime.now())
   const session = await youtubeWriteSession(ctx, args.account, YOUTUBE_ROUTES.videosUpdate)
   const { state } = await ownVideo(session, video)
@@ -89,5 +129,54 @@ export async function planPrivacy(args: YoutubePrivacyArgs, ctx: ToolContext): P
   if (now.privacy === requested.privacy && sameSchedule(now.publish_at, requested.publish_at)) {
     throw refusal(alreadyThere(requested))
   }
-  return { session, video, before: state, requested, body: { id: video, status: statusBody(state.status, requested) } }
+  return {
+    kind: "video",
+    session,
+    video,
+    before: state,
+    requested,
+    body: { id: video, status: statusBody(state.status, requested) },
+  }
+}
+
+/**
+ * Reads the label's channel and the playlist, which must be the channel's own,
+ * and plans the update of its `status` with its whole `snippet` as read, which
+ * Google requires with a title whenever a snippet is sent. A request that
+ * leaves the privacy as it is is `invalid_argument`.
+ */
+async function planPlaylistPrivacy(
+  playlist: string,
+  args: YoutubePrivacyArgs,
+  ctx: ToolContext,
+): Promise<PlaylistPrivacyPlan> {
+  const requested = requestedPlaylistPrivacy(args)
+  const session = await youtubeWriteSession(ctx, args.account, YOUTUBE_ROUTES.playlistsUpdate)
+  const { state } = await ownPlaylist(session, playlist)
+  if (state.status.privacyStatus === requested.privacy) {
+    throw refusal(`The playlist is already ${requested.privacy}`)
+  }
+  return {
+    kind: "playlist",
+    session,
+    playlist,
+    before: state,
+    requested,
+    body: { id: playlist, snippet: state.snippet, status: playlistStatusBody(state.status, requested) },
+  }
+}
+
+/**
+ * Checks the arguments (one of `video` and `playlist`; for a video one of
+ * `privacy` and a schedule in the future, for a playlist `privacy` alone) and
+ * the label's scopes before anything is read, then reads the label's channel
+ * and the video or playlist, which must be the channel's own, and plans the
+ * update. A request that leaves the privacy (and schedule) as they are is
+ * `invalid_argument`.
+ */
+export async function planPrivacy(args: YoutubePrivacyArgs, ctx: ToolContext): Promise<PrivacyPlan> {
+  const subject = privacySubject(args)
+  return "playlist" in subject
+    ? planPlaylistPrivacy(playlistId(subject.playlist), args, ctx)
+    : planVideoPrivacy(videoId(subject.video), args, ctx)
 }

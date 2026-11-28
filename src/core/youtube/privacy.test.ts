@@ -45,6 +45,7 @@ describe("google_youtube_privacy_set", () => {
     })
     expect(result).toEqual({
       video_id: VIDEO,
+      playlist_id: null,
       url: `https://www.youtube.com/watch?v=${VIDEO}`,
       requested: { privacy: "private", publish_at: "2026-12-24T00:00:00Z" },
       before: { privacy: "private", publish_at: null },

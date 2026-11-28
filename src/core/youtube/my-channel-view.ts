@@ -1,14 +1,32 @@
 import { z } from "zod"
+import { keywordsOf } from "./channel-keywords"
 import { channelReply } from "./channel-view"
 import { channelUrl, clippedDescription, descriptionShape, toCount } from "./views"
 
-/** Matches a keyword as Google writes the list: a phrase in double quotes, or a word. */
-const KEYWORD_PATTERN = /"([^"]*)"|(\S+)/g
+/** The `channel` object of a channel's branding settings: the properties an edit changes or reads, and every other one as Google gave it. */
+const brandingChannelReply = z.looseObject({
+  title: z.string().optional(),
+  description: z.string().optional(),
+  keywords: z.string().optional(),
+  country: z.string().optional(),
+  defaultLanguage: z.string().optional(),
+  unsubscribedTrailer: z.string().optional(),
+})
 
-/** A channel as `channels.list` gives it with `mine=true` and the parts `snippet`, `brandingSettings`, `status`, `statistics` and `contentDetails`; every field not read here is left out of the parse. */
+/** A channel's branding settings, whole: the `channel` object above and every other part (images, hints) as Google gave it, since an update deletes what it leaves out. */
+export const brandingReply = z.looseObject({ channel: brandingChannelReply.optional() })
+
+export type BrandingSettings = z.output<typeof brandingReply>
+
+/**
+ * A channel as `channels.list` gives it with `mine=true` and the parts
+ * `snippet`, `brandingSettings`, `status`, `statistics` and
+ * `contentDetails`; every field not read here is left out of the parse, but the
+ * branding settings, which an edit sends back whole.
+ */
 export const myChannelReply = channelReply.extend({
   snippet: channelReply.shape.snippet.unwrap().extend({ defaultLanguage: z.string().optional() }).optional(),
-  brandingSettings: z.object({ channel: z.object({ keywords: z.string().optional() }).optional() }).optional(),
+  brandingSettings: brandingReply.optional(),
   status: z
     .object({
       privacyStatus: z.string().optional(),
@@ -47,14 +65,6 @@ export const myChannelSchema = z.object({
 })
 
 export type MyChannelView = z.output<typeof myChannelSchema>
-
-/** The words of the keywords text of a channel, a quoted phrase as one. */
-export function keywordsOf(text: string | undefined): string[] {
-  return [...(text ?? "").matchAll(KEYWORD_PATTERN)].flatMap((match) => {
-    const keyword = (match[1] ?? match[2] ?? "").trim()
-    return keyword === "" ? [] : [keyword]
-  })
-}
 
 /** What the read returns of the label's own channel. */
 export function myChannelView(channel: z.output<typeof myChannelReply>): MyChannelView {

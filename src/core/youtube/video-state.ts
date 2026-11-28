@@ -6,7 +6,8 @@ import { canonicalJson } from "../pin"
 /** The parts of a video the writes read and send: `videos.update` takes each whole. */
 export const VIDEO_STATE_PARTS = "snippet,status,localizations"
 
-const localizationReply = z.object({ title: z.string().optional(), description: z.string().optional() })
+/** A localization as Google gives it: a title and a description in one language. */
+export const localizationReply = z.object({ title: z.string().optional(), description: z.string().optional() })
 
 /**
  * A video as `videos.list` and `videos.update` give it with the parts

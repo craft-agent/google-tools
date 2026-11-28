@@ -43,11 +43,22 @@ import { googleSheetsTabAdd } from "./core/sheets/tab-add"
 import { googleSheetsTransform } from "./core/sheets/transform"
 import { googleYoutubeCaptionAdd } from "./core/youtube/caption-add"
 import { googleYoutubeCaptionUpdate } from "./core/youtube/caption-update"
+import { googleYoutubeChannelEdit } from "./core/youtube/channel-edit"
+import { googleYoutubeCommentModerate } from "./core/youtube/comment-moderate"
+import { googleYoutubeCommentReject } from "./core/youtube/comment-reject"
+import { googleYoutubeCommentReply } from "./core/youtube/comment-reply"
+import { googleYoutubePlaylistAdd } from "./core/youtube/playlist-add"
+import { googleYoutubePlaylistCreate } from "./core/youtube/playlist-create"
+import { googleYoutubePlaylistEdit } from "./core/youtube/playlist-edit"
+import { googleYoutubePlaylistMove } from "./core/youtube/playlist-move"
+import { googleYoutubePlaylistRemove } from "./core/youtube/playlist-remove"
 import { googleYoutubePrivacySet } from "./core/youtube/privacy"
 import { googleYoutubeRead } from "./core/youtube/read"
 import { googleYoutubeThumbnailSet } from "./core/youtube/thumbnail"
 import { googleYoutubeVideoEdit } from "./core/youtube/video-edit"
 import { googleYoutubeVideoUpload } from "./core/youtube/video-upload"
+import { googleYoutubeWatermarkRemove } from "./core/youtube/watermark-remove"
+import { googleYoutubeWatermarkSet } from "./core/youtube/watermark-set"
 
 /** Every tool spec of the package; entry points register their tools from this list. */
 export const ALL_TOOLS: ToolSpec[] = [
@@ -100,4 +111,15 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleYoutubeVideoUpload,
   googleYoutubeCaptionAdd,
   googleYoutubeCaptionUpdate,
+  googleYoutubeCommentReply,
+  googleYoutubeCommentModerate,
+  googleYoutubeCommentReject,
+  googleYoutubePlaylistCreate,
+  googleYoutubePlaylistEdit,
+  googleYoutubePlaylistAdd,
+  googleYoutubePlaylistMove,
+  googleYoutubePlaylistRemove,
+  googleYoutubeChannelEdit,
+  googleYoutubeWatermarkSet,
+  googleYoutubeWatermarkRemove,
 ]

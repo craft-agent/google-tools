@@ -8,30 +8,56 @@ import { writeTargets } from "../targets"
 import { invoke, type ToolContext, type ToolOptions, type ToolSpec } from "../tool"
 import { googleYoutubeCaptionAdd } from "./caption-add"
 import { googleYoutubeCaptionUpdate } from "./caption-update"
+import { googleYoutubeChannelEdit } from "./channel-edit"
+import { googleYoutubeCommentModerate } from "./comment-moderate"
+import { googleYoutubeCommentReject } from "./comment-reject"
+import { googleYoutubeCommentReply } from "./comment-reply"
+import { googleYoutubePlaylistAdd } from "./playlist-add"
+import { googleYoutubePlaylistCreate } from "./playlist-create"
+import { googleYoutubePlaylistEdit } from "./playlist-edit"
+import { googleYoutubePlaylistMove } from "./playlist-move"
+import { googleYoutubePlaylistRemove } from "./playlist-remove"
 import { googleYoutubePrivacySet } from "./privacy"
 import {
   CAPTIONS_URL,
   CHANNEL,
   CHANNELS_URL,
+  COMMENTS_URL,
+  COMMENT_THREADS_URL,
+  PLAYLIST,
+  PLAYLISTS_URL,
+  PLAYLIST_ITEMS_URL,
+  THREAD,
+  UPLOADS,
   VIDEO,
   VIDEOS_URL,
   YOUTUBE_CREDENTIAL,
   cleanUp as cleanUpState,
+  commentResource,
   fixture,
   requestLine,
   respond,
 } from "./read.testing"
 import { googleYoutubeThumbnailSet } from "./thumbnail"
 import { googleYoutubeVideoEdit } from "./video-edit"
+import { googleYoutubeWatermarkRemove } from "./watermark-remove"
+import { googleYoutubeWatermarkSet } from "./watermark-set"
 
 /** Fixtures the YouTube write tests share: the read fixtures with a label that may read and write, the label's channel and one of its videos as Google gives them, and the write tools bound to them. */
 
 export {
   CHANNEL,
   CHANNELS_URL,
+  COMMENTS_URL,
+  COMMENT_THREADS_URL,
   OTHER_CHANNEL,
   OTHER_VIDEO,
+  PLAYLIST,
+  PLAYLISTS_URL,
+  PLAYLIST_ITEMS_URL,
   READ_ONLY_CREDENTIAL,
+  THREAD,
+  UPLOADS,
   VIDEO,
   VIDEOS_URL,
   freshTokens,
@@ -91,8 +117,76 @@ export const writableVideo = (parts: Parts = {}) => ({
   localizations: parts.localizations ?? { ja: { title: "作り話の動画", description: "作り話です。" } },
 })
 
-/** `GET` of the label's own channel, answering `id`. */
-export const channelHandler = (id = CHANNEL): FakeHandler => respond(CHANNELS_URL, { json: { items: [{ id }] } })
+/** The name of the made-up channel. */
+export const CHANNEL_TITLE = "Made-up channel"
+
+type ChannelParts = { snippet?: Record<string, unknown>; channel?: Record<string, unknown>; localizations?: unknown }
+
+/**
+ * The label's own channel as `channels.list` gives it with `snippet`,
+ * `brandingSettings`, `localizations` and `contentDetails`: Japanese, in
+ * Japan, with three keywords (one of them a phrase), a trailer, an English
+ * localization, and branding properties the tools never change (a banner and
+ * hints). The snippet and the branding settings' `channel` are laid over their
+ * own, so a property given as `undefined` is left out.
+ */
+export const writableChannel = (parts: ChannelParts = {}) => ({
+  id: CHANNEL,
+  snippet: {
+    title: CHANNEL_TITLE,
+    description: "A channel about made-up things.",
+    country: "JP",
+    defaultLanguage: "ja",
+    ...parts.snippet,
+  },
+  brandingSettings: {
+    channel: {
+      title: CHANNEL_TITLE,
+      description: "A channel about made-up things.",
+      keywords: 'made "made up" things',
+      country: "JP",
+      defaultLanguage: "ja",
+      unsubscribedTrailer: VIDEO,
+      trackingAnalyticsAccountId: "UA-0000000-1",
+      ...parts.channel,
+    },
+    image: { bannerExternalUrl: "https://yt3.ggpht.test/banner" },
+    hints: [{ property: "channel.banner.mobile.medium.url", value: "https://yt3.ggpht.test/mobile" }],
+  },
+  localizations: parts.localizations ?? { en: { title: CHANNEL_TITLE, description: "About made-up things." } },
+  contentDetails: { relatedPlaylists: { uploads: UPLOADS } },
+})
+
+/** `GET` of the label's own channel, answering the made-up one as `id`, or `channel` as it is. */
+export const channelHandler = (id = CHANNEL, channel: unknown = { ...writableChannel(), id }): FakeHandler =>
+  respond(CHANNELS_URL, { json: { items: [channel] } })
+
+/** `PUT` of a channel part, answering `reply`; by default Google reports exactly the body it was sent. */
+export const channelUpdateHandler = (
+  reply: FakeHandler["reply"] = (request) => ({ json: request.json }),
+): FakeHandler => ({
+  method: "PUT",
+  url: CHANNELS_URL,
+  reply,
+})
+
+/** The addresses of the watermark upload and of its removal. */
+export const WATERMARKS_SET_URL = "https://www.googleapis.com/upload/youtube/v3/watermarks/set"
+export const WATERMARKS_UNSET_URL = "https://youtube.googleapis.com/youtube/v3/watermarks/unset"
+
+/** `POST` of the watermark upload, answering `reply`; by default Google's 204. */
+export const watermarkSetHandler = (reply: FakeHandler["reply"] = { status: 204 }): FakeHandler => ({
+  method: "POST",
+  url: WATERMARKS_SET_URL,
+  reply,
+})
+
+/** `POST` of the watermark removal, answering `reply`; by default Google's 204. */
+export const watermarkUnsetHandler = (reply: FakeHandler["reply"] = { status: 204 }): FakeHandler => ({
+  method: "POST",
+  url: WATERMARKS_UNSET_URL,
+  reply,
+})
 
 /** `GET` of the video list, answering the videos given: one video, by default the made-up one. */
 export const videoHandler = (...videos: unknown[]): FakeHandler =>
@@ -176,6 +270,174 @@ export const captionUpdateHandler = (
   },
 ): FakeHandler => ({ method: "PUT", url: CAPTIONS_URL, reply })
 
+/** Made-up ids of the comments the made-up video has: a second thread, and a reply to the first. */
+export const OTHER_THREAD = "UgxMadeUpThreadId0002"
+export const REPLY = `${THREAD}.MadeUpReplyId01`
+
+/** The id of the reply the made-up insert makes. */
+export const NEW_REPLY = `${THREAD}.MadeUpNewReply`
+
+/** A thread's top-level comment as `comments.list` gives it: on the made-up video, published, by someone else. */
+export const topComment = (id = THREAD, text = "A made-up comment.", snippet: Record<string, unknown> = {}) =>
+  commentResource(id, text, { videoId: VIDEO, moderationStatus: "published", ...snippet })
+
+/** A reply as `comments.list` gives it: no video, but its thread. */
+export const replyComment = (id = REPLY, text = "A made-up reply.", snippet: Record<string, unknown> = {}) =>
+  commentResource(id, text, { parentId: THREAD, authorDisplayName: "Another one", ...snippet })
+
+/** A thread as `commentThreads.list` gives it with `snippet`; `snippet` is laid over the made-up one. */
+export const threadResource = (id = THREAD, text = "A made-up comment.", snippet: Record<string, unknown> = {}) => ({
+  id,
+  snippet: { videoId: VIDEO, canReply: true, topLevelComment: topComment(id, text), totalReplyCount: 0, ...snippet },
+})
+
+/** What a handler for a list by `id` answers: the items whose ids the request asks for. */
+const askedFor = (items: { id: string }[]) => (request: FakeRequest) => ({
+  json: { items: items.filter(({ id }) => request.url.searchParams.get("id")?.split(",").includes(id)) },
+})
+
+/** `GET` of the comment list, answering the comments given among those asked for by `id`: the made-up thread's comment, another thread's and a reply by default. */
+export const commentsHandler = (...comments: { id: string }[]): FakeHandler =>
+  respond(
+    COMMENTS_URL,
+    askedFor(
+      comments.length === 0 ? [topComment(), topComment(OTHER_THREAD, "Another comment."), replyComment()] : comments,
+    ),
+  )
+
+/** `GET` of the thread list, answering the threads given among those asked for by `id`: the two made-up ones by default. */
+export const threadsHandler = (...threads: { id: string }[]): FakeHandler =>
+  respond(
+    COMMENT_THREADS_URL,
+    askedFor(threads.length === 0 ? [threadResource(), threadResource(OTHER_THREAD, "Another comment.")] : threads),
+  )
+
+/** `POST` of a reply, answering `reply`; by default a reply with the parent and the text the body gave. */
+export const commentInsertHandler = (
+  reply: FakeHandler["reply"] = (request) => {
+    const { snippet } = request.json as { snippet: { parentId: string; textOriginal: string } }
+    return {
+      json: commentResource(`${snippet.parentId}.MadeUpNewReply`, snippet.textOriginal, { parentId: snippet.parentId }),
+    }
+  },
+): FakeHandler => ({ method: "POST", url: COMMENTS_URL, reply })
+
+/** `POST` of a moderation, answering `reply`; by default Google's 204. */
+export const moderateHandler = (reply: FakeHandler["reply"] = { status: 204 }): FakeHandler => ({
+  method: "POST",
+  url: `${COMMENTS_URL}/setModerationStatus`,
+  reply,
+})
+
+/** The title of the made-up playlist. */
+export const PLAYLIST_TITLE = "A made-up playlist"
+
+/** Made-up ids: another channel's playlist, the playlist the made-up insert makes, and the entries of the made-up playlist. */
+export const OTHER_PLAYLIST = "PLotherMadeUpPlay01"
+export const NEW_PLAYLIST = "PLnewMadeUpPlaylist1"
+export const ITEM = "UExtYWRlVXBFbnRyeTAwMDE"
+export const OTHER_ITEM = "UExtYWRlVXBFbnRyeTAwMDI"
+
+/** The id of the entry the made-up insert makes. */
+export const NEW_ITEM = "UExtYWRlVXBFbnRyeU5ldw"
+
+type PlaylistParts = Parts & { contentDetails?: Record<string, unknown> }
+
+/**
+ * The made-up playlist as `playlists.list` gives it with `snippet`, `status`,
+ * `localizations` and `contentDetails`: public, of the label's channel, English,
+ * with a Japanese localization, three entries and fields the tools never send.
+ * Each part in `parts` is laid over its own.
+ */
+export const writablePlaylist = (parts: PlaylistParts = {}) => ({
+  id: PLAYLIST,
+  snippet: {
+    publishedAt: "2026-03-01T09:00:00Z",
+    channelId: CHANNEL,
+    title: PLAYLIST_TITLE,
+    description: "About made-up things.",
+    thumbnails: { default: { url: "https://i.ytimg.test/default.jpg" } },
+    channelTitle: "Made-up channel",
+    defaultLanguage: "en",
+    ...parts.snippet,
+  },
+  status: { privacyStatus: "public", podcastStatus: "unspecified", ...parts.status },
+  localizations: parts.localizations ?? { ja: { title: "作り話の再生リスト", description: "作り話です。" } },
+  contentDetails: { itemCount: 3, ...parts.contentDetails },
+})
+
+/**
+ * An entry of the made-up playlist as `playlistItems.list` gives it with
+ * `snippet` and `contentDetails`: the made-up video at position 1, with no
+ * note. Each part in `parts` is laid over its own.
+ */
+export const playlistEntry = (
+  id = ITEM,
+  parts: { snippet?: Record<string, unknown>; contentDetails?: Record<string, unknown> } = {},
+) => ({
+  id,
+  snippet: {
+    playlistId: PLAYLIST,
+    position: 1,
+    title: TITLE,
+    resourceId: { kind: "youtube#video", videoId: VIDEO },
+    channelId: CHANNEL,
+    ...parts.snippet,
+  },
+  contentDetails: { videoId: VIDEO, ...parts.contentDetails },
+})
+
+/** `GET` of the playlist list, answering the playlists given: the made-up one by default. */
+export const playlistHandler = (...playlists: unknown[]): FakeHandler =>
+  respond(PLAYLISTS_URL, { json: { items: playlists.length === 0 ? [writablePlaylist()] : playlists } })
+
+/** `GET` of the playlist entry list, answering the entries given among those asked for by `id`: the made-up one and another by default. */
+export const playlistEntriesHandler = (...entries: { id: string }[]): FakeHandler =>
+  respond(
+    PLAYLIST_ITEMS_URL,
+    askedFor(
+      entries.length === 0 ? [playlistEntry(), playlistEntry(OTHER_ITEM, { snippet: { position: 2 } })] : entries,
+    ),
+  )
+
+/** `POST` of a playlist, answering `reply`; by default the playlist the body gave, made with the id `NEW_PLAYLIST`. */
+export const playlistInsertHandler = (
+  reply: FakeHandler["reply"] = (request) => ({ json: { id: NEW_PLAYLIST, ...(request.json as object) } }),
+): FakeHandler => ({ method: "POST", url: PLAYLISTS_URL, reply })
+
+/** `PUT` of a playlist, answering `reply`; by default Google reports exactly the body it was sent. */
+export const playlistUpdateHandler = (
+  reply: FakeHandler["reply"] = (request) => ({ json: request.json }),
+): FakeHandler => ({
+  method: "PUT",
+  url: PLAYLISTS_URL,
+  reply,
+})
+
+/** `POST` of an entry, answering `reply`; by default the entry the body gave, made with the id `NEW_ITEM` and, with no position given, at position 3. */
+export const entryInsertHandler = (
+  reply: FakeHandler["reply"] = (request) => {
+    const { snippet } = request.json as { snippet: Record<string, unknown> }
+    return { json: { id: NEW_ITEM, snippet: { position: 3, ...snippet } } }
+  },
+): FakeHandler => ({ method: "POST", url: PLAYLIST_ITEMS_URL, reply })
+
+/** `PUT` of an entry, answering `reply`; by default Google reports exactly the body it was sent. */
+export const entryUpdateHandler = (
+  reply: FakeHandler["reply"] = (request) => ({ json: request.json }),
+): FakeHandler => ({
+  method: "PUT",
+  url: PLAYLIST_ITEMS_URL,
+  reply,
+})
+
+/** `DELETE` of an entry, answering `reply`; by default Google's 204. */
+export const entryDeleteHandler = (reply: FakeHandler["reply"] = { status: 204 }): FakeHandler => ({
+  method: "DELETE",
+  url: PLAYLIST_ITEMS_URL,
+  reply,
+})
+
 /** One part of a `multipart/related` body: its content type, its bytes and, for JSON, its value. */
 export type RelatedPart = { type: string; bytes: Buffer; json?: unknown }
 
@@ -249,6 +511,9 @@ export async function writeFixture(
     [
       ...(options.handlers ?? []),
       channelHandler(),
+      channelUpdateHandler(),
+      watermarkSetHandler(),
+      watermarkUnsetHandler(),
       videoHandler(),
       updateHandler(),
       thumbnailHandler(),
@@ -256,6 +521,17 @@ export async function writeFixture(
       captionInsertHandler(),
       captionUpdateMediaHandler(),
       captionUpdateHandler(),
+      commentsHandler(),
+      threadsHandler(),
+      commentInsertHandler(),
+      moderateHandler(),
+      playlistHandler(),
+      playlistEntriesHandler(),
+      playlistInsertHandler(),
+      playlistUpdateHandler(),
+      entryInsertHandler(),
+      entryUpdateHandler(),
+      entryDeleteHandler(),
     ],
     options.credential === undefined ? YOUTUBE_CREDENTIAL : options.credential,
   )
@@ -276,6 +552,18 @@ export async function writeFixture(
     thumbnail: bound(googleYoutubeThumbnailSet, ctx, { video: VIDEO }),
     captionAdd: bound(googleYoutubeCaptionAdd, ctx, { video: VIDEO, language: "en" }),
     captionUpdate: bound(googleYoutubeCaptionUpdate, ctx, { video: VIDEO, caption: TRACK }),
+    commentReply: bound(googleYoutubeCommentReply, ctx, { thread: THREAD, text: "Thanks for watching!" }),
+    commentModerate: bound(googleYoutubeCommentModerate, ctx, { comments: [THREAD], moderation: "publish" }),
+    commentReject: bound(googleYoutubeCommentReject, ctx, { comments: [THREAD] }),
+    playlistCreate: bound(googleYoutubePlaylistCreate, ctx, { title: "A new playlist" }),
+    playlistEdit: bound(googleYoutubePlaylistEdit, ctx, { playlist: PLAYLIST }),
+    playlistAdd: bound(googleYoutubePlaylistAdd, ctx, { playlist: PLAYLIST, video: VIDEO }),
+    playlistMove: bound(googleYoutubePlaylistMove, ctx, { playlist: PLAYLIST, item: ITEM, position: 0 }),
+    playlistRemove: bound(googleYoutubePlaylistRemove, ctx, { playlist: PLAYLIST, item: ITEM }),
+    playlistPrivacy: bound(googleYoutubePrivacySet, ctx, { playlist: PLAYLIST }),
+    channelEdit: bound(googleYoutubeChannelEdit, ctx, {}),
+    watermarkSet: bound(googleYoutubeWatermarkSet, ctx, {}),
+    watermarkRemove: bound(googleYoutubeWatermarkRemove, ctx, {}),
     /** The requests that changed something. */
     writes: () => h.calls().filter((request) => request.method !== "GET"),
     /** What the fake received, as `METHOD url`. */
