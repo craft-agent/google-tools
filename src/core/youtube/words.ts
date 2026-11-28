@@ -154,6 +154,8 @@ export const YOUTUBE_TRANSLATIONS: Translations = {
     "Edit YouTube playlist": "YouTube 再生リストを編集する",
     "About to edit a YouTube playlist": "YouTube 再生リストを編集しようとしています",
     [YOUTUBE_WORDS.playlistEdit]: "再生リスト {title} を編集しようとしています",
+    "Add to YouTube playlist": "YouTube 再生リストに追加する",
+    "About to add a video to a YouTube playlist": "YouTube 再生リストに動画を追加しようとしています",
     [YOUTUBE_WORDS.playlistAdd]: "{video} を再生リスト {playlist} に追加しようとしています",
     [YOUTUBE_WORDS.playlistMove]: "再生リスト {playlist} 内の {video} を移動しようとしています",
     [YOUTUBE_WORDS.playlistRemove]: "{video} を再生リスト {playlist} から外そうとしています",

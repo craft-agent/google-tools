@@ -46,6 +46,7 @@ import { googleYoutubeCaptionUpdate } from "./core/youtube/caption-update"
 import { googleYoutubeCommentModerate } from "./core/youtube/comment-moderate"
 import { googleYoutubeCommentReject } from "./core/youtube/comment-reject"
 import { googleYoutubeCommentReply } from "./core/youtube/comment-reply"
+import { googleYoutubePlaylistAdd } from "./core/youtube/playlist-add"
 import { googleYoutubePlaylistCreate } from "./core/youtube/playlist-create"
 import { googleYoutubePlaylistEdit } from "./core/youtube/playlist-edit"
 import { googleYoutubePrivacySet } from "./core/youtube/privacy"
@@ -110,4 +111,5 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleYoutubeCommentReject,
   googleYoutubePlaylistCreate,
   googleYoutubePlaylistEdit,
+  googleYoutubePlaylistAdd,
 ]
