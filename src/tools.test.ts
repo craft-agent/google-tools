@@ -83,6 +83,38 @@ describe("the YouTube read", () => {
   })
 })
 
+describe("the YouTube writes", () => {
+  const WRITES = [
+    ["google_youtube_video_edit", "overwrite", true, true],
+    ["google_youtube_privacy_set", "administrative", true, false],
+    ["google_youtube_thumbnail_set", "overwrite", true, true],
+    ["google_youtube_video_upload", "add", false, false],
+    ["google_youtube_caption_add", "add", false, false],
+    ["google_youtube_caption_update", "overwrite", true, true],
+  ] as const
+
+  test.each(WRITES)(
+    "%s is a %s tool of the youtube toolset with the destructive hint %p and the idempotent hint %p",
+    (id, writeClass, destructive, idempotent) => {
+      const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+      expect(spec).toMatchObject({ toolset: "youtube", class: writeClass })
+      expect(annotations(spec)).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: destructive,
+        idempotentHint: idempotent,
+        openWorldHint: true,
+      })
+    },
+  )
+
+  test.each(WRITES)("%s states its intent, describes its call and resolves its targets", (id) => {
+    const spec = ALL_TOOLS.find((candidate) => candidate.id === id)!
+    expect(spec.intent).toStartWith("About to ")
+    expect(spec.describe).toBeDefined()
+    expect(spec.targets).toBeDefined()
+  })
+})
+
 describe("the Cloud Run writes", () => {
   const OVERWRITES = [
     "google_run_service_deploy",

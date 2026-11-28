@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 /** A caption track as `captions.list` gives it with the part `snippet`; every field not read here is left out of the parse. */
-const captionReply = z.object({
+export const captionReply = z.object({
   id: z.string(),
   snippet: z
     .object({

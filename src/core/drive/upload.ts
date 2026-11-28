@@ -1,4 +1,5 @@
 import { isAbortError } from "../errors"
+import { UPLOAD_CHUNK_BYTES } from "../files/resumable-send"
 import { ANY_TARGET } from "../targets"
 import { defineTool } from "../tool"
 import { DRIVE_TOOLSET } from "./scopes"
@@ -11,7 +12,7 @@ import {
 } from "./upload-args"
 import { describeUpload } from "./upload-facts"
 import { planUpload } from "./upload-plan"
-import { UPLOAD_CHUNK_BYTES, sendUpload } from "./upload-send"
+import { sendUpload } from "./upload-send"
 
 /**
  * The Drive upload tool, sending in chunks of `chunkBytes` (a multiple of

@@ -16,6 +16,9 @@ const PLAYLIST_ID_PATTERN = /^[A-Za-z0-9_-]{2,64}$/
 /** A comment id; a reply's id holds a `.`. */
 const COMMENT_ID_PATTERN = /^[A-Za-z0-9_.-]{1,128}$/
 
+/** A caption track id, checked loosely: 8 to 300 letters, digits, `_`, `=`, `.` and `-`. */
+const CAPTION_ID_PATTERN = /^[A-Za-z0-9_=.-]{8,300}$/
+
 /** A page token as Google returns it. */
 const PAGE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{1,256}$/
 
@@ -92,6 +95,12 @@ export function playlistId(value: string): string {
 export function commentId(value: string): string {
   if (COMMENT_ID_PATTERN.test(value)) return value
   throw refusal(value, "is not a comment id.")
+}
+
+/** `value` when it is shaped like a caption track id, as `google_youtube_read` method `captions` gives it, else `invalid_argument`. */
+export function captionId(value: string): string {
+  if (CAPTION_ID_PATTERN.test(value)) return value
+  throw refusal(value, "is not a caption track id (as `google_youtube_read` method `captions` gives it).")
 }
 
 /** `value` when it is a page token, else `invalid_argument`. */

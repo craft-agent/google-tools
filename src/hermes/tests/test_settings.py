@@ -64,6 +64,7 @@ class OptionFlagsTest(unittest.TestCase):
                 "upload_dirs": "paths",
                 "encrypt_dirs": "paths",
                 "age_recipients": "list",
+                "youtube_upload_max_gib": {"type": "number", "integer": True, "min": 1, "max": 256},
             },
         )
 

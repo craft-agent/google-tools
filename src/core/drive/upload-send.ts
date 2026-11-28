@@ -1,8 +1,6 @@
-import { createHash } from "node:crypto"
 import type { FileHandle } from "node:fs/promises"
-import { ToolError } from "../errors"
-import { openUpload, readRange } from "../files/upload"
-import type { ResumableSession } from "../google/resumable"
+import { UPLOAD_CHUNK_BYTES, UPLOAD_TIMEOUT_MS, putFile } from "../files/resumable-send"
+import { openUpload } from "../files/upload"
 import { requireRuntime } from "../runtime"
 import type { ToolContext } from "../tool"
 import { SUPPORTS_ALL_DRIVES, fileReply, sizeOf } from "./file-view"
@@ -11,68 +9,11 @@ import type { DriveUploadResult } from "./upload-args"
 import { withCiphertext } from "./upload-encrypt"
 import { changedFile, uploadOptions, type UploadFile, type UploadPlan } from "./upload-plan"
 
-/** How many bytes one chunk of an upload holds; a multiple of the 256 KiB Drive takes a chunk in. */
-export const UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024
-
-/** How long Google may take to open an upload and to take in each chunk. */
-const UPLOAD_TIMEOUT_MS = 120_000
-
-/** How many times one call sends bytes again because Google took in fewer than were sent. */
-const MAX_RESENDS = 3
-
 /** The fields of the new file the final answer carries. */
 const UPLOADED_FIELDS = "id,name,mimeType,size,parents,webViewLink"
 
 /** The new file as Google answers with it, each field optional since the file exists whatever the answer lacks. */
 const uploadedReply = fileReply.partial()
-
-/**
- * Sends the file through `session` in chunks of `chunkBytes`, hashing what goes
- * out, and returns Google's reply to the last one. The last chunk is held
- * until the hash of everything sent with it is the one the plan read; a file
- * that changed (or ended early) is `stale` with the last byte unsent. When
- * Google takes in fewer bytes than were sent, the next chunk starts where it
- * says, at most `MAX_RESENDS` times (`upstream_error`).
- */
-async function putFile(
-  session: ResumableSession,
-  handle: FileHandle,
-  file: UploadFile,
-  chunkBytes: number,
-): Promise<unknown> {
-  const hash = createHash("sha256")
-  let hashed = 0
-  let offset = 0
-  let resends = 0
-  for (;;) {
-    const length = Math.min(chunkBytes, file.size - offset)
-    const bytes = await readRange(handle, offset, length)
-    if (bytes.length < length) throw changedFile()
-    const end = offset + length
-    if (end > hashed) {
-      hash.update(bytes.subarray(hashed - offset))
-      hashed = end
-    }
-    if (end === file.size && hash.copy().digest("hex") !== file.sha256) throw changedFile()
-
-    const reply = await session.put(bytes, offset, file.size)
-    if (reply.done) return reply.file
-    if (reply.offset === end && end < file.size) {
-      offset = end
-      continue
-    }
-    if (reply.offset >= end) {
-      throw new ToolError("upstream_error", "Google took in every byte but did not finish the upload.")
-    }
-    if (++resends > MAX_RESENDS) {
-      throw new ToolError(
-        "upstream_error",
-        `Google kept taking in fewer bytes than were sent, after ${MAX_RESENDS} resends.`,
-      )
-    }
-    offset = reply.offset
-  }
-}
 
 /** The result of an upload from Google's answer to its last chunk, with what the plan knows (and `sent`, the bytes of the file that went up) where the answer lacks a field. */
 function resultOf(plan: UploadPlan, reply: unknown, sent: UploadFile): DriveUploadResult {
@@ -109,7 +50,7 @@ async function sendFile(
     size: file.size,
     timeoutMs: UPLOAD_TIMEOUT_MS,
   })
-  return resultOf(plan, await putFile(session, handle, file, chunkBytes), file)
+  return resultOf(plan, await putFile(session, handle, file, chunkBytes, changedFile), file)
 }
 
 /**

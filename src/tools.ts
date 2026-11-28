@@ -41,7 +41,13 @@ import { googleSheetsRead } from "./core/sheets/read"
 import { googleSheetsRestructure } from "./core/sheets/restructure"
 import { googleSheetsTabAdd } from "./core/sheets/tab-add"
 import { googleSheetsTransform } from "./core/sheets/transform"
+import { googleYoutubeCaptionAdd } from "./core/youtube/caption-add"
+import { googleYoutubeCaptionUpdate } from "./core/youtube/caption-update"
+import { googleYoutubePrivacySet } from "./core/youtube/privacy"
 import { googleYoutubeRead } from "./core/youtube/read"
+import { googleYoutubeThumbnailSet } from "./core/youtube/thumbnail"
+import { googleYoutubeVideoEdit } from "./core/youtube/video-edit"
+import { googleYoutubeVideoUpload } from "./core/youtube/video-upload"
 
 /** Every tool spec of the package; entry points register their tools from this list. */
 export const ALL_TOOLS: ToolSpec[] = [
@@ -88,4 +94,10 @@ export const ALL_TOOLS: ToolSpec[] = [
   googleRunServiceDelete,
   googleRunJobDelete,
   googleYoutubeRead,
+  googleYoutubeVideoEdit,
+  googleYoutubePrivacySet,
+  googleYoutubeThumbnailSet,
+  googleYoutubeVideoUpload,
+  googleYoutubeCaptionAdd,
+  googleYoutubeCaptionUpdate,
 ]

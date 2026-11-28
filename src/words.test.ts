@@ -6,6 +6,7 @@ import { FACT_TRANSLATIONS } from "./core/facts"
 import { GMAIL_TRANSLATIONS } from "./core/gmail/words"
 import { RUN_TRANSLATIONS } from "./core/run/words"
 import { SHEETS_TRANSLATIONS } from "./core/sheets/words"
+import { YOUTUBE_TRANSLATIONS } from "./core/youtube/words"
 import { ALL_TOOLS } from "./tools"
 import { ALL_TRANSLATIONS, TOOL_WORDS } from "./words"
 
@@ -16,6 +17,7 @@ const TABLES = [
   DRIVE_TRANSLATIONS,
   COMMENTS_TRANSLATIONS,
   RUN_TRANSLATIONS,
+  YOUTUBE_TRANSLATIONS,
 ]
 
 const WRITE_TOOLS = ALL_TOOLS.filter((spec) => spec.class !== "read")
