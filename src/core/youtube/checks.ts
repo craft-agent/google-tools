@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer"
 import { ToolError } from "../errors"
 import { shown } from "../run/ids"
+import { keywordsText } from "./channel-keywords"
 
 /** The most characters of a video's title. */
 export const MAX_TITLE_CHARACTERS = 100
@@ -26,6 +27,12 @@ export const MAX_PLAYLIST_DESCRIPTION_CHARACTERS = 5000
 /** The most characters of the note of a playlist's entry, as code points. */
 export const MAX_PLAYLIST_NOTE_CHARACTERS = 280
 
+/** The most characters of a channel's description, as code points. */
+export const MAX_CHANNEL_DESCRIPTION_CHARACTERS = 1000
+
+/** The most characters of a channel's keywords in all, as Google counts them: the text it stores. */
+export const MAX_KEYWORD_CHARACTERS = 500
+
 /** What Google adds to the count of a tag that holds a space, for the quotes it writes around it. */
 const QUOTED_TAG_EXTRA = 2
 
@@ -41,6 +48,9 @@ const TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.(\
 const MINUTE_MS = 60_000
 const MARKUP = /[<>]/
 const CONTROL_CHARACTERS = /\p{Cc}/u
+
+/** A country as Google takes it: two letters. */
+const COUNTRY_PATTERN = /^[A-Za-z]{2}$/
 
 /** An `invalid_argument` that says nothing was sent: `message` without its final stop. */
 export function refusal(message: string): ToolError {
@@ -77,14 +87,22 @@ export function checkedPlaylistTitle(title: string, subject = "`title`"): string
   return titleWithin(title, MAX_PLAYLIST_TITLE_CHARACTERS, subject)
 }
 
-/** `description` when it is at most 5000 characters without `<` or `>`, as a playlist's is; `subject` names it in the refusal. */
-export function checkedPlaylistDescription(description: string, subject = "`description`"): string {
+/** `description` when it is at most `max` characters without `<` or `>`; `subject` names it in the refusal. */
+function descriptionWithin(description: string, max: number, subject: string): string {
   const length = lengthOf(description)
-  if (length > MAX_PLAYLIST_DESCRIPTION_CHARACTERS) {
-    throw refusal(`${subject} must be at most ${MAX_PLAYLIST_DESCRIPTION_CHARACTERS} characters, not ${length}`)
-  }
+  if (length > max) throw refusal(`${subject} must be at most ${max} characters, not ${length}`)
   if (MARKUP.test(description)) throw refusal(`${subject} must not hold \`<\` or \`>\``)
   return description
+}
+
+/** `description` when it is at most 5000 characters without `<` or `>`, as a playlist's is; `subject` names it in the refusal. */
+export function checkedPlaylistDescription(description: string, subject = "`description`"): string {
+  return descriptionWithin(description, MAX_PLAYLIST_DESCRIPTION_CHARACTERS, subject)
+}
+
+/** `description` when it is at most 1000 characters without `<` or `>`, as a channel's is; `subject` names it in the refusal. */
+export function checkedChannelDescription(description: string, subject = "`description`"): string {
+  return descriptionWithin(description, MAX_CHANNEL_DESCRIPTION_CHARACTERS, subject)
 }
 
 /** `note` when it is at most 280 characters, the note of a playlist's entry. */
@@ -130,6 +148,37 @@ export function checkedTags(tags: readonly string[]): string[] {
     if (/[<>,]/.test(tag)) throw refusal(`The tag ${shown(tag)} must not hold \`<\`, \`>\` or a comma`)
   }
   return checkedTagTotal(tags)
+}
+
+/** `keywords` when each is not blank, has no space or control character at either end, and holds no `"`, which Google writes around a keyword with a space. */
+export function checkedKeywords(keywords: readonly string[], subject: string): string[] {
+  for (const keyword of keywords) {
+    if (keyword.trim() === "") throw refusal(`${subject} must not hold a blank keyword`)
+    if (keyword.includes('"')) throw refusal(`The keyword ${shown(keyword)} must not hold \`"\``)
+    if (keyword !== keyword.trim() || CONTROL_CHARACTERS.test(keyword)) {
+      throw refusal(`The keyword ${shown(keyword)} must not start or end with a space or hold a control character`)
+    }
+  }
+  return [...keywords]
+}
+
+/** `keywords` when the text Google stores for them, as `keywordsText` writes it, is at most 500 characters. */
+export function checkedKeywordTotal(keywords: readonly string[]): string[] {
+  const characters = lengthOf(keywordsText(keywords))
+  if (characters > MAX_KEYWORD_CHARACTERS) {
+    throw refusal(
+      `The keywords come to ${characters} characters as Google counts them (a space between two, 2 more for a keyword with a space), at most ${MAX_KEYWORD_CHARACTERS} are allowed`,
+    )
+  }
+  return [...keywords]
+}
+
+/** `country` as Google takes it: two letters in capitals, or `""`, which removes the country. */
+export function checkedCountry(country: string): string {
+  if (country !== "" && !COUNTRY_PATTERN.test(country)) {
+    throw refusal(`The country ${shown(country)} is not a two-letter country code such as \`JP\`; \`""\` removes it`)
+  }
+  return country.toUpperCase()
 }
 
 /** `category` when it is a category id of up to three digits. */

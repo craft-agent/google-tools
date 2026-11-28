@@ -3,7 +3,11 @@ import { ToolError } from "../errors"
 import {
   checkedCaptionName,
   checkedCategory,
+  checkedChannelDescription,
+  checkedCountry,
   checkedDescription,
+  checkedKeywordTotal,
+  checkedKeywords,
   checkedLanguage,
   checkedPublishAt,
   checkedReplyText,
@@ -76,6 +80,49 @@ describe("checkedTags", () => {
   test("refuse a blank tag and a tag with <, > or a comma", () => {
     for (const tag of ["", "  ", "a<b", "a>b", "a,b"])
       expect(refused(() => checkedTags([tag]))).toBe("invalid_argument")
+  })
+})
+
+describe("checkedChannelDescription", () => {
+  test("counts code points: 1000 are accepted, 1001 are not, and none is a clearing description", () => {
+    expect(refused(() => checkedChannelDescription(""))).toBe("accepted")
+    expect(refused(() => checkedChannelDescription("😀".repeat(1000)))).toBe("accepted")
+    expect(refused(() => checkedChannelDescription("😀".repeat(1001)))).toBe("invalid_argument")
+  })
+
+  test("refuses < and >", () => {
+    expect(refused(() => checkedChannelDescription("a<b"))).toBe("invalid_argument")
+    expect(refused(() => checkedChannelDescription("a>b"))).toBe("invalid_argument")
+  })
+})
+
+describe("checkedKeywords and checkedKeywordTotal", () => {
+  test("refuse a blank keyword, a double quote, an edge space and a control character", () => {
+    for (const keyword of ["", "  ", 'a"b', " a", "a ", "a\nb", "a\tb"]) {
+      expect(refused(() => checkedKeywords([keyword], "`add_keywords`"))).toBe("invalid_argument")
+    }
+    expect(refused(() => checkedKeywords(["a", "made up", "日本語"], "`add_keywords`"))).toBe("accepted")
+  })
+
+  test("count the text Google stores: a space between two and 2 more for a keyword with a space", () => {
+    expect(refused(() => checkedKeywordTotal(["a".repeat(250), "b".repeat(249)]))).toBe("accepted")
+    expect(refused(() => checkedKeywordTotal(["a".repeat(250), "b".repeat(250)]))).toBe("invalid_argument")
+    expect(refused(() => checkedKeywordTotal([`${"x ".repeat(248)}xy`]))).toBe("accepted")
+    expect(refused(() => checkedKeywordTotal([`${"x ".repeat(248)}xyz`]))).toBe("invalid_argument")
+    expect(refused(() => checkedKeywordTotal(["😀".repeat(500)]))).toBe("accepted")
+  })
+})
+
+describe("checkedCountry", () => {
+  test("takes two letters in either case as capitals, and an empty string to remove the country", () => {
+    expect(["JP", "jp", "Us"].map(checkedCountry)).toEqual(["JP", "JP", "US"])
+    expect(checkedCountry("")).toBe("")
+  })
+
+  test("refuses anything else", () => {
+    for (const country of ["J", "JPN", "J1", " JP", "日本"]) {
+      expect(refused(() => checkedCountry(country))).toBe("invalid_argument")
+    }
   })
 })
 

@@ -3,6 +3,7 @@ import type { Route } from "../google/routes"
 import { ANY_TARGET } from "../targets"
 import type { ToolContext } from "../tool"
 import { captionId, playlistId, videoId } from "./ids"
+import { ownChannel } from "./own-calls"
 import { youtubeWriteSession } from "./write-session"
 
 /** The target of a write to a video of the label's channel: the label, then the video's path (`videos`, its id). */
@@ -43,6 +44,20 @@ export async function foundTargets(ctx: ToolContext, find: () => Promise<string[
 /** The target of a write that makes a video in the label's channel: the label, then the channel's path (`channels`, its id). */
 export function channelTarget(label: string, channel: string): string {
   return [label, "channels", channel].join("/")
+}
+
+/**
+ * The one target of a write to the label's own channel, whose id the channel
+ * read gives: the label's scopes are checked first, those of the route `write`
+ * the call sends, and `*` stands when Google cannot say.
+ */
+export async function ownChannelTargets(
+  account: string | undefined,
+  ctx: ToolContext,
+  write: Route,
+): Promise<string[]> {
+  const session = await youtubeWriteSession(ctx, account, write)
+  return foundTargets(ctx, async () => [channelTarget(session.label, (await ownChannel(session, "id")).id)])
 }
 
 /** The one target of a write to a video: the id is checked first, then the label's scopes, those of the route `write` the call sends. */

@@ -97,6 +97,22 @@ export const YOUTUBE_ROUTES = {
     path: `${DATA_PATH}/playlistItems`,
     scopes: FORCE_SSL_SCOPES,
   },
+  /** `channels.update`, which replaces every writable property of the one part it is sent. */
+  channelsUpdate: { method: "PUT", host: YOUTUBE_HOST, path: `${DATA_PATH}/channels`, scopes: FORCE_SSL_SCOPES },
+  /** `watermarks.set` as a multipart upload: the timing and the image in one request. */
+  watermarksSet: {
+    method: "POST",
+    host: UPLOAD_HOST,
+    path: `/upload${DATA_PATH}/watermarks/set`,
+    scopes: FORCE_SSL_SCOPES,
+  },
+  /** `watermarks.unset`, which takes the watermark of the `channelId` query off the channel and answers 204. */
+  watermarksUnset: {
+    method: "POST",
+    host: YOUTUBE_HOST,
+    path: `${DATA_PATH}/watermarks/unset`,
+    scopes: FORCE_SSL_SCOPES,
+  },
   /** `reports.query` of the Analytics API. */
   analytics: {
     method: "GET",

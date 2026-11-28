@@ -72,6 +72,16 @@ export const YOUTUBE_WORDS = {
   makePlaylistPublic: "About to make the playlist {title} public",
   makePlaylistUnlisted: "About to make the playlist {title} unlisted",
   makePlaylistPrivate: "About to make the playlist {title} private",
+  channelEdit: "About to edit the channel {title}",
+  watermarkSet: "About to set the watermark of {channel}",
+  watermarkRemove: "About to remove the watermark of {channel}",
+  shown: "Shown",
+  shownWhole: "the whole video",
+  shownFromStart: "from {offset} s after the start",
+  shownFromEnd: "from {offset} s before the end",
+  shownFirst: "for the first {duration} s",
+  shownFromStartFor: "from {offset} s after the start, for {duration} s",
+  shownFromEndFor: "from {offset} s before the end, for {duration} s",
 } as const
 
 /** The translations of the YouTube tools' words: their titles, intents, headline templates, fact labels, value templates and text labels. */
@@ -175,5 +185,15 @@ export const YOUTUBE_TRANSLATIONS: Translations = {
     [YOUTUBE_WORDS.makePlaylistPublic]: "再生リスト {title} を公開しようとしています",
     [YOUTUBE_WORDS.makePlaylistUnlisted]: "再生リスト {title} を限定公開にしようとしています",
     [YOUTUBE_WORDS.makePlaylistPrivate]: "再生リスト {title} を非公開にしようとしています",
+    [YOUTUBE_WORDS.channelEdit]: "チャンネル {title} を編集しようとしています",
+    [YOUTUBE_WORDS.watermarkSet]: "チャンネル {channel} の透かしを設定しようとしています",
+    [YOUTUBE_WORDS.watermarkRemove]: "チャンネル {channel} の透かしを削除しようとしています",
+    [YOUTUBE_WORDS.shown]: "表示する範囲",
+    [YOUTUBE_WORDS.shownWhole]: "動画全体",
+    [YOUTUBE_WORDS.shownFromStart]: "開始 {offset} 秒後から最後まで",
+    [YOUTUBE_WORDS.shownFromEnd]: "終了 {offset} 秒前から最後まで",
+    [YOUTUBE_WORDS.shownFirst]: "最初の {duration} 秒間",
+    [YOUTUBE_WORDS.shownFromStartFor]: "開始 {offset} 秒後から {duration} 秒間",
+    [YOUTUBE_WORDS.shownFromEndFor]: "終了 {offset} 秒前から {duration} 秒間",
   },
 }

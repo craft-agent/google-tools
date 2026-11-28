@@ -8,6 +8,9 @@ import { YOUTUBE_WORDS } from "./words"
 
 const LOCALIZATION_PREFIX = "localization "
 
+/** What a line of the text of an edit needs of a change: the field and its values, whatever part of what is edited it lives in. */
+type ShownChange = Pick<FieldChange, "field" | "before" | "after">
+
 /** A value as a line of the text shows it: a flag as yes or no, a list comma separated, and none as `(none)`. */
 function shownValue(value: ChangeValue): string {
   if (typeof value === "boolean") return value ? "yes" : "no"
@@ -16,7 +19,7 @@ function shownValue(value: ChangeValue): string {
 }
 
 /** The lines of one change: `title: …`, `made for kids: yes`, and for a localization its title and, when new, its description. */
-function linesOf({ field, before, after }: FieldChange): string[] {
+function linesOf({ field, before, after }: ShownChange): string[] {
   if (!field.startsWith(LOCALIZATION_PREFIX)) return [`${field.replaceAll("_", " ")}: ${shownValue(after)}`]
   if (after === null || typeof after !== "object" || Array.isArray(after)) return [`${field}: (removed)`]
   const previous = before !== null && typeof before === "object" && !Array.isArray(before) ? before : undefined
@@ -26,7 +29,7 @@ function linesOf({ field, before, after }: FieldChange): string[] {
 }
 
 /** The text of an edit: a line for each new value of `changes`, with the description last. */
-export function newValuesText(changes: readonly FieldChange[]): CallText {
+export function newValuesText(changes: readonly ShownChange[]): CallText {
   const lines = changes.filter(({ field }) => field !== "description").flatMap(linesOf)
   const description = changes.find(({ field }) => field === "description")
   return {

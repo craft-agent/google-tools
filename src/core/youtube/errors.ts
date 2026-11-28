@@ -42,6 +42,15 @@ const INVALID_VALUE_REASONS: ReadonlySet<unknown> = new Set([
   "invalidContentDetails",
   "videoAlreadyInAnotherSeriesPlaylist",
   PLAYLIST_FULL_REASON,
+  "channelTitleUpdateForbidden",
+  "invalidBrandingOption",
+  "brandingValidationError",
+  "localizationValidationError",
+  "defaultLanguageNotSetError",
+  "imageFormatUnsupported",
+  "imageTooTall",
+  "imageTooWide",
+  "mediaBodyRequired",
 ])
 
 /** The reasons of a 403 that say the comment thread takes no replies, or the playlist takes no such change or no one's entries. */
@@ -114,7 +123,9 @@ function isBadRequest(error: ToolError, reasons: ReadonlySet<unknown>): boolean 
  * playlist is full, is `invalid_argument` too; so is a 400 that says a position
  * needs a playlist sorted by hand, with a sentence that says where that is set.
  * A 403 that says the playlist takes no such operation, or none of its
- * entries, is `forbidden`.
+ * entries, is `forbidden`. A 400 that refuses the channel's branding or
+ * localizations, a changed channel title, or a watermark's image, is
+ * `invalid_argument` too.
  */
 export function youtubeError(error: unknown): unknown {
   if (!isToolError(error)) return error
