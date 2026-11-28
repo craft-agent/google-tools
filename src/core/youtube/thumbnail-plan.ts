@@ -1,10 +1,9 @@
 import { extname, isAbsolute } from "node:path"
-import { ToolError } from "../errors"
 import { encryptDirsOf, isUnderEncryptDirs } from "../files/encrypt-dirs"
 import { readUpload, uploadDirsOf, type Upload } from "../files/upload"
 import type { GoogleSession } from "../google/session"
 import type { ToolContext } from "../tool"
-import { refusal } from "./checks"
+import { encryptedFileRefusal, refusal } from "./checks"
 import { videoId } from "./ids"
 import { ownVideo } from "./own-video"
 import { YOUTUBE_ROUTES } from "./routes"
@@ -74,12 +73,7 @@ export async function planThumbnail(args: YoutubeThumbnailArgs, ctx: ToolContext
     ownDir: ctx.ownDir,
     maxBytes: MAX_THUMBNAIL_BYTES,
   })
-  if (await isUnderEncryptDirs(file.path, encryptDirsOf(ctx))) {
-    throw new ToolError(
-      "forbidden",
-      `"${file.path}" is under an encrypt_dirs directory; YouTube would hold only ciphertext, which no one could watch. Nothing was sent.`,
-    )
-  }
+  if (await isUnderEncryptDirs(file.path, encryptDirsOf(ctx))) throw encryptedFileRefusal(file.path)
   const { mimeType, name } = imageTypeOf(file)
   const { state } = await ownVideo(session, video)
   return { session, video, state, file, image: { mimeType, name } }

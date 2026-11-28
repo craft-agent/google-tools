@@ -31,6 +31,14 @@ export function refusal(message: string): ToolError {
   return new ToolError("invalid_argument", `${message}; nothing was sent.`)
 }
 
+/** The refusal of a file under an `encrypt_dirs` directory: YouTube would hold only ciphertext, which no one could watch. */
+export function encryptedFileRefusal(path: string): ToolError {
+  return new ToolError(
+    "forbidden",
+    `"${path}" is under an encrypt_dirs directory; YouTube would hold only ciphertext, which no one could watch. Nothing was sent.`,
+  )
+}
+
 const lengthOf = (text: string) => Array.from(text).length
 
 /** `title` when it is 1 to 100 characters without `<` or `>`; `subject` names it in the refusal. */

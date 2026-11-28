@@ -7,11 +7,17 @@ const DATA_HOSTS = ["youtube.googleapis.com", "youtubeanalytics.googleapis.com"]
 const UPLOAD_HOST = "www.googleapis.com"
 
 describe("YOUTUBE_ROUTES", () => {
-  test("every route is a GET on a YouTube host, but the video update and the thumbnail upload", () => {
-    const writes: Record<string, "PUT" | "POST"> = { videosUpdate: "PUT", thumbnailsSet: "POST" }
+  test("every route is a GET on a YouTube host, but the video update and the uploads", () => {
+    const writes: Record<string, "PUT" | "POST"> = {
+      videosUpdate: "PUT",
+      thumbnailsSet: "POST",
+      videosInsert: "POST",
+      videosInsertChunk: "PUT",
+    }
+    const uploads = ["thumbnailsSet", "videosInsert", "videosInsertChunk"]
     for (const [name, route] of Object.entries(YOUTUBE_ROUTES)) {
       expect(route.method).toBe(writes[name] ?? "GET")
-      expect(name === "thumbnailsSet" ? [UPLOAD_HOST] : DATA_HOSTS).toContain(route.host)
+      expect(uploads.includes(name) ? [UPLOAD_HOST] : DATA_HOSTS).toContain(route.host)
       expect(HOSTS).toContain(route.host)
     }
   })
@@ -28,8 +34,9 @@ describe("YOUTUBE_ROUTES", () => {
     }
   })
 
-  test("comments, caption tracks, the video update and the thumbnail upload take force-ssl alone", () => {
-    for (const name of ["commentThreads", "comments", "captions", "videosUpdate", "thumbnailsSet"] as const) {
+  test("comments, caption tracks, the video update and the uploads take force-ssl alone", () => {
+    const names = ["commentThreads", "comments", "captions", "videosUpdate", "thumbnailsSet"] as const
+    for (const name of [...names, "videosInsert", "videosInsertChunk"] as const) {
       expect(YOUTUBE_ROUTES[name].scopes).toEqual([YOUTUBE_SCOPE])
     }
   })
@@ -47,6 +54,12 @@ describe("YOUTUBE_ROUTES", () => {
     )
     expect(routeUrl(YOUTUBE_ROUTES.thumbnailsSet, {}, { videoId: "abc", uploadType: "media" }).toString()).toBe(
       "https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=abc&uploadType=media",
+    )
+    expect(
+      routeUrl(YOUTUBE_ROUTES.videosInsert, {}, { uploadType: "resumable", part: "snippet,status" }).toString(),
+    ).toBe("https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet%2Cstatus")
+    expect(routeUrl(YOUTUBE_ROUTES.videosInsertChunk).toString()).toBe(
+      "https://www.googleapis.com/upload/youtube/v3/videos",
     )
     expect(routeUrl(YOUTUBE_ROUTES.playlistItems).toString()).toBe(
       "https://youtube.googleapis.com/youtube/v3/playlistItems",

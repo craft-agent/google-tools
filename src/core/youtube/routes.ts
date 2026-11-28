@@ -33,6 +33,20 @@ export const YOUTUBE_ROUTES = {
     path: `/upload${DATA_PATH}/thumbnails/set`,
     scopes: FORCE_SSL_SCOPES,
   },
+  /** `videos.insert` as a resumable upload: the start of the session, which names the video. */
+  videosInsert: {
+    method: "POST",
+    host: UPLOAD_HOST,
+    path: `/upload${DATA_PATH}/videos`,
+    scopes: FORCE_SSL_SCOPES,
+  },
+  /** The chunks of a `videos.insert` session, sent to the address the start answered with. */
+  videosInsertChunk: {
+    method: "PUT",
+    host: UPLOAD_HOST,
+    path: `/upload${DATA_PATH}/videos`,
+    scopes: FORCE_SSL_SCOPES,
+  },
   /** `reports.query` of the Analytics API. */
   analytics: {
     method: "GET",

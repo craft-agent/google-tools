@@ -8,6 +8,11 @@ export function videoTarget(label: string, video: string): string {
   return [label, "videos", video].join("/")
 }
 
+/** The target of a write that makes a video in the label's channel: the label, then the channel's path (`channels`, its id). */
+export function channelTarget(label: string, channel: string): string {
+  return [label, "channels", channel].join("/")
+}
+
 /** The one target of a write to a video: the id is checked first, then the label's scopes, those of the route `write` the call sends. */
 export async function videoTargets(
   args: { account?: string; video: string },
